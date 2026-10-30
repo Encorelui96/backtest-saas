@@ -38,6 +38,17 @@ npm run worker
 
 Ouvre http://localhost:3000 et connecte-toi : sans clé Resend, le lien de connexion s'affiche dans le terminal de `npm run dev`.
 
+## Mettre en ligne sur Render
+
+Le fichier `render.yaml` crée tout d'un coup : le site, le processus de calcul et la base Postgres, à Francfort.
+
+1. Sur render.com : **New**, puis **Blueprint**, puis choisis le dépôt `backtest-saas`.
+2. Render demande les valeurs marquées `sync: false` : mets ton e-mail dans `ADMIN_EMAILS`, et ta clé dans `ANTHROPIC_API_KEY` si tu l'as. Les autres peuvent rester vides.
+3. Clique sur **Deploy Blueprint**. `BETTER_AUTH_SECRET` et `DATABASE_URL` sont remplis automatiquement, et l'adresse du site est reprise pour la connexion.
+4. Une fois les trois éléments au vert, ouvre l'adresse du service `backtest-lab`. Tant que Resend n'est pas configuré, le lien de connexion s'affiche dans les **Logs** du service web.
+
+Avec ton propre domaine, ajoute `BETTER_AUTH_URL=https://ton-domaine` dans l'onglet **Environment** du service web.
+
 ## Mettre en ligne sur Railway
 
 1. Crée un projet Railway depuis le dépôt GitHub, puis ajoute une base **Postgres** au projet.

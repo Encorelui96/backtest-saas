@@ -32,7 +32,8 @@ export const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env
 export const auth = betterAuth({
   appName: "Backtest Lab",
   database: pool(),
-  baseURL: process.env.BETTER_AUTH_URL ?? "http://localhost:3000",
+  // Render gives the public address in RENDER_EXTERNAL_URL; BETTER_AUTH_URL wins when you use your own domain.
+  baseURL: process.env.BETTER_AUTH_URL ?? process.env.RENDER_EXTERNAL_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET,
   socialProviders: googleEnabled
     ? { google: { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET!, prompt: "select_account" } }
