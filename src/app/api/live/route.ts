@@ -1,0 +1,100 @@
+import { z } from "zod";
+import { StrategySchema, normalizeStrategy, type Operand } from "@/lib/strategy/schema";
+import { warmupMs } from "@/lib/strategy/warmup";
+import { INTERVAL_MS, rowsToCandles } from "@/lib/types";
+import { fetchRecentKlines } from "@/lib/server/binance";
+import { SeriesContext } from "@/lib/engine/evaluate";
+import { runBacktest } from "@/lib/engine/backtest";
+import { defaultConfig } from "@/lib/strategy/schema";
+import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
+import { handle } from "@/lib/server/http";
+
+const Body = z.object({ strategy: StrategySchema, display: z.number().min(50).max(1000).optional() });
+
+const OVERLAY = new Set<Operand["indicator"]>([
+  "sma", "ema", "bb_upper", "bb_middle", "bb_lower", "vwap", "highest", "lowest", "day_open", "prev_day_high", "prev_day_low", "prev_day_close",
+]);
+
+/**
+ * Evaluates a strategy on the latest closed candles: where it would have
+ * signalled recently, whether it would hold a position now, and the state of
+ * every condition on the last closed bar.
+ */
+export async function POST(req: Request) {
+  return handle(async () => {
+    const body = Body.parse(await req.json());
+    const { strategy } = normalizeStrategy(body.strategy);
+    const display = body.display ?? 300;
+    const ms = INTERVAL_MS[strategy.interval];
+    const warmBars = Math.min(4000, Math.ceil(warmupMs(strategy) / ms) + 10);
+    const rows = await fetchRecentKlines(strategy.symbol, strategy.interval, display + warmBars + 1);
+    const now = Date.now();
+    const closed = rows.filter((r) => r.t + ms <= now);
+    const forming = rows.find((r) => r.t + ms > now) ?? null;
+    const candles = rowsToCandles(closed);
+    const n = candles.t.length;
+    if (n < 10) return Response.json({ error: "Pas assez de données pour ce symbole." }, { status: 400 });
+    const startIndex = Math.max(0, n - display);
+
+    const ctx = new SeriesContext(candles, strategy.interval, strategy.timezone);
+    const run = runBacktest(candles, strategy, { ...defaultConfig(), initialCapital: 10_000 }, ctx, startIndex);
+    const last = run.trades.at(-1);
+    const openTrade = last && last.exitReason === "end" ? last : null;
+
+    const longSig = strategy.direction !== "short" ? ctx.groupsSignal(strategy.entryLong) : new Uint8Array(n);
+    const shortSig = strategy.direction !== "long" ? ctx.groupsSignal(strategy.entryShort) : new Uint8Array(n);
+    const markers: { t: number; kind: "long" | "short" }[] = [];
+    for (let i = startIndex; i < n; i++) {
+      if (longSig[i]) markers.push({ t: candles.t[i], kind: "long" });
+      else if (shortSig[i]) markers.push({ t: candles.t[i], kind: "short" });
+    }
+
+    const i = n - 1;
+    const describeGroups = (groups: typeof strategy.entryLong) =>
+      groups
+        .filter((g) => g.conditions.length)
+        .map((g) => ({
+          conditions: g.conditions.map((c) => ({
+            label: `${operandLabel(c.left)} ${COMPARATOR_LABELS[c.op]} ${operandLabel(c.right)}`,
+            left: ctx.series(c.left)[i],
+            right: ctx.series(c.right)[i],
+            pass: ctx.conditionSeries(c)[i] === 1,
+          })),
+        }));
+
+    const overlays: { label: string; points: { t: number; v: number }[] }[] = [];
+    const seen = new Set<string>();
+    for (const groups of [strategy.entryLong, strategy.entryShort, strategy.exitLong, strategy.exitShort])
+      for (const g of groups)
+        for (const c of g.conditions)
+          for (const o of [c.left, c.right]) {
+            const label = operandLabel(o);
+            if (!OVERLAY.has(o.indicator) || seen.has(label)) continue;
+            seen.add(label);
+            const s = ctx.series(o);
+            const points: { t: number; v: number }[] = [];
+            for (let k = startIndex; k < n; k++) if (!Number.isNaN(s[k])) points.push({ t: candles.t[k], v: s[k] });
+            overlays.push({ label, points });
+          }
+
+    return Response.json({
+      symbol: strategy.symbol,
+      interval: strategy.interval,
+      candles: Array.from({ length: n - startIndex }, (_, k) => {
+        const j = startIndex + k;
+        return { t: candles.t[j], o: candles.o[j], h: candles.h[j], l: candles.l[j], c: candles.c[j], v: candles.v[j] };
+      }),
+      forming,
+      lastClosedTime: candles.t[i],
+      signalNow: longSig[i] ? "long" : shortSig[i] ? "short" : null,
+      openTrade,
+      recentTrades: run.trades.filter((t) => t.exitReason !== "end").slice(-10),
+      markers,
+      entryLong: describeGroups(strategy.entryLong),
+      entryShort: describeGroups(strategy.entryShort),
+      exitLong: describeGroups(strategy.exitLong),
+      exitShort: describeGroups(strategy.exitShort),
+      overlays,
+    });
+  });
+}

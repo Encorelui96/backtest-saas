@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Backtest Lab
 
-## Getting Started
+Backteste des stratégies de scalp, day trading et swing sur les cours crypto de Binance, et suis-les en direct.
 
-First, run the development server:
+## Ce que fait l'application
+
+- **Stratégie en français** : tu décris ta stratégie, l'IA (Claude) la traduit en règles, liste les choix qu'elle a faits et pose des questions si quelque chose est flou. Sans clé API, un constructeur visuel et 5 modèles permettent de tout faire à la main.
+- **Règles riches** : prix, MM, MME, RSI, ATR, Bollinger, MACD, stochastique, ADX, ROC, IBS, VWAP, plus haut/bas sur N bougies, niveaux de la veille, heure et jour ; conditions ET / OU, croisements, valeurs passées, indicateurs d'une unité de temps supérieure (sans regarder le futur).
+- **Gestion du trade** : stop en %, en ATR ou sous le dernier plus bas ; objectif en %, ATR ou R ; stop suiveur ; point mort ; durée maximale ; fenêtre horaire ; jours autorisés ; fermeture à heure fixe ; risque par trade.
+- **Réalisme** : entrée à l'ouverture de la bougie suivante, stop avant objectif quand les deux sont touchés, gaps, frais, spread, glissement, financement.
+- **Résultats** : rendement, rendement annuel, baisse maximale, profit factor, gain moyen en R, Sharpe, courbe du capital, graphique de chaque trade, résultats par année, export CSV.
+- **Robustesse** : test statistique de l'avantage, étude puis validation sur la suite de l'historique, Monte Carlo, réglages voisins, frais doublés, avec un verdict en 4 contrôles.
+- **Challenge prop firm** : chance de réussite selon le risque par trade, sur l'historique réel, en Monte Carlo et comparé au hasard. Les règles sont modifiables.
+- **Live** : cours en temps réel (WebSocket Binance), signaux de la stratégie, état de chaque condition et position simulée, recalculés à chaque clôture de bougie.
+
+## Lancer en local
+
+Il faut Node.js 22 ou plus récent.
 
 ```bash
+npm install
+cp .env.example .env.local   # puis colle ta clé ANTHROPIC_API_KEY si tu en as une
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ouvre http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Les bougies téléchargées sont gardées dans `data/app.db` : le premier test d'un symbole prend quelques secondes (jusqu'à une minute en 1m), les suivants sont immédiats.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Tests
 
-## Learn More
+```bash
+npm test
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Organisation du code
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Dossier | Rôle |
+|---|---|
+| `src/lib/engine` | Moteur : indicateurs, évaluation des règles, simulation des trades, statistiques, robustesse, prop firm. Pur TypeScript, sans dépendance serveur. |
+| `src/lib/strategy` | Format des stratégies (schéma Zod partagé avec l'IA), libellés, modèles. |
+| `src/lib/server` | Données Binance et cache SQLite, stratégies et backtests enregistrés, appel à Claude. |
+| `src/app/api` | Routes API. |
+| `src/components` | Interface. |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Prochaines étapes prévues
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Forex : ajouter un fournisseur de données (Twelve Data, OANDA…) à côté de Binance.
+- Comptes utilisateurs et abonnements (Stripe). Les tables ont déjà une colonne `user_id`.
+- Optimisation de paramètres avec validation glissante (walk-forward).
