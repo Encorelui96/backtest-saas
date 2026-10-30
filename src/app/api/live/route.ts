@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { StrategySchema, normalizeStrategy, type Operand } from "@/lib/strategy/schema";
-import { warmupMs } from "@/lib/strategy/warmup";
+import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "@/lib/strategy/warmup";
 import { INTERVAL_MS, rowsToCandles } from "@/lib/types";
 import { fetchRecentKlines } from "@/lib/server/binance";
 import { SeriesContext } from "@/lib/engine/evaluate";
@@ -37,6 +37,12 @@ export async function POST(req: Request) {
     const startIndex = Math.max(0, n - display);
 
     const ctx = new SeriesContext(candles, strategy.interval, strategy.timezone);
+    // Higher-timeframe filters get their own candles: rebuilding a daily MM50 from 300 bars of 15m would leave it empty.
+    for (const tf of higherTimeframes(strategy)) {
+      const bars = Math.ceil(higherTimeframeWarmupMs(strategy, tf) / INTERVAL_MS[tf]) + Math.ceil(((display + 1) * ms) / INTERVAL_MS[tf]) + 2;
+      const htfRows = (await fetchRecentKlines(strategy.symbol, tf, Math.min(bars, 1500))).filter((r) => r.t + INTERVAL_MS[tf] <= now);
+      ctx.attachHigherTimeframe(tf, rowsToCandles(htfRows));
+    }
     const run = runBacktest(candles, strategy, { ...defaultConfig(), initialCapital: 10_000 }, ctx, startIndex);
     const last = run.trades.at(-1);
     const openTrade = last && last.exitReason === "end" ? last : null;

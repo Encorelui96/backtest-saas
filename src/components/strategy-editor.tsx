@@ -43,6 +43,8 @@ export function StrategyEditor({ id }: { id?: string }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [symbols, setSymbols] = useState<string[]>([]);
+  // The symbol the suggestions were fetched for, so a warning never shows for a stale list.
+  const [symbolsFor, setSymbolsFor] = useState<string | null>(null);
 
   useEffect(() => {
     api<Meta>("/api/meta").then(setMeta).catch((e) => setError(e.message));
@@ -61,7 +63,10 @@ export function StrategyEditor({ id }: { id?: string }) {
     const q = strategy.symbol;
     const timer = setTimeout(() => {
       api<{ symbol: string }[]>(`/api/symbols?q=${encodeURIComponent(q)}`)
-        .then((rows) => setSymbols(rows.map((r) => r.symbol)))
+        .then((rows) => {
+          setSymbols(rows.map((r) => r.symbol));
+          setSymbolsFor(q);
+        })
         .catch(() => {});
     }, 300);
     return () => clearTimeout(timer);
@@ -202,6 +207,9 @@ export function StrategyEditor({ id }: { id?: string }) {
                   <option key={s} value={s} />
                 ))}
               </datalist>
+              {symbolsFor === strategy.symbol && strategy.symbol.length >= 5 && !symbols.includes(strategy.symbol) && (
+                <span className="text-[11px] text-warn">Symbole introuvable sur Binance{symbols[0] ? ` : ${symbols[0]} ?` : "."}</span>
+              )}
             </Field>
             <Field label="Unité de temps">
               <select
@@ -232,7 +240,13 @@ export function StrategyEditor({ id }: { id?: string }) {
               </select>
             </Field>
             <Field label="Fuseau horaire">
-              <input value={strategy.timezone} onChange={(e) => set("timezone", e.target.value)} />
+              <select value={strategy.timezone} onChange={(e) => set("timezone", e.target.value)}>
+                {timezones(strategy.timezone).map((tz) => (
+                  <option key={tz} value={tz}>
+                    {tz.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
         </Card>
@@ -436,6 +450,19 @@ function RuleSection({ title, color = "text-fg", children }: { title: string; co
       {children}
     </div>
   );
+}
+
+const COMMON_TIMEZONES = ["Europe/Paris", "Europe/Brussels", "Europe/Zurich", "Europe/London", "America/Montreal", "America/New_York", "Africa/Casablanca", "Africa/Abidjan", "Africa/Dakar", "Indian/Reunion", "America/Martinique", "Asia/Dubai", "Asia/Tokyo", "UTC"];
+
+/** Common zones for French-speaking traders first, then every zone the browser knows. */
+function timezones(current: string): string[] {
+  let all: string[] = [];
+  try {
+    all = Intl.supportedValuesOf("timeZone");
+  } catch {
+    // Older browsers: the common list is enough.
+  }
+  return [...new Set([current, ...COMMON_TIMEZONES, ...all])];
 }
 
 function numOrNull(v: string) {

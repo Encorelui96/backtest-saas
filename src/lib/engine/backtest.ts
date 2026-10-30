@@ -5,7 +5,7 @@ import { SeriesContext } from "./evaluate";
 import { parseHHMM } from "./time";
 import * as ind from "./indicators";
 
-export type ExitReason = "stop" | "target" | "trailing" | "breakeven" | "signal" | "reverse" | "time" | "max_bars" | "end";
+export type ExitReason = "stop" | "target" | "trailing" | "breakeven" | "signal" | "reverse" | "time" | "max_bars" | "liquidation" | "end";
 
 export interface Trade {
   side: "long" | "short";
@@ -85,7 +85,7 @@ export function runBacktest(
   const exitMinute = strategy.exitAtTime ? parseHHMM(strategy.exitAtTime) : null;
   const allowedDays = new Set(strategy.tradingDays);
   const needsTime = windowStart !== null || exitMinute !== null || allowedDays.size < 7;
-  const closeLocal = needsTime ? new SeriesContext(shiftTimes(candles, barMs), strategy.interval, strategy.timezone).local : null;
+  const closeLocal = needsTime ? ctx.closeLocal : null;
 
   const equityCurve = new Float64Array(n);
   const trades: Trade[] = [];
@@ -101,7 +101,10 @@ export function runBacktest(
     stop: number | null;
     initialStopDist: number | null;
     target: number | null;
-    entryCost: number;
+    /** Exchange fee paid at entry. Spread and slippage are already in entryPrice. */
+    entryFee: number;
+    /** Spread and slippage paid at entry, for the costs column only. */
+    entrySpreadCost: number;
     riskAmount: number | null;
     equityBefore: number;
     worst: number;
@@ -126,16 +129,20 @@ export function runBacktest(
     return true;
   };
 
-  const close = (i: number, rawPrice: number, reason: ExitReason, isLimit: boolean) => {
+  /**
+   * Closes the position at bar i. `atOpen` exits (pending orders) happen before
+   * bar i trades, so bar i is not part of the holding period.
+   */
+  const close = (i: number, rawPrice: number, reason: ExitReason, isLimit: boolean, atOpen: boolean) => {
     const p = pos!;
     const adverse = isLimit ? halfSpread : halfSpread + slip;
     const exitPrice = p.side === 1 ? rawPrice * (1 - adverse) : rawPrice * (1 + adverse);
     const exitNotional = p.qty * exitPrice;
     const exitFee = exitNotional * fee;
-    const heldMs = (i - p.entryIndex + 1) * barMs;
-    const funding = p.notional * fundingPerMs * heldMs;
+    const bars = Math.max(1, i - p.entryIndex + (atOpen ? 0 : 1));
+    const funding = p.notional * fundingPerMs * bars * barMs;
     const gross = p.side * p.qty * (exitPrice - p.entryPrice);
-    const pnl = gross - p.entryCost - exitFee - funding;
+    const pnl = gross - p.entryFee - exitFee - funding;
     equity += pnl;
     trades.push({
       side: p.side === 1 ? "long" : "short",
@@ -154,8 +161,8 @@ export function runBacktest(
       pnlPercent: (pnl / p.equityBefore) * 100,
       r: p.riskAmount ? pnl / p.riskAmount : null,
       riskAmount: p.riskAmount,
-      costs: p.entryCost + exitFee + funding + Math.abs(p.qty * (rawPrice - exitPrice)),
-      bars: i - p.entryIndex + 1,
+      costs: p.entryFee + p.entrySpreadCost + exitFee + funding + Math.abs(p.qty * (rawPrice - exitPrice)),
+      bars,
       maePercent: (p.worst / p.equityBefore) * 100,
       mfePercent: (p.best / p.equityBefore) * 100,
       equityBefore: p.equityBefore,
@@ -207,7 +214,8 @@ export function runBacktest(
       stop,
       initialStopDist: stopDist,
       target,
-      entryCost: notional * fee + qty * Math.abs(entryPrice - raw),
+      entryFee: notional * fee,
+      entrySpreadCost: qty * Math.abs(entryPrice - raw),
       riskAmount,
       equityBefore: equity,
       worst: 0,
@@ -219,26 +227,37 @@ export function runBacktest(
   for (let i = 0; i < n; i++) {
     // 1. Orders decided at the previous close fill at this bar's open.
     if (pendingExit && pos) {
-      close(i, o[i], pendingExit, false);
+      close(i, o[i], pendingExit, false, true);
     }
     pendingExit = null;
     if (pendingEntry && !pos) open(i, pendingEntry.side, pendingEntry.signalIndex);
     pendingEntry = null;
 
-    // 2. Stops and targets inside the bar. When both are touched, the stop is assumed first.
+    // 2. Stops, targets and liquidation inside the bar. When the stop and the target are both touched, the stop is assumed first.
     if (pos) {
       const p: Pos = pos;
       const adverseExtreme = p.side === 1 ? l[i] : h[i];
       const favourableExtreme = p.side === 1 ? h[i] : l[i];
-      p.worst = Math.min(p.worst, p.side * p.qty * (adverseExtreme - p.entryPrice));
-      p.best = Math.max(p.best, p.side * p.qty * (favourableExtreme - p.entryPrice));
-      const gapPast = (level: number) => i > p.entryIndex && p.side * (o[i] - level) <= 0;
-      if (p.stop !== null && p.side * (adverseExtreme - p.stop) <= 0) {
-        close(i, gapPast(p.stop) ? o[i] : p.stop, p.stopKind, false);
+      const move = (price: number) => p.side * p.qty * (price - p.entryPrice);
+      // The price at which the position's loss wipes out the account.
+      const liquidation = p.entryPrice - (p.side * (p.equityBefore - p.entryFee)) / p.qty;
+      const touches = (level: number) => p.side * (adverseExtreme - level) <= 0;
+      const fillAt = (level: number) => (i > p.entryIndex && p.side * (o[i] - level) <= 0 ? o[i] : level);
+      let exit: { price: number; reason: ExitReason; limit: boolean } | null = null;
+      if (p.stop !== null && touches(p.stop) && p.side * (p.stop - liquidation) > 0) {
+        exit = { price: fillAt(p.stop), reason: p.stopKind, limit: false };
+      } else if (touches(liquidation)) {
+        exit = { price: liquidation, reason: "liquidation", limit: false };
       } else if (p.target !== null && p.side * (favourableExtreme - p.target) >= 0) {
         const gapBeyond = i > p.entryIndex && p.side * (o[i] - p.target) >= 0;
-        close(i, gapBeyond ? o[i] : p.target, "target", true);
+        exit = { price: gapBeyond ? o[i] : p.target, reason: "target", limit: true };
       }
+      // Excursions stop at the exit: the rest of the bar's range happened without the position.
+      const worstPrice = exit && exit.reason !== "target" ? exit.price : adverseExtreme;
+      const bestPrice = exit && exit.reason === "target" ? exit.price : favourableExtreme;
+      p.worst = Math.min(p.worst, move(worstPrice));
+      p.best = Math.max(p.best, move(bestPrice));
+      if (exit) close(i, exit.price, exit.reason, exit.limit, false);
     }
 
     // 3. Decisions at the bar close.
@@ -246,11 +265,11 @@ export function runBacktest(
       const p: Pos = pos;
       const held = i - p.entryIndex + 1;
       if (closeLocal && exitMinute !== null && closeLocal[i].minuteOfDay >= exitMinute) {
-        close(i, c[i], "time", false);
+        close(i, c[i], "time", false, false);
       } else if (strategy.maxBarsInTrade && held >= strategy.maxBarsInTrade) {
-        close(i, c[i], "max_bars", false);
+        close(i, c[i], "max_bars", false, false);
       } else if (i === n - 1) {
-        close(i, c[i], "end", false);
+        close(i, c[i], "end", false, false);
       } else {
         const opposite = p.side === 1 ? enterShort[i] : enterLong[i];
         const exitSig = p.side === 1 ? exitLong[i] : exitShort[i];
@@ -292,7 +311,7 @@ export function runBacktest(
     // Assigned inside closures, so TypeScript narrows it too eagerly.
     const open_ = pos as Pos | null;
     equityCurve[i] = open_
-      ? equity + open_.side * open_.qty * (c[i] - open_.entryPrice) - open_.entryCost
+      ? equity + open_.side * open_.qty * (c[i] - open_.entryPrice) - open_.entryFee
       : equity;
   }
 
@@ -320,9 +339,4 @@ function ctxAtr(ctx: SeriesContext, period: number) {
     offset: 0,
     timeframe: null,
   });
-}
-
-/** Same candles with times moved to each bar's close, to evaluate time rules at the decision moment. */
-function shiftTimes(c: Candles, barMs: number): Candles {
-  return { ...c, t: c.t.map((x) => x + barMs) };
 }

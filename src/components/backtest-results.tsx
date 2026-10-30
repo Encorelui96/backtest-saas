@@ -33,6 +33,7 @@ const EXIT_LABELS: Record<Trade["exitReason"], string> = {
   reverse: "Retournement",
   time: "Heure de fin",
   max_bars: "Durée max",
+  liquidation: "Liquidation",
   end: "Fin du test",
 };
 

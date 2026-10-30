@@ -13,6 +13,7 @@ export class SeriesContext {
   private cache = new Map<string, Float64Array>();
   private htf = new Map<Interval, { ctx: SeriesContext; map: Int32Array }>();
   private _local: LocalTime[] | null = null;
+  private _closeLocal: LocalTime[] | null = null;
 
   constructor(
     readonly candles: Candles,
@@ -29,6 +30,27 @@ export class SeriesContext {
       this._local = out;
     }
     return this._local;
+  }
+
+  /** Local time of each bar's close, the moment entry and exit decisions are made. Cached for parameter sweeps. */
+  get closeLocal(): LocalTime[] {
+    if (!this._closeLocal) {
+      const barMs = INTERVAL_MS[this.interval];
+      this._closeLocal = Array.from(this.candles.t, (t) => localTime(this.timezone, t + barMs));
+    }
+    return this._closeLocal;
+  }
+
+  /**
+   * Supplies real higher-timeframe candles (e.g. downloaded 1d bars) instead of
+   * rebuilding them from this candle set, so filters like a daily MM200 work
+   * even when this set covers only a few hundred bars.
+   */
+  attachHigherTimeframe(tf: Interval, htf: Candles) {
+    if (INTERVAL_MS[tf] <= INTERVAL_MS[this.interval]) return;
+    this.htf.set(tf, { ctx: new SeriesContext(htf, tf, this.timezone), map: mapCompleted(this.candles, this.interval, htf, tf) });
+    // Series already computed from the rebuilt candles are stale.
+    for (const key of [...this.cache.keys()]) if (key.includes(`"timeframe":"${tf}"`)) this.cache.delete(key);
   }
 
   /** The operand's value at every bar, offset already applied. */
@@ -288,6 +310,20 @@ export class SeriesContext {
     }
     return out;
   }
+}
+
+/** For every base bar, the index of the latest higher-timeframe bar closed by the base bar's close (-1 when none). */
+function mapCompleted(base: Candles, baseInterval: Interval, htf: Candles, tf: Interval): Int32Array {
+  const baseMs = INTERVAL_MS[baseInterval];
+  const tfMs = INTERVAL_MS[tf];
+  const map = new Int32Array(base.t.length).fill(-1);
+  let k = -1;
+  for (let i = 0; i < base.t.length; i++) {
+    const closeTime = base.t[i] + baseMs;
+    while (k + 1 < htf.t.length && htf.t[k + 1] + tfMs <= closeTime) k++;
+    map[i] = k;
+  }
+  return map;
 }
 
 function shift(src: Float64Array, k: number): Float64Array {

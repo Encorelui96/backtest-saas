@@ -1,8 +1,8 @@
 import "server-only";
-import { MAX_HISTORY_DAYS } from "../types";
+import { MAX_HISTORY_DAYS, type Candles, type Interval } from "../types";
 import type { BacktestConfig, Strategy } from "../strategy/schema";
 import { normalizeStrategy } from "../strategy/schema";
-import { warmupMs } from "../strategy/warmup";
+import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "../strategy/warmup";
 import { buildReport, type BacktestReport } from "../engine/report";
 import { getCandles } from "./candles";
 import { LOCAL_USER, db, newId } from "./db";
@@ -38,7 +38,12 @@ export async function runAndSaveBacktest(input: Strategy, config: BacktestConfig
   }
   if (startIndex === 0 && candles.t.length > 200) startIndex = Math.min(200, candles.t.length - 1);
 
-  const report = buildReport(candles, startIndex, strategy, config);
+  const higher: Partial<Record<Interval, Candles>> = {};
+  for (const tf of higherTimeframes(strategy)) {
+    higher[tf] = await getCandles(strategy.symbol, tf, start - higherTimeframeWarmupMs(strategy, tf), end);
+  }
+
+  const report = buildReport(candles, startIndex, strategy, config, higher);
   if (problems.length) report.warnings.unshift(...problems);
 
   const summary: BacktestSummary = {
