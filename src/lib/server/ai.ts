@@ -1,6 +1,5 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import { StrategySchema, normalizeStrategy, type Strategy } from "../strategy/schema";
 
@@ -52,26 +51,56 @@ Defaults when the user doesn't say (list each one you apply in assumptions):
 
 Translate faithfully: don't add filters the user didn't ask for. If a part of the strategy can't be expressed with these building blocks (order flow, news, chart patterns, discretionary judgement), approximate it with the closest rule, say so in assumptions, and ask about it in questions.`;
 
+// The strategy schema repeats the operand object 8 times, which compiles to a grammar
+// too large for strict structured outputs. So the schema goes in the prompt and the
+// answer is checked with Zod here, with one retry that shows the model its mistakes.
+const OUTPUT_FORMAT = `Answer with ONE JSON object and nothing else (no Markdown, no code fence), matching this JSON Schema:\n${JSON.stringify(z.toJSONSchema(ParseResultSchema))}`;
+
+function readJson(raw: string): unknown {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start < 0 || end < start) throw new Error("no JSON object");
+  return JSON.parse(raw.slice(start, end + 1));
+}
+
 export async function parseStrategyText(text: string, current?: Strategy): Promise<ParseResult & { problems: string[] }> {
   const client = new Anthropic();
   const userContent = current
     ? `Stratégie actuelle (JSON) à modifier selon la demande :\n${JSON.stringify(current)}\n\nDemande :\n${text}`
     : text;
-  const response = await client.beta.messages.parse({
-    model: "claude-opus-5-5",
-    max_tokens: 16000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort: "medium", format: betaZodOutputFormat(ParseResultSchema) },
-    system: SYSTEM,
-    messages: [{ role: "user", content: userContent }],
-  });
-  if (response.stop_reason === "refusal") {
-    throw new Error("L'IA a refusé de traiter cette demande. Reformule la stratégie ou utilise le constructeur manuel.");
+  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: userContent }];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await client.beta.messages.create({
+      model: "claude-opus-5-5",
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "medium" },
+      system: `${SYSTEM}\n\n${OUTPUT_FORMAT}`,
+      messages,
+    });
+    if (response.stop_reason === "refusal") {
+      throw new Error("L'IA a refusé de traiter cette demande. Reformule la stratégie ou utilise le constructeur manuel.");
+    }
+    if (response.stop_reason === "max_tokens") {
+      throw new Error("La réponse de l'IA est incomplète. Réessaie avec une description plus courte.");
+    }
+    const raw = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+    let error: string;
+    try {
+      const parsed = ParseResultSchema.safeParse(readJson(raw));
+      if (parsed.success) {
+        const { strategy, problems } = normalizeStrategy(parsed.data.strategy);
+        return { ...parsed.data, strategy, problems };
+      }
+      error = z.prettifyError(parsed.error);
+    } catch {
+      error = "The answer is not a valid JSON object.";
+    }
+    messages.push(
+      { role: "assistant", content: raw || "(empty)" },
+      { role: "user", content: `Your JSON does not match the schema:\n${error}\nSend the corrected JSON object only.` },
+    );
   }
-  if (response.stop_reason === "max_tokens" || !response.parsed_output) {
-    throw new Error("La réponse de l'IA est incomplète. Réessaie avec une description plus courte.");
-  }
-  const { strategy, problems } = normalizeStrategy(response.parsed_output.strategy);
-  return { ...response.parsed_output, strategy, problems };
+  throw new Error("La réponse de l'IA est invalide. Réessaie, ou utilise le constructeur manuel.");
 }
