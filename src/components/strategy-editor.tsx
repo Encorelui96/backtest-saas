@@ -40,6 +40,7 @@ export function StrategyEditor({ id }: { id?: string }) {
   const [savedId, setSavedId] = useState<string | undefined>(id);
   const [ai, setAi] = useState<AiResult | null>(null);
   const [busy, setBusy] = useState<"ai" | "save" | "run" | null>(null);
+  const [job, setJob] = useState<JobState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -116,13 +117,26 @@ export function StrategyEditor({ id }: { id?: string }) {
     setError(null);
     try {
       const strategyId = await save();
-      const res = await api<{ id: string }>("/api/backtests", { json: { strategy, config, strategyId } });
-      router.push(`/backtests/${res.id}`);
+      const { jobId } = await api<{ jobId: string }>("/api/backtests", { json: { strategy, config, strategyId } });
+      // The worker computes the backtest; follow its progress until the report exists.
+      for (;;) {
+        const state = await api<JobState>(`/api/jobs/${jobId}`);
+        setJob(state);
+        if (state.status === "done" && state.resultId) {
+          router.push(`/backtests/${state.resultId}`);
+          return;
+        }
+        if (state.status === "failed") throw new Error(state.error ?? "Le calcul a échoué.");
+        await new Promise((r) => setTimeout(r, 700));
+      }
     } catch (e) {
       setError((e as Error).message);
       setBusy(null);
+      setJob(null);
     }
   };
+
+  const runLabel = job ? jobLabel(job) : "Backtest en cours…";
 
   const applyTemplate = (t: Template) => {
     setText(t.prompt);
@@ -417,8 +431,9 @@ export function StrategyEditor({ id }: { id?: string }) {
             </div>
             {error && <Alert tone="error">{error}</Alert>}
             {notice && <Alert tone="info">{notice}</Alert>}
+            {job && <ProgressBar job={job} />}
             <Button onClick={run} disabled={busy !== null}>
-              {busy === "run" ? "Backtest en cours…" : "Lancer le backtest"}
+              {busy === "run" ? runLabel : "Lancer le backtest"}
             </Button>
             <Button variant="ghost" onClick={onSave} disabled={busy !== null}>
               Enregistrer sans tester
@@ -435,10 +450,33 @@ export function StrategyEditor({ id }: { id?: string }) {
       {/* Phones: the run button stays within reach above the tab bar. */}
       <div className="fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-20 border-t border-line bg-panel/95 px-3 py-2 backdrop-blur md:hidden">
         {error && <p className="mb-1.5 line-clamp-2 text-xs text-down">{error}</p>}
+        {job && <ProgressBar job={job} />}
         <Button onClick={run} disabled={busy !== null} className="w-full py-2.5">
-          {busy === "run" ? "Backtest en cours…" : `Lancer le backtest · ${strategy.symbol} ${strategy.interval}`}
+          {busy === "run" ? runLabel : `Lancer le backtest · ${strategy.symbol} ${strategy.interval}`}
         </Button>
       </div>
+    </div>
+  );
+}
+
+interface JobState {
+  status: "queued" | "running" | "done" | "failed";
+  progress: number;
+  message: string | null;
+  resultId: string | null;
+  error: string | null;
+  ahead: number;
+}
+
+function jobLabel(job: JobState) {
+  if (job.status === "queued") return job.ahead > 0 ? `En file d'attente (${job.ahead} avant toi)…` : "Démarrage…";
+  return `${job.message ?? "Calcul"} · ${job.progress} %`;
+}
+
+function ProgressBar({ job }: { job: JobState }) {
+  return (
+    <div className="mb-1.5 h-1.5 overflow-hidden rounded-full bg-panel-2">
+      <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${Math.max(3, job.progress)}%` }} />
     </div>
   );
 }

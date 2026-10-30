@@ -222,14 +222,22 @@ export interface SensitivityRow {
 
 const FACTORS = [0.6, 0.8, 1, 1.2, 1.4];
 
-export function sensitivity(candles: Candles, strategy: Strategy, config: BacktestConfig, startIndex: number, ctx: SeriesContext): {
-  rows: SensitivityRow[];
-  profitableShare: number;
-} {
+/** Called after each step of a long computation, with the share done (0 to 1). Awaited, so callers can save progress. */
+export type Progress = (done: number) => void | Promise<void>;
+
+export async function sensitivity(
+  candles: Candles,
+  strategy: Strategy,
+  config: BacktestConfig,
+  startIndex: number,
+  ctx: SeriesContext,
+  onProgress?: Progress,
+): Promise<{ rows: SensitivityRow[]; profitableShare: number }> {
   const rows: SensitivityRow[] = [];
   let profitable = 0;
   let total = 0;
-  for (const knob of strategyKnobs(strategy)) {
+  const knobs = strategyKnobs(strategy);
+  for (const [k, knob] of knobs.entries()) {
     const values = [...new Set(FACTORS.map((f) => roundKnob(knob.base * f, knob.integer)))];
     const variants = values.map((value) => {
       const s = structuredClone(strategy);
@@ -250,6 +258,7 @@ export function sensitivity(candles: Candles, strategy: Strategy, config: Backte
       };
     });
     rows.push({ label: knob.label, base: knob.base, variants });
+    await onProgress?.((k + 1) / knobs.length);
   }
   return { rows, profitableShare: total ? (profitable / total) * 100 : 0 };
 }

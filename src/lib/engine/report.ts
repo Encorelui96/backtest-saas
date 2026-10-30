@@ -4,6 +4,7 @@ import { runBacktest, type Trade } from "./backtest";
 import { SeriesContext } from "./evaluate";
 import { computeMetrics, downsampleEquity, periodBreakdown, type Metrics } from "./metrics";
 import {
+  type Progress,
   costStress,
   edgeTest,
   inOutSample,
@@ -36,19 +37,29 @@ export interface BacktestReport {
 /**
  * Runs the backtest and every robustness check. `startIndex` is the first
  * tradable bar; earlier bars warm indicators up. `higher` holds real candles
- * for the higher timeframes the rules read.
+ * for the higher timeframes the rules read. `onProgress` gets the share done
+ * between steps, which also lets the process answer other work meanwhile.
  */
-export function buildReport(
+export async function buildReport(
   candles: Candles,
   startIndex: number,
   strategy: Strategy,
   config: BacktestConfig,
   higher: Partial<Record<Interval, Candles>> = {},
-): BacktestReport {
+  onProgress?: Progress,
+): Promise<BacktestReport> {
   const ctx = new SeriesContext(candles, strategy.interval, strategy.timezone);
   for (const [tf, htf] of Object.entries(higher)) ctx.attachHigherTimeframe(tf as Interval, htf);
   const run = runBacktest(candles, strategy, config, ctx, startIndex);
   const metrics = computeMetrics(run, startIndex);
+  await onProgress?.(0.15);
+  const monteCarloResult = monteCarlo(run.trades);
+  const edge = edgeTest(run.trades);
+  await onProgress?.(0.25);
+  // Parameter variants are most of the work: they get 25 % → 95 %.
+  const sens = await sensitivity(candles, strategy, config, startIndex, ctx, (d) => onProgress?.(0.25 + d * 0.7));
+  const doubleCosts = costStress(candles, strategy, config, startIndex, ctx);
+  await onProgress?.(1);
   const from = candles.t[startIndex];
   const to = candles.t[candles.t.length - 1];
 
@@ -75,11 +86,11 @@ export function buildReport(
     skippedSignals: run.skippedSignals,
     period: { from, to, bars: candles.t.length - startIndex },
     robustness: {
-      monteCarlo: monteCarlo(run.trades),
-      edge: edgeTest(run.trades),
+      monteCarlo: monteCarloResult,
+      edge,
       split: inOutSample(run.trades, from, to),
-      sensitivity: sensitivity(candles, strategy, config, startIndex, ctx),
-      doubleCosts: costStress(candles, strategy, config, startIndex, ctx),
+      sensitivity: sens,
+      doubleCosts,
     },
     warnings,
   };

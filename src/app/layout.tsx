@@ -28,7 +28,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <Nav />
         </Suspense>
         {/* Bottom padding keeps content clear of the phone tab bar. */}
-        <main className="mx-auto w-full max-w-7xl flex-1 px-3 pt-4 pb-28 sm:px-4 md:pt-6 md:pb-6">{children}</main>
+        <main className="mx-auto w-full max-w-7xl flex-1 px-3 pt-4 sm:px-4 md:pt-6">{children}</main>
+        <footer className="mx-auto w-full max-w-7xl px-3 pt-6 pb-28 text-[11px] leading-relaxed text-muted sm:px-4 md:pb-6">
+          Backtest Lab est un outil de simulation. Les résultats sont calculés sur des données passées : ils ne promettent aucun gain futur et ne
+          constituent pas un conseil en investissement. Trader des crypto-actifs comporte un risque de perte en capital.
+        </footer>
       </body>
     </html>
   );

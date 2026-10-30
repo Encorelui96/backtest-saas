@@ -3,10 +3,15 @@
 import { Suspense } from "react";
 import { useParams } from "next/navigation";
 import { StrategyEditor } from "@/components/strategy-editor";
+import { RequireAuth } from "@/components/require-auth";
 
 function Editor() {
   const { id } = useParams<{ id: string }>();
-  return <StrategyEditor key={id} id={id} />;
+  return (
+    <RequireAuth>
+      <StrategyEditor key={id} id={id} />
+    </RequireAuth>
+  );
 }
 
 export default function EditStrategyPage() {

@@ -8,6 +8,7 @@ import { runBacktest } from "@/lib/engine/backtest";
 import { defaultConfig } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { handle } from "@/lib/server/http";
+import { requireUser } from "@/lib/server/auth";
 
 const Body = z.object({ strategy: StrategySchema, display: z.number().min(50).max(1000).optional() });
 
@@ -22,6 +23,7 @@ const OVERLAY = new Set<Operand["indicator"]>([
  */
 export async function POST(req: Request) {
   return handle(async () => {
+    await requireUser(req.headers);
     const body = Body.parse(await req.json());
     const { strategy } = normalizeStrategy(body.strategy);
     const display = body.display ?? 300;

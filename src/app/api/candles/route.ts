@@ -3,12 +3,14 @@ import { INTERVALS, INTERVAL_MS, type Interval } from "@/lib/types";
 import { getCandles } from "@/lib/server/candles";
 import { handle } from "@/lib/server/http";
 import { UserError } from "@/lib/server/backtests";
+import { requireUser } from "@/lib/server/auth";
 
 const MAX_BARS = 20_000;
 
 /** Cached candles for charts, as rows. */
 export async function GET(req: NextRequest) {
   return handle(async () => {
+    await requireUser(req.headers);
     const p = req.nextUrl.searchParams;
     const symbol = (p.get("symbol") ?? "").toUpperCase();
     const interval = p.get("interval") as Interval;

@@ -1,6 +1,6 @@
 import "server-only";
 import type { Strategy } from "../strategy/schema";
-import { LOCAL_USER, db, newId } from "./db";
+import { newId, query, queryOne } from "./db";
 
 export interface StoredStrategy {
   id: string;
@@ -11,41 +11,47 @@ export interface StoredStrategy {
   updatedAt: number;
 }
 
-function fromRow(r: Record<string, string | number | null>): StoredStrategy {
-  return {
-    id: r.id as string,
-    name: r.name as string,
-    strategy: JSON.parse(r.json as string),
-    sourceText: (r.source_text as string) ?? null,
-    createdAt: r.created_at as number,
-    updatedAt: r.updated_at as number,
-  };
+interface Row {
+  id: string;
+  name: string;
+  json: Strategy;
+  source_text: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 
-export function listStrategies(): StoredStrategy[] {
-  return (db().prepare("SELECT * FROM strategies WHERE user_id = ? ORDER BY updated_at DESC").all(LOCAL_USER) as Record<string, string | number | null>[]).map(fromRow);
+function fromRow(r: Row): StoredStrategy {
+  return { id: r.id, name: r.name, strategy: r.json, sourceText: r.source_text, createdAt: r.created_at.getTime(), updatedAt: r.updated_at.getTime() };
 }
 
-export function getStrategy(id: string): StoredStrategy | null {
-  const r = db().prepare("SELECT * FROM strategies WHERE id = ? AND user_id = ?").get(id, LOCAL_USER) as Record<string, string | number | null> | undefined;
+export async function listStrategies(userId: string): Promise<StoredStrategy[]> {
+  return (await query<Row>("SELECT * FROM strategies WHERE user_id = $1 ORDER BY updated_at DESC", [userId])).map(fromRow);
+}
+
+export async function getStrategy(userId: string, id: string): Promise<StoredStrategy | null> {
+  const r = await queryOne<Row>("SELECT * FROM strategies WHERE id = $1 AND user_id = $2", [id, userId]);
   return r ? fromRow(r) : null;
 }
 
-export function saveStrategy(strategy: Strategy, sourceText: string | null, id?: string): StoredStrategy {
-  const now = Date.now();
-  if (id && getStrategy(id)) {
-    db()
-      .prepare("UPDATE strategies SET name = ?, json = ?, source_text = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-      .run(strategy.name, JSON.stringify(strategy), sourceText, now, id, LOCAL_USER);
-    return getStrategy(id)!;
+/** Updates the user's strategy `id`, or creates one when it doesn't exist or isn't theirs. */
+export async function saveStrategy(userId: string, strategy: Strategy, sourceText: string | null, id?: string): Promise<StoredStrategy> {
+  if (id) {
+    const r = await queryOne<Row>(
+      "UPDATE strategies SET name = $1, json = $2, source_text = $3, updated_at = now() WHERE id = $4 AND user_id = $5 RETURNING *",
+      [strategy.name, JSON.stringify(strategy), sourceText, id, userId],
+    );
+    if (r) return fromRow(r);
   }
-  const newIdValue = newId();
-  db()
-    .prepare("INSERT INTO strategies (id, user_id, name, json, source_text, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .run(newIdValue, LOCAL_USER, strategy.name, JSON.stringify(strategy), sourceText, now, now);
-  return getStrategy(newIdValue)!;
+  const r = await queryOne<Row>("INSERT INTO strategies (id, user_id, name, json, source_text) VALUES ($1, $2, $3, $4, $5) RETURNING *", [
+    newId(),
+    userId,
+    strategy.name,
+    JSON.stringify(strategy),
+    sourceText,
+  ]);
+  return fromRow(r!);
 }
 
-export function deleteStrategy(id: string) {
-  db().prepare("DELETE FROM strategies WHERE id = ? AND user_id = ?").run(id, LOCAL_USER);
+export async function deleteStrategy(userId: string, id: string) {
+  await query("DELETE FROM strategies WHERE id = $1 AND user_id = $2", [id, userId]);
 }

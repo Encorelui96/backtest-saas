@@ -9,8 +9,27 @@ import { INTERVAL_MS } from "../types";
 const BASE = process.env.BINANCE_API_URL ?? "https://data-api.binance.vision";
 const PAGE = 1000;
 
+/**
+ * Process-wide cap on simultaneous Binance requests. Every user goes through
+ * the same server IP, so bursts are what get it banned.
+ */
+const MAX_PARALLEL = Number(process.env.BINANCE_MAX_PARALLEL ?? 4);
+let active = 0;
+const waiting: (() => void)[] = [];
+
+async function limited<T>(fn: () => Promise<T>): Promise<T> {
+  if (active >= MAX_PARALLEL) await new Promise<void>((r) => waiting.push(r));
+  active++;
+  try {
+    return await fn();
+  } finally {
+    active--;
+    waiting.shift()?.();
+  }
+}
+
 async function getJson(url: string, attempt = 0): Promise<unknown> {
-  const res = await fetch(url, { cache: "no-store" });
+  const res = await limited(() => fetch(url, { cache: "no-store" }));
   if (res.status === 429 || res.status === 418 || res.status >= 500) {
     if (attempt >= 4) throw new Error(`Binance ${res.status} après plusieurs essais`);
     await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
@@ -36,7 +55,7 @@ export async function fetchKlinesPage(symbol: string, interval: Interval, startT
 }
 
 /** Every kline in [from, to], fetched as parallel 1000-bar pages. */
-export async function fetchKlines(symbol: string, interval: Interval, from: number, to: number, concurrency = 6): Promise<CandleRow[]> {
+export async function fetchKlines(symbol: string, interval: Interval, from: number, to: number, concurrency = MAX_PARALLEL): Promise<CandleRow[]> {
   const ms = INTERVAL_MS[interval];
   const starts: number[] = [];
   for (let s = from; s <= to; s += PAGE * ms) starts.push(s);

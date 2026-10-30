@@ -1,11 +1,12 @@
 import "server-only";
+import { gunzipSync, gzipSync } from "node:zlib";
 import { MAX_HISTORY_DAYS, type Candles, type Interval } from "../types";
 import type { BacktestConfig, Strategy } from "../strategy/schema";
 import { normalizeStrategy } from "../strategy/schema";
 import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "../strategy/warmup";
 import { buildReport, type BacktestReport } from "../engine/report";
 import { getCandles } from "./candles";
-import { LOCAL_USER, db, newId } from "./db";
+import { newId, query, queryOne } from "./db";
 
 export interface BacktestSummary {
   trades: number;
@@ -16,13 +17,14 @@ export interface BacktestSummary {
   avgR: number | null;
 }
 
+/** An error whose message is meant for the user. */
 export class UserError extends Error {}
 
-export async function runAndSaveBacktest(input: Strategy, config: BacktestConfig, strategyId: string | null) {
+/** Checks a request before it is queued, so the user hears about a bad period right away. */
+export function validateBacktest(input: Strategy, config: BacktestConfig) {
   const { strategy, problems } = normalizeStrategy(input);
   const blocking = problems.filter((p) => p.startsWith("Aucune condition") || p.startsWith("Symbole"));
   if (blocking.length) throw new UserError(blocking.join(" "));
-
   const start = Date.parse(`${config.startDate}T00:00:00Z`);
   const end = Date.parse(`${config.endDate}T23:59:59Z`);
   if (!(start < end)) throw new UserError("La date de fin doit être après la date de début.");
@@ -30,22 +32,28 @@ export async function runAndSaveBacktest(input: Strategy, config: BacktestConfig
   if ((end - start) / 86_400_000 > maxDays) {
     throw new UserError(`En ${strategy.interval}, la période est limitée à ${maxDays} jours pour garder le test rapide.`);
   }
+  return { strategy, problems, start, end };
+}
 
+/** Downloads the data and computes the full report. Runs in the worker. */
+export async function computeBacktest(input: Strategy, config: BacktestConfig, onProgress: (share: number, label: string) => Promise<void>) {
+  const { strategy, problems, start, end } = validateBacktest(input, config);
+  await onProgress(0.02, "Chargement des cours");
   const candles = await getCandles(strategy.symbol, strategy.interval, start - warmupMs(strategy), end);
   let startIndex = candles.t.findIndex((t) => t >= start);
   if (candles.t.length === 0 || startIndex === -1) {
     throw new UserError(`Aucune donnée pour ${strategy.symbol} en ${strategy.interval} sur cette période. Vérifie le symbole (ex. BTCUSDT).`);
   }
   if (startIndex === 0 && candles.t.length > 200) startIndex = Math.min(200, candles.t.length - 1);
-
   const higher: Partial<Record<Interval, Candles>> = {};
   for (const tf of higherTimeframes(strategy)) {
     higher[tf] = await getCandles(strategy.symbol, tf, start - higherTimeframeWarmupMs(strategy, tf), end);
   }
-
-  const report = buildReport(candles, startIndex, strategy, config, higher);
+  await onProgress(0.2, "Simulation des trades");
+  const report = await buildReport(candles, startIndex, strategy, config, higher, (d) =>
+    onProgress(0.2 + d * 0.75, d < 0.25 ? "Simulation des trades" : "Tests de robustesse"),
+  );
   if (problems.length) report.warnings.unshift(...problems);
-
   const summary: BacktestSummary = {
     trades: report.metrics.trades,
     totalReturnPercent: report.metrics.totalReturnPercent,
@@ -54,13 +62,28 @@ export async function runAndSaveBacktest(input: Strategy, config: BacktestConfig
     profitFactor: report.metrics.profitFactor,
     avgR: report.metrics.avgR,
   };
+  return { strategy, report, summary };
+}
+
+export async function saveBacktest(
+  userId: string,
+  strategyId: string | null,
+  strategy: Strategy,
+  config: BacktestConfig,
+  summary: BacktestSummary,
+  report: BacktestReport,
+): Promise<string> {
   const id = newId();
-  db()
-    .prepare(
-      "INSERT INTO backtests (id, user_id, strategy_id, strategy_json, config_json, summary_json, report_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-    )
-    .run(id, LOCAL_USER, strategyId, JSON.stringify(strategy), JSON.stringify(config), JSON.stringify(summary), JSON.stringify(report), Date.now());
-  return { id, summary };
+  await query("INSERT INTO backtests (id, user_id, strategy_id, strategy, config, summary, report) VALUES ($1, $2, $3, $4, $5, $6, $7)", [
+    id,
+    userId,
+    strategyId,
+    JSON.stringify(strategy),
+    JSON.stringify(config),
+    JSON.stringify(summary),
+    gzipSync(JSON.stringify(report)),
+  ]);
+  return id;
 }
 
 export interface StoredBacktest {
@@ -73,43 +96,42 @@ export interface StoredBacktest {
   createdAt: number;
 }
 
-export function getBacktest(id: string): StoredBacktest | null {
-  const row = db().prepare("SELECT * FROM backtests WHERE id = ? AND user_id = ?").get(id, LOCAL_USER) as Record<string, string | number> | undefined;
-  if (!row) return null;
+export async function getBacktest(userId: string, id: string): Promise<StoredBacktest | null> {
+  const r = await queryOne<{ id: string; strategy_id: string | null; strategy: Strategy; config: BacktestConfig; summary: BacktestSummary; report: Buffer; created_at: Date }>(
+    "SELECT * FROM backtests WHERE id = $1 AND user_id = $2",
+    [id, userId],
+  );
+  if (!r) return null;
   return {
-    id: row.id as string,
-    strategyId: (row.strategy_id as string) ?? null,
-    strategy: JSON.parse(row.strategy_json as string),
-    config: JSON.parse(row.config_json as string),
-    summary: JSON.parse(row.summary_json as string),
-    report: JSON.parse(row.report_json as string),
-    createdAt: row.created_at as number,
+    id: r.id,
+    strategyId: r.strategy_id,
+    strategy: r.strategy,
+    config: r.config,
+    summary: r.summary,
+    report: JSON.parse(gunzipSync(r.report).toString("utf8")),
+    createdAt: r.created_at.getTime(),
   };
 }
 
-export function listBacktests(strategyId?: string, limit = 50) {
-  const rows = (
-    strategyId
-      ? db().prepare("SELECT id, strategy_id, strategy_json, config_json, summary_json, created_at FROM backtests WHERE user_id = ? AND strategy_id = ? ORDER BY created_at DESC LIMIT ?").all(LOCAL_USER, strategyId, limit)
-      : db().prepare("SELECT id, strategy_id, strategy_json, config_json, summary_json, created_at FROM backtests WHERE user_id = ? ORDER BY created_at DESC LIMIT ?").all(LOCAL_USER, limit)
-  ) as Record<string, string | number>[];
-  return rows.map((r) => {
-    const s = JSON.parse(r.strategy_json as string) as Strategy;
-    const c = JSON.parse(r.config_json as string) as BacktestConfig;
-    return {
-      id: r.id as string,
-      strategyId: (r.strategy_id as string) ?? null,
-      name: s.name,
-      symbol: s.symbol,
-      interval: s.interval,
-      startDate: c.startDate,
-      endDate: c.endDate,
-      summary: JSON.parse(r.summary_json as string) as BacktestSummary,
-      createdAt: r.created_at as number,
-    };
-  });
+export async function listBacktests(userId: string, strategyId?: string, limit = 50) {
+  const rows = await query<{ id: string; strategy_id: string | null; strategy: Strategy; config: BacktestConfig; summary: BacktestSummary; created_at: Date }>(
+    `SELECT id, strategy_id, strategy, config, summary, created_at FROM backtests
+     WHERE user_id = $1 AND ($2::text IS NULL OR strategy_id = $2) ORDER BY created_at DESC LIMIT $3`,
+    [userId, strategyId ?? null, limit],
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    strategyId: r.strategy_id,
+    name: r.strategy.name,
+    symbol: r.strategy.symbol,
+    interval: r.strategy.interval,
+    startDate: r.config.startDate,
+    endDate: r.config.endDate,
+    summary: r.summary,
+    createdAt: r.created_at.getTime(),
+  }));
 }
 
-export function deleteBacktest(id: string) {
-  db().prepare("DELETE FROM backtests WHERE id = ? AND user_id = ?").run(id, LOCAL_USER);
+export async function deleteBacktest(userId: string, id: string) {
+  await query("DELETE FROM backtests WHERE id = $1 AND user_id = $2", [id, userId]);
 }

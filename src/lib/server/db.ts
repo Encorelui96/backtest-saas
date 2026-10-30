@@ -1,59 +1,50 @@
 import "server-only";
-import { DatabaseSync } from "node:sqlite";
-import fs from "node:fs";
-import path from "node:path";
+import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 /**
- * SQLite database (built into Node, no native build). Every user-owned row
- * carries a user_id so accounts can be added later without a migration.
+ * Postgres connection pool, shared by the web server and the worker.
+ * DATABASE_URL is the only setting (Railway provides it).
  */
 
-const DB_PATH = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "app.db");
-
 declare global {
-  var __db: DatabaseSync | undefined;
+  var __pool: Pool | undefined;
 }
 
-export function db(): DatabaseSync {
-  if (globalThis.__db) return globalThis.__db;
-  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-  const d = new DatabaseSync(DB_PATH);
-  d.exec(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA synchronous = NORMAL;
-    CREATE TABLE IF NOT EXISTS candles (
-      symbol TEXT NOT NULL,
-      interval TEXT NOT NULL,
-      t INTEGER NOT NULL,
-      o REAL NOT NULL, h REAL NOT NULL, l REAL NOT NULL, c REAL NOT NULL, v REAL NOT NULL,
-      PRIMARY KEY (symbol, interval, t)
-    ) WITHOUT ROWID;
-    CREATE TABLE IF NOT EXISTS strategies (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL DEFAULT 'local',
-      name TEXT NOT NULL,
-      json TEXT NOT NULL,
-      source_text TEXT,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS backtests (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL DEFAULT 'local',
-      strategy_id TEXT,
-      strategy_json TEXT NOT NULL,
-      config_json TEXT NOT NULL,
-      summary_json TEXT NOT NULL,
-      report_json TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS backtests_by_strategy ON backtests (strategy_id, created_at);
-  `);
-  globalThis.__db = d;
-  return d;
+export function pool(): Pool {
+  if (!globalThis.__pool) {
+    if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL manquant : configure la base Postgres (voir README).");
+    globalThis.__pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: Number(process.env.DATABASE_POOL_SIZE ?? 10),
+      ssl: process.env.DATABASE_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+    });
+  }
+  return globalThis.__pool;
 }
 
-export const LOCAL_USER = "local";
+export async function query<T extends QueryResultRow>(text: string, params: unknown[] = []): Promise<T[]> {
+  const res = await pool().query<T>(text, params);
+  return res.rows;
+}
+
+export async function queryOne<T extends QueryResultRow>(text: string, params: unknown[] = []): Promise<T | null> {
+  return (await query<T>(text, params))[0] ?? null;
+}
+
+export async function transaction<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+  const client = await pool().connect();
+  try {
+    await client.query("BEGIN");
+    const out = await fn(client);
+    await client.query("COMMIT");
+    return out;
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
 
 export function newId() {
   return crypto.randomUUID().replace(/-/g, "").slice(0, 16);

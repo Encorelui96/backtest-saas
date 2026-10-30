@@ -3,6 +3,8 @@ import { unstable_rethrow } from "next/navigation";
 import { ZodError } from "zod";
 import Anthropic from "@anthropic-ai/sdk";
 import { UserError } from "./backtests";
+import { AuthError } from "./auth";
+import { QuotaError } from "./quotas";
 
 /** Turns thrown errors into JSON responses with a message the UI can show as is. */
 export async function handle(fn: () => Promise<Response>): Promise<Response> {
@@ -11,6 +13,8 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
   } catch (e) {
     // Next.js signals (e.g. "this route is dynamic" during prerendering) must pass through.
     unstable_rethrow(e);
+    if (e instanceof AuthError) return Response.json({ error: e.message, auth: true }, { status: 401 });
+    if (e instanceof QuotaError) return Response.json({ error: e.message, quota: true }, { status: 429 });
     if (e instanceof UserError) return Response.json({ error: e.message }, { status: 400 });
     if (e instanceof ZodError) {
       return Response.json({ error: "Données invalides : " + e.issues.map((i) => `${i.path.join(".")} ${i.message}`).join(", ") }, { status: 400 });

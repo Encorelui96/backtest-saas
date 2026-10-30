@@ -161,13 +161,13 @@ describe("backtest", () => {
     expect(new Date(run.trades[0].exitTime + H).getUTCHours()).toBe(18);
   });
 
-  it("evaluates the bundled templates without errors", () => {
+  it("evaluates the bundled templates without errors", async () => {
     let price = 100;
     const closes = Array.from({ length: 3000 }, (_, i) => (price *= 1 + Math.sin(i / 17) * 0.004 + Math.cos(i / 5) * 0.003));
     const c = candlesFromCloses(closes, H, 0.3);
     for (const tpl of TEMPLATES) {
       const s = { ...tpl.strategy, interval: "1h" as const };
-      const report = buildReport(c, 300, s, defaultConfig());
+      const report = await buildReport(c, 300, s, defaultConfig());
       expect(report.metrics.trades).toBeGreaterThanOrEqual(0);
       expect(Number.isFinite(report.metrics.totalReturnPercent)).toBe(true);
     }
