@@ -4,6 +4,20 @@ import { useState } from "react";
 import { COMPARATORS, SOURCES, num, operand, type Comparator, type Condition, type Group, type IndicatorName, type Operand } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, DEFAULT_PERIODS, INDICATOR_FIELDS, INDICATOR_LABELS } from "@/lib/strategy/describe";
 import { INTERVALS } from "@/lib/types";
+import { INDICATOR_TERMS } from "@/lib/learn/glossary";
+import { Beginner, Term } from "./learn";
+
+/** A "?" that explains the term in beginner mode, nothing in expert mode. */
+function Why({ id }: { id: string | undefined }) {
+  if (!id) return null;
+  return (
+    <Beginner>
+      <span className="text-xs text-accent">
+        <Term id={id}>?</Term>
+      </span>
+    </Beginner>
+  );
+}
 
 const GROUPS: { label: string; items: IndicatorName[] }[] = [
   { label: "Prix", items: ["close", "open", "high", "low", "volume", "number"] },
@@ -33,6 +47,7 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
           </optgroup>
         ))}
       </select>
+      <Why id={INDICATOR_TERMS[value.indicator]} />
       {fields.map((f) =>
         f === "source" ? (
           <select key={f} title="Source" value={value.source ?? ""} onChange={(e) => onChange({ ...value, source: (e.target.value || null) as Operand["source"] })}>
@@ -57,7 +72,7 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
         ),
       )}
       {value.indicator !== "number" && !advanced && (
-        <button onClick={() => setAdvanced(true)} className="px-1 text-xs text-muted hover:text-fg" title="Autre unité de temps, bougie précédente">
+        <button onClick={() => setAdvanced(true)} className="px-1 text-xs text-muted hover:text-fg" title="Autre unité de temps (filtre de tendance), bougie précédente (décalage)">
           ⋯
         </button>
       )}
@@ -92,6 +107,7 @@ function ConditionEditor({ value, onChange, onRemove }: { value: Condition; onCh
           </option>
         ))}
       </select>
+      <Why id={value.op.startsWith("crosses") ? "croise" : undefined} />
       <OperandEditor value={value.right} onChange={(right) => onChange({ ...value, right })} />
       <button onClick={onRemove} className="ml-auto text-xs text-muted hover:text-down" title="Supprimer la condition">
         ✕

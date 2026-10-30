@@ -14,7 +14,7 @@ export function Card({ title, children, actions, className = "" }: { title?: Rea
   );
 }
 
-export function Stat({ label, value, hint, className = "" }: { label: string; value: ReactNode; hint?: ReactNode; className?: string }) {
+export function Stat({ label, value, hint, className = "" }: { label: ReactNode; value: ReactNode; hint?: ReactNode; className?: string }) {
   return (
     <div className="rounded-lg border border-line bg-panel px-2.5 py-2 sm:px-3 sm:py-2.5">
       <div className="text-[11px] leading-tight text-muted sm:text-xs">{label}</div>
@@ -42,12 +42,14 @@ export function Button({
   );
 }
 
-export function Field({ label, children, hint }: { label: string; children: ReactNode; hint?: string }) {
+/** `help` is a beginner explanation (a FieldHelp), shown under the hint. */
+export function Field({ label, children, hint, help }: { label: ReactNode; children: ReactNode; hint?: string; help?: ReactNode }) {
   return (
     <label className="flex flex-col gap-1 text-xs text-muted">
       <span>{label}</span>
       {children}
       {hint && <span className="text-[11px] text-muted/80">{hint}</span>}
+      {help}
     </label>
   );
 }

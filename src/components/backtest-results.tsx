@@ -10,6 +10,7 @@ import type { BacktestConfig, Strategy } from "@/lib/strategy/schema";
 import { stopLabel, targetLabel } from "@/lib/strategy/describe";
 import { INTERVAL_MS, type CandleRow } from "@/lib/types";
 import { EquityChart, PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
+import { Term, Tip, useBeginner } from "./learn";
 import { PropFirmPanel } from "./prop-firm-panel";
 import { Alert, Button, Card, Stat, Tabs } from "./ui";
 
@@ -81,15 +82,26 @@ export function BacktestResults({ id }: { id: string }) {
       ))}
 
       <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:grid-cols-4 lg:grid-cols-8">
-        <Stat label="Rendement total" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={`Achat-conservation : ${pct(m.buyAndHoldPercent)}`} />
-        <Stat label="Rendement annuel" value={pct(m.cagrPercent)} className={tone(m.cagrPercent)} />
-        <Stat label="Baisse max" value={pct(-m.maxDrawdownPercent)} className="text-down" />
-        <Stat label="Trades" value={m.trades} hint={`${num(m.tradesPerMonth, 1)} par mois`} />
-        <Stat label="Gagnants" value={pct(m.winRate, 0, false)} />
-        <Stat label="Profit factor" value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} />
-        <Stat label={hasR ? "Gain moyen / trade" : "Gain moyen / trade"} value={hasR ? r(m.avgR) : pct(m.avgTradePercent, 2)} className={tone(hasR ? m.avgR : m.avgTradePercent)} />
-        <Stat label="Sharpe" value={num(m.sharpe)} hint={`Sortino ${num(m.sortino)}`} />
+        <Stat
+          label={<Term id="rendement">Rendement total</Term>}
+          value={pct(m.totalReturnPercent)}
+          className={tone(m.totalReturnPercent)}
+          hint={
+            <>
+              <Term id="achat-conservation">Achat-conservation</Term> : {pct(m.buyAndHoldPercent)}
+            </>
+          }
+        />
+        <Stat label={<Term id="rendement-annuel">Rendement annuel</Term>} value={pct(m.cagrPercent)} className={tone(m.cagrPercent)} />
+        <Stat label={<Term id="drawdown">Baisse max</Term>} value={pct(-m.maxDrawdownPercent)} className="text-down" />
+        <Stat label={<Term id="trades">Trades</Term>} value={m.trades} hint={`${num(m.tradesPerMonth, 1)} par mois`} />
+        <Stat label={<Term id="gagnants">Gagnants</Term>} value={pct(m.winRate, 0, false)} />
+        <Stat label={<Term id="profit-factor">Profit factor</Term>} value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} />
+        <Stat label={<Term id="gain-moyen">Gain moyen / trade</Term>} value={hasR ? r(m.avgR) : pct(m.avgTradePercent, 2)} className={tone(hasR ? m.avgR : m.avgTradePercent)} />
+        <Stat label={<Term id="sharpe">Sharpe</Term>} value={num(m.sharpe)} hint={`Sortino ${num(m.sortino)}`} />
       </div>
+
+      <GuidedReading data={data} onOpenRobustness={() => setTab("robustness")} />
 
       <Tabs<Tab>
         value={tab}
@@ -116,6 +128,93 @@ export function BacktestResults({ id }: { id: string }) {
       {tab === "robustness" && <Robustness report={report} hasR={hasR} />}
       {tab === "prop" && <PropFirmPanel trades={report.trades} strategy={strategy} />}
     </div>
+  );
+}
+
+/**
+ * Beginner mode: the key numbers turned into plain sentences, each with a
+ * rough judgement, so a first-time user knows what to look at and why.
+ */
+function GuidedReading({ data, onOpenRobustness }: { data: Stored; onOpenRobustness: () => void }) {
+  const beginner = useBeginner();
+  if (!beginner) return null;
+  const { report, config } = data;
+  const m = report.metrics;
+  const capital = config.initialCapital;
+  const years = (report.period.to - report.period.from) / (365.25 * 86_400_000);
+  const verdict = robustnessVerdict(report);
+  const lines: { tone: "good" | "bad" | "meh"; text: React.ReactNode }[] = [];
+
+  lines.push(
+    m.trades < 30
+      ? { tone: "bad", text: <>Seulement {m.trades} trades en {num(years, 1)} an(s) : c&apos;est trop peu pour conclure, le résultat peut venir de la chance. Allonge la période ou assouplis les règles.</> }
+      : { tone: "good", text: <>{m.trades} trades en {num(years, 1)} an(s) : assez pour que les chiffres aient un sens.</> },
+  );
+  const gain = capital * (m.totalReturnPercent / 100);
+  lines.push({
+    tone: m.totalReturnPercent <= 0 ? "bad" : m.totalReturnPercent < m.buyAndHoldPercent ? "meh" : "good",
+    text: (
+      <>
+        Avec {money(capital)} au départ, tu finirais à {money(capital + gain)} ({pct(m.totalReturnPercent)}), frais compris.{" "}
+        {m.totalReturnPercent < m.buyAndHoldPercent ? (
+          <>
+            Acheter et garder sans rien faire aurait rapporté {pct(m.buyAndHoldPercent)} : la stratégie fait moins bien, sauf si elle risque beaucoup moins (voir la baisse max).
+          </>
+        ) : (
+          <>C&apos;est mieux que d&apos;acheter et garder sans rien faire ({pct(m.buyAndHoldPercent)}).</>
+        )}
+      </>
+    ),
+  });
+  lines.push({
+    tone: m.maxDrawdownPercent > 30 ? "bad" : m.maxDrawdownPercent > 15 ? "meh" : "good",
+    text: (
+      <>
+        Au pire moment, ton compte a baissé de {pct(m.maxDrawdownPercent, 1, false)} depuis son plus haut, soit environ {money((capital * m.maxDrawdownPercent) / 100)} sur {money(capital)}.{" "}
+        {m.maxDrawdownPercent > 30 ? "C'est une baisse que peu de gens supportent sans abandonner." : m.maxDrawdownPercent > 15 ? "C'est sensible : demande-toi si tu l'aurais supporté." : "C'est une baisse raisonnable."}
+      </>
+    ),
+  });
+  const avgWin = m.avgWinR !== null ? r(m.avgWinR) : pct(m.avgWinPercent, 2);
+  const avgLoss = m.avgLossR !== null ? r(m.avgLossR) : pct(m.avgLossPercent, 2);
+  lines.push({
+    tone: m.profitFactor !== null && m.profitFactor >= 1.3 ? "good" : m.profitFactor !== null && m.profitFactor >= 1 ? "meh" : "bad",
+    text: (
+      <>
+        {pct(m.winRate, 0, false)} des trades sont gagnants. Un gagnant rapporte en moyenne {avgWin}, un perdant coûte {avgLoss}. Le profit factor de {num(m.profitFactor)} veut dire que les gains
+        valent {num(m.profitFactor)} fois les pertes{m.profitFactor !== null && m.profitFactor < 1 ? " : la stratégie perd de l'argent." : m.profitFactor !== null && m.profitFactor < 1.3 ? " : c'est positif mais fragile." : "."}
+      </>
+    ),
+  });
+  lines.push({
+    tone: m.longestLosingStreak >= 8 ? "meh" : "good",
+    text: <>La pire série a été de {m.longestLosingStreak} pertes d&apos;affilée. Imagine-la en vrai : aurais-tu continué à suivre la stratégie ?</>,
+  });
+
+  const icon = { good: "✓", meh: "~", bad: "✗" };
+  const color = { good: "text-up", meh: "text-warn", bad: "text-down" };
+  return (
+    <Card title="Lecture guidée : ce que disent ces chiffres">
+      <ul className="flex flex-col gap-2 text-sm">
+        {lines.map((l, i) => (
+          <li key={i} className="flex gap-2">
+            <span className={`w-4 shrink-0 font-bold ${color[l.tone]}`} aria-hidden>
+              {icon[l.tone]}
+            </span>
+            <span>{l.text}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 rounded-md border border-line bg-panel-2/60 p-2.5 text-sm">
+        <strong>Verdict des contrôles de robustesse :</strong> {verdict.title} {verdict.text}{" "}
+        <button onClick={onOpenRobustness} className="text-accent hover:underline">
+          Voir le détail
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        Un bon backtest ne promet rien pour l&apos;avenir. Avant d&apos;y mettre de l&apos;argent, vérifie la robustesse puis suis la stratégie en direct quelques semaines (bouton « Suivre en direct »).
+      </p>
+    </Card>
   );
 }
 
@@ -171,8 +270,11 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="flex flex-col gap-4">
-        <Card title="Courbe du capital">
+        <Card title={<Term id="courbe-capital">Courbe du capital</Term>}>
           <EquityChart points={report.equity} />
+          <div className="mt-2">
+            <Tip>L&apos;évolution de ton compte, trade après trade. Cherche une pente régulière ; les longues descentes sont les périodes difficiles.</Tip>
+          </div>
         </Card>
         <Card
           title={sel ? `Trade du ${date(sel.entryTime)} · ${sel.side === "long" ? "achat" : "vente"} · ${sel.r !== null ? r(sel.r) : pct(sel.pnlPercent)}` : "Graphique des trades"}
@@ -201,6 +303,12 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
           }
         >
           <PriceChart ref={chart} candles={candles} markers={markers} priceLines={priceLines} />
+          <div className="mt-2">
+            <Tip>
+              Les flèches marquent les entrées, les étiquettes les sorties avec leur résultat en <Term id="r">R</Term>. Clique sur « voir le premier trade » puis « suivant » pour vérifier que la
+              stratégie fait bien ce que tu voulais.
+            </Tip>
+          </div>
         </Card>
       </div>
       <div className="flex flex-col gap-4">
@@ -216,17 +324,27 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
             <Dd>{pct(m.bestTradePercent, 2)}</Dd>
             <Dt>Pire trade</Dt>
             <Dd>{pct(m.worstTradePercent, 2)}</Dd>
-            <Dt>Pertes d&apos;affilée max</Dt>
+            <Dt>
+              <Term id="pertes-affilee">Pertes d&apos;affilée max</Term>
+            </Dt>
             <Dd>{m.longestLosingStreak}</Dd>
             <Dt>Durée moyenne</Dt>
             <Dd>{num(m.avgBars, 1)} bougies</Dd>
-            <Dt>Temps en position</Dt>
+            <Dt>
+              <Term id="exposition">Temps en position</Term>
+            </Dt>
             <Dd>{pct(m.exposurePercent, 0, false)}</Dd>
-            <Dt>Frais payés</Dt>
+            <Dt>
+              <Term id="frais">Frais payés</Term>
+            </Dt>
             <Dd>{money(m.totalCosts)}</Dd>
-            <Dt>Stop</Dt>
+            <Dt>
+              <Term id="stop">Stop</Term>
+            </Dt>
             <Dd>{stopLabel(strategy)}</Dd>
-            <Dt>Objectif</Dt>
+            <Dt>
+              <Term id="objectif">Objectif</Term>
+            </Dt>
             <Dd>{targetLabel(strategy)}</Dd>
           </dl>
         </Card>
@@ -374,6 +492,12 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
       <Alert tone={verdict.tone}>
         <strong>{verdict.title}</strong> {verdict.text}
       </Alert>
+      <Tip title="Pourquoi cet onglet ?">
+        Il est facile de trouver une stratégie qui aurait gagné par hasard sur le passé : c&apos;est le <Term id="surajustement">surajustement</Term>. Ces 4 contrôles cherchent à la
+        piéger : <Term id="avantage">l&apos;avantage est-il réel</Term>, tient-il sur <Term id="validation">la fin de l&apos;historique</Term>, avec des{" "}
+        <Term id="reglages-voisins">réglages voisins</Term> et des <Term id="frais-doubles">frais doublés</Term> ? Le <Term id="monte-carlo">Monte Carlo</Term> montre en plus les pires
+        scénarios possibles.
+      </Tip>
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="L'avantage est-il réel ?">
           {edge ? (

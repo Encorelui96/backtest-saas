@@ -6,6 +6,8 @@ import { api } from "@/lib/client/api";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
 import type { Template } from "@/lib/strategy/templates";
 import { INTERVALS, MAX_HISTORY_DAYS } from "@/lib/types";
+import Link from "next/link";
+import { FieldHelp, Term, Tip } from "./learn";
 import { GroupsEditor } from "./rule-builder";
 import { Alert, Button, Card, Field } from "./ui";
 
@@ -148,8 +150,23 @@ export function StrategyEditor({ id }: { id?: string }) {
   return (
     <div className="grid gap-4 pb-20 md:pb-0 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex flex-col gap-4">
+        <Tip title="Mode débutant : comment ça marche">
+          <ol className="ml-4 list-decimal">
+            <li>Choisis un modèle ci-dessous (ou décris ton idée en français et laisse l&apos;IA la traduire).</li>
+            <li>Regarde les règles qu&apos;il a remplies : chaque terme souligné s&apos;explique d&apos;un clic.</li>
+            <li>Garde les réglages proposés pour le risque et les frais, ils sont réalistes.</li>
+            <li>Clique sur « Lancer le backtest », puis lis les résultats avec la lecture guidée.</li>
+          </ol>
+          <p className="mt-1">
+            Pas sûr d&apos;un mot ? Tout est dans <Link href="/apprendre" className="underline">la page Apprendre</Link>. Tu peux repasser en mode Expert en haut de la page.
+          </p>
+        </Tip>
         <Card title="1. Décris ta stratégie">
           <div className="flex flex-col gap-3">
+            <Tip>
+              Écris comme tu parles : l&apos;unité de temps, la crypto, quand acheter, où mettre le <Term id="stop">stop</Term> et l&apos;<Term id="objectif">objectif</Term>. Pour
+              un premier essai, le modèle « Swing · Rebond RSI(2) » est le plus simple à comprendre.
+            </Tip>
             <textarea
               rows={5}
               value={text}
@@ -214,7 +231,7 @@ export function StrategyEditor({ id }: { id?: string }) {
             <Field label="Nom">
               <input value={strategy.name} onChange={(e) => set("name", e.target.value)} />
             </Field>
-            <Field label="Symbole (Binance)">
+            <Field label={<Term id="symbole">Symbole (Binance)</Term>} help={<FieldHelp>BTCUSDT = bitcoin en dollars.</FieldHelp>}>
               <input list="symbols" value={strategy.symbol} onChange={(e) => set("symbol", e.target.value.toUpperCase())} />
               <datalist id="symbols">
                 {symbols.map((s) => (
@@ -225,7 +242,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 <span className="text-[11px] text-warn">Symbole introuvable sur Binance{symbols[0] ? ` : ${symbols[0]} ?` : "."}</span>
               )}
             </Field>
-            <Field label="Unité de temps">
+            <Field label={<Term id="unite-de-temps">Unité de temps</Term>} help={<FieldHelp>Durée d&apos;une bougie. Débute en 4h ou 1d.</FieldHelp>}>
               <select
                 value={strategy.interval}
                 onChange={(e) => {
@@ -239,21 +256,21 @@ export function StrategyEditor({ id }: { id?: string }) {
                 ))}
               </select>
             </Field>
-            <Field label="Style">
+            <Field label={<Term id="style">Style</Term>}>
               <select value={strategy.style} onChange={(e) => set("style", e.target.value as Strategy["style"])}>
                 <option value="scalp">Scalp</option>
                 <option value="day">Day trading</option>
                 <option value="swing">Swing</option>
               </select>
             </Field>
-            <Field label="Sens">
+            <Field label="Sens" help={<FieldHelp term="short">Pour débuter : achat seulement.</FieldHelp>}>
               <select value={strategy.direction} onChange={(e) => set("direction", e.target.value as Strategy["direction"])}>
                 <option value="long">Achat seulement</option>
                 <option value="short">Vente à découvert seulement</option>
                 <option value="both">Les deux</option>
               </select>
             </Field>
-            <Field label="Fuseau horaire">
+            <Field label={<Term id="fuseau">Fuseau horaire</Term>}>
               <select value={strategy.timezone} onChange={(e) => set("timezone", e.target.value)}>
                 {timezones(strategy.timezone).map((tz) => (
                   <option key={tz} value={tz}>
@@ -267,6 +284,11 @@ export function StrategyEditor({ id }: { id?: string }) {
 
         <Card title="3. Règles">
           <div className="flex flex-col gap-5">
+            <Tip title="Lire une règle">
+              Chaque ligne est une <Term id="signal">condition</Term>, par exemple « RSI 14 &lt; 30 ». Les conditions reliées par <Term id="et-ou">ET</Term> doivent être vraies en même
+              temps ; un nouveau groupe (OU) est une autre façon d&apos;entrer. Le chiffre à côté d&apos;un indicateur est sa <Term id="periode">période</Term>. Les noms d&apos;indicateurs
+              soulignés s&apos;expliquent d&apos;un clic.
+            </Tip>
             {strategy.direction !== "short" && (
               <RuleSection title="Entrée à l'achat" color="text-up">
                 <GroupsEditor value={strategy.entryLong} onChange={(v) => set("entryLong", v)} emptyHint="Aucune règle d'achat." />
@@ -295,8 +317,14 @@ export function StrategyEditor({ id }: { id?: string }) {
         </Card>
 
         <Card title="4. Gestion du risque et des horaires">
+          <div className="mb-3">
+            <Tip title="La partie la plus importante">
+              Une bonne gestion du risque compte plus que les règles d&apos;entrée. Garde un <Term id="stop">stop</Term>, un <Term id="risque-par-trade">risque par trade</Term> de 1 % et
+              un objectif en <Term id="r">R</Term> : tu sais ainsi à l&apos;avance combien chaque trade peut te coûter.
+            </Tip>
+          </div>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <Field label="Stop">
+            <Field label={<Term id="stop">Stop</Term>} help={<FieldHelp>Où couper la perte. En ATR, il s&apos;adapte à l&apos;agitation du marché.</FieldHelp>}>
               <select value={strategy.stop.type} onChange={(e) => set("stop", { ...strategy.stop, type: e.target.value as Strategy["stop"]["type"], value: strategy.stop.value ?? 2, atrPeriod: strategy.stop.atrPeriod ?? 14 })}>
                 <option value="none">Aucun</option>
                 <option value="percent">En %</option>
@@ -309,7 +337,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 <input type="number" step="any" value={strategy.stop.value ?? ""} onChange={(e) => set("stop", { ...strategy.stop, value: numOrNull(e.target.value) })} />
               </Field>
             )}
-            <Field label="Objectif">
+            <Field label={<Term id="objectif">Objectif</Term>} help={<FieldHelp term="r">2R = viser 2 fois ce que tu risques.</FieldHelp>}>
               <select value={strategy.takeProfit.type} onChange={(e) => set("takeProfit", { ...strategy.takeProfit, type: e.target.value as Strategy["takeProfit"]["type"], value: strategy.takeProfit.value ?? 2, atrPeriod: strategy.takeProfit.atrPeriod ?? 14 })}>
                 <option value="none">Aucun</option>
                 <option value="r_multiple">En R (× le stop)</option>
@@ -322,7 +350,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 <input type="number" step="any" value={strategy.takeProfit.value ?? ""} onChange={(e) => set("takeProfit", { ...strategy.takeProfit, value: numOrNull(e.target.value) })} />
               </Field>
             )}
-            <Field label="Stop suiveur">
+            <Field label={<Term id="stop-suiveur">Stop suiveur</Term>}>
               <select value={strategy.trailingStop.type} onChange={(e) => set("trailingStop", { ...strategy.trailingStop, type: e.target.value as Strategy["trailingStop"]["type"], value: strategy.trailingStop.value ?? 2, atrPeriod: strategy.trailingStop.atrPeriod ?? 14 })}>
                 <option value="none">Aucun</option>
                 <option value="percent">En %</option>
@@ -334,19 +362,19 @@ export function StrategyEditor({ id }: { id?: string }) {
                 <input type="number" step="any" value={strategy.trailingStop.value ?? ""} onChange={(e) => set("trailingStop", { ...strategy.trailingStop, value: numOrNull(e.target.value) })} />
               </Field>
             )}
-            <Field label="Stop au point mort à (R)" hint="vide = jamais">
+            <Field label={<Term id="point-mort">Stop au point mort à (R)</Term>} hint="vide = jamais">
               <input type="number" step="any" value={strategy.breakEvenAtR ?? ""} onChange={(e) => set("breakEvenAtR", numOrNull(e.target.value))} />
             </Field>
-            <Field label="Durée max (bougies)" hint="vide = illimitée">
+            <Field label={<Term id="duree-max">Durée max (bougies)</Term>} hint="vide = illimitée">
               <input type="number" value={strategy.maxBarsInTrade ?? ""} onChange={(e) => set("maxBarsInTrade", numOrNull(e.target.value))} />
             </Field>
-            <Field label="Risque par trade (%)" hint="perte au stop, en % du capital">
+            <Field label={<Term id="risque-par-trade">Risque par trade (%)</Term>} hint="perte au stop, en % du capital" help={<FieldHelp>1 % est un bon départ.</FieldHelp>}>
               <input type="number" step="any" value={strategy.riskPerTradePercent} onChange={(e) => set("riskPerTradePercent", Number(e.target.value))} />
             </Field>
-            <Field label="Taille sans stop (% du capital)">
+            <Field label={<Term id="taille">Taille sans stop (% du capital)</Term>}>
               <input type="number" step="any" value={strategy.positionSizePercent} onChange={(e) => set("positionSizePercent", Number(e.target.value))} />
             </Field>
-            <Field label="Levier max">
+            <Field label={<Term id="levier">Levier max</Term>} help={<FieldHelp>Plus il est haut, plus une perte peut être grosse.</FieldHelp>}>
               <input type="number" step="any" value={strategy.maxLeverage} onChange={(e) => set("maxLeverage", Number(e.target.value))} />
             </Field>
             <div className="col-span-2">
@@ -394,10 +422,11 @@ export function StrategyEditor({ id }: { id?: string }) {
               </Field>
             </div>
             <p className="text-[11px] text-muted">Maximum {MAX_HISTORY_DAYS[strategy.interval]} jours en {strategy.interval}. Le premier test d&apos;un symbole télécharge l&apos;historique (jusqu&apos;à une minute en 1m).</p>
-            <Field label="Capital de départ (USD)">
+            <Tip>Teste sur plusieurs années : une stratégie doit traverser des marchés qui montent, qui baissent et qui stagnent.</Tip>
+            <Field label={<Term id="capital">Capital de départ (USD)</Term>} help={<FieldHelp>Argent fictif : rien n&apos;est réellement investi.</FieldHelp>}>
               <input type="number" value={config.initialCapital} onChange={(e) => setConfig({ ...config, initialCapital: Number(e.target.value) })} />
             </Field>
-            <Field label="Frais">
+            <Field label={<Term id="frais">Frais</Term>} help={<FieldHelp>Choisis « Binance Spot » si tu achètes sur Binance sans levier.</FieldHelp>}>
               <select
                 onChange={(e) => {
                   const p = FEE_PRESETS[Number(e.target.value)];
@@ -419,13 +448,13 @@ export function StrategyEditor({ id }: { id?: string }) {
               <Field label="Frais / côté (%)">
                 <input type="number" step="any" value={config.feePercent} onChange={(e) => setConfig({ ...config, feePercent: Number(e.target.value) })} />
               </Field>
-              <Field label="Spread (%)">
+              <Field label={<Term id="spread">Spread (%)</Term>}>
                 <input type="number" step="any" value={config.spreadPercent} onChange={(e) => setConfig({ ...config, spreadPercent: Number(e.target.value) })} />
               </Field>
-              <Field label="Glissement (%)">
+              <Field label={<Term id="glissement">Glissement (%)</Term>}>
                 <input type="number" step="any" value={config.slippagePercent} onChange={(e) => setConfig({ ...config, slippagePercent: Number(e.target.value) })} />
               </Field>
-              <Field label="Financement / 8h (%)">
+              <Field label={<Term id="financement">Financement / 8h (%)</Term>}>
                 <input type="number" step="any" value={config.fundingPercentPer8h} onChange={(e) => setConfig({ ...config, fundingPercentPer8h: Number(e.target.value) })} />
               </Field>
             </div>
