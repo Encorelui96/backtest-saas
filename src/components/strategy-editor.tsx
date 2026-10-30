@@ -127,7 +127,7 @@ export function StrategyEditor({ id }: { id?: string }) {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="grid gap-4 pb-20 md:pb-0 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex flex-col gap-4">
         <Card title="1. Décris ta stratégie">
           <div className="flex flex-col gap-3">
@@ -416,6 +416,14 @@ export function StrategyEditor({ id }: { id?: string }) {
             )}
           </div>
         </Card>
+      </div>
+
+      {/* Phones: the run button stays within reach above the tab bar. */}
+      <div className="fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-20 border-t border-line bg-panel/95 px-3 py-2 backdrop-blur md:hidden">
+        {error && <p className="mb-1.5 line-clamp-2 text-xs text-down">{error}</p>}
+        <Button onClick={run} disabled={busy !== null} className="w-full py-2.5">
+          {busy === "run" ? "Backtest en cours…" : `Lancer le backtest · ${strategy.symbol} ${strategy.interval}`}
+        </Button>
       </div>
     </div>
   );

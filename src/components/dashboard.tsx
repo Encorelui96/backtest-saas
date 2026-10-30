@@ -53,9 +53,9 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+      <div className="no-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 md:mx-0 md:grid md:grid-cols-5 md:px-0">
         {WATCH.map((s) => (
-          <Link key={s} href={`/live`} className="rounded-lg border border-line bg-panel px-3 py-2 hover:border-accent">
+          <Link key={s} href={`/live`} className="min-w-36 shrink-0 rounded-lg border border-line bg-panel px-3 py-2 hover:border-accent">
             <div className="text-xs text-muted">{s.replace("USDT", " / USDT")}</div>
             <div className="num text-lg font-semibold">{tickers[s] ? price(tickers[s].c) : "—"}</div>
             <div className={`num text-xs ${tone(tickers[s]?.p)}`}>{tickers[s] ? `${pct(tickers[s].p, 2)} sur 24 h` : "connexion…"}</div>
@@ -73,7 +73,27 @@ export function Dashboard() {
               <Button onClick={() => router.push("/strategies/new")}>Créer ma première stratégie</Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            {/* Phones: one card per backtest. */}
+            <ul className="-my-1 flex flex-col divide-y divide-line/50 md:hidden">
+              {backtests.map((b) => (
+                <li key={b.id}>
+                  <Link href={`/backtests/${b.id}`} className="flex items-center gap-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm">{b.name}</div>
+                      <div className="text-[11px] text-muted">
+                        {b.symbol} {b.interval} · {b.summary.trades} trades · {b.startDate.slice(0, 4)}→{b.endDate.slice(0, 4)}
+                      </div>
+                    </div>
+                    <div className="num text-right">
+                      <div className={`text-sm font-semibold ${tone(b.summary.totalReturnPercent)}`}>{pct(b.summary.totalReturnPercent)}</div>
+                      <div className="text-[11px] text-down">{pct(-b.summary.maxDrawdownPercent)} max</div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden overflow-x-auto md:block">
               <table className="num w-full text-sm">
                 <thead className="text-xs text-muted">
                   <tr className="text-left">
@@ -110,6 +130,7 @@ export function Dashboard() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </Card>
         <Card

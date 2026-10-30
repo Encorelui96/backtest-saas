@@ -79,7 +79,7 @@ export function BacktestResults({ id }: { id: string }) {
         <Alert key={i}>{w}</Alert>
       ))}
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4 lg:grid-cols-8">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:grid-cols-4 lg:grid-cols-8">
         <Stat label="Rendement total" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={`Achat-conservation : ${pct(m.buyAndHoldPercent)}`} />
         <Stat label="Rendement annuel" value={pct(m.cagrPercent)} className={tone(m.cagrPercent)} />
         <Stat label="Baisse max" value={pct(-m.maxDrawdownPercent)} className="text-down" />
@@ -176,7 +176,7 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
         <Card
           title={sel ? `Trade du ${date(sel.entryTime)} · ${sel.side === "long" ? "achat" : "vente"} · ${sel.r !== null ? r(sel.r) : pct(sel.pnlPercent)}` : "Graphique des trades"}
           actions={
-            <div className="flex items-center gap-2 text-xs">
+            <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs">
               {loading && <span className="text-muted">chargement…</span>}
               {selected !== null && (
                 <>
@@ -290,7 +290,29 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
         </Button>
       }
     >
-      <div className="overflow-x-auto">
+      {/* Phones: one compact row per trade. */}
+      <ul className="-my-1 flex flex-col divide-y divide-line/50 md:hidden">
+        {rows.map((t, k) => {
+          const i = page * size + k;
+          return (
+            <li key={i}>
+              <button onClick={() => onSelect(i)} className="flex w-full items-center gap-3 py-2 text-left">
+                <span className="num w-7 text-xs text-muted">{i + 1}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm">
+                    <span className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? "Achat" : "Vente"}</span> · {date(t.entryTime)}
+                  </div>
+                  <div className="num text-[11px] text-muted">
+                    {price(t.entryPrice)} → {price(t.exitPrice)} · {EXIT_LABELS[t.exitReason]} · {t.bars} bougies
+                  </div>
+                </div>
+                <span className={`num text-sm font-semibold ${tone(t.pnl)}`}>{hasR ? r(t.r) : pct(t.pnlPercent, 2)}</span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="hidden overflow-x-auto md:block">
         <table className="num w-full text-sm">
           <thead className="text-xs text-muted">
             <tr className="text-left">
@@ -369,7 +391,8 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
           )}
         </Card>
         <Card title="Étude puis validation sur la suite">
-          <table className="num w-full text-sm">
+          <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+          <table className="num w-full min-w-[440px] text-sm">
             <thead className="text-xs text-muted">
               <tr>
                 <th className="text-left font-normal">Période</th>
@@ -396,6 +419,7 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
               ))}
             </tbody>
           </table>
+          </div>
           <p className="mt-2 text-xs text-muted">Si la stratégie a été réglée en regardant tout l&apos;historique, cette coupe ne remplace pas un vrai test sur des données jamais vues.</p>
         </Card>
         <Card title="Monte Carlo : 2 000 ordres de trades différents">
@@ -444,8 +468,8 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
       </div>
       <Card title={`Réglages voisins : ${pct(sensitivity.profitableShare, 0, false)} des variantes restent gagnantes`}>
         {sensitivity.rows.length ? (
-          <div className="overflow-x-auto">
-            <table className="num w-full text-sm">
+          <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+            <table className="num w-full min-w-[520px] whitespace-nowrap text-sm">
               <thead className="text-xs text-muted">
                 <tr>
                   <th className="text-left font-normal">Réglage</th>

@@ -42,3 +42,4 @@ next-env.d.ts
 
 # local database (candle cache, strategies, backtests)
 /data
+/backtest-saas.zip

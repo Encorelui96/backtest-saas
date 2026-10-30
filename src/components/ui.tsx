@@ -4,22 +4,22 @@ export function Card({ title, children, actions, className = "" }: { title?: Rea
   return (
     <section className={`rounded-lg border border-line bg-panel ${className}`}>
       {(title || actions) && (
-        <header className="flex items-center justify-between gap-2 border-b border-line px-4 py-2.5">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-3 py-2.5 sm:px-4">
           <h2 className="text-sm font-semibold">{title}</h2>
           {actions}
         </header>
       )}
-      <div className="p-4">{children}</div>
+      <div className="p-3 sm:p-4">{children}</div>
     </section>
   );
 }
 
 export function Stat({ label, value, hint, className = "" }: { label: string; value: ReactNode; hint?: ReactNode; className?: string }) {
   return (
-    <div className="rounded-lg border border-line bg-panel px-3 py-2.5">
-      <div className="text-xs text-muted">{label}</div>
-      <div className={`num mt-0.5 text-lg font-semibold ${className}`}>{value}</div>
-      {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}
+    <div className="rounded-lg border border-line bg-panel px-2.5 py-2 sm:px-3 sm:py-2.5">
+      <div className="text-[11px] leading-tight text-muted sm:text-xs">{label}</div>
+      <div className={`num mt-0.5 text-base font-semibold sm:text-lg ${className}`}>{value}</div>
+      {hint && <div className="mt-0.5 text-[11px] leading-tight text-muted sm:text-xs">{hint}</div>}
     </div>
   );
 }
@@ -63,12 +63,12 @@ export function Alert({ tone = "warn", children }: { tone?: "warn" | "error" | "
 
 export function Tabs<T extends string>({ tabs, value, onChange }: { tabs: { id: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
-    <div className="flex gap-1 border-b border-line">
+    <div className="no-scrollbar -mx-3 flex gap-1 overflow-x-auto border-b border-line px-3 sm:mx-0 sm:px-0">
       {tabs.map((t) => (
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm ${value === t.id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}
+          className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3 py-2 text-sm ${value === t.id ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}
         >
           {t.label}
         </button>

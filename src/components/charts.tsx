@@ -17,6 +17,7 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import type { CandleRow } from "@/lib/types";
+import { useIsMobile } from "@/lib/client/use-mobile";
 
 const OVERLAY_COLORS = ["#f59e0b", "#a855f7", "#06b6d4", "#ec4899", "#84cc16", "#f97316"];
 
@@ -88,7 +89,7 @@ export function PriceChart({
   markers = [],
   overlays = [],
   priceLines = [],
-  height = 420,
+  height: desktopHeight = 420,
   ref,
 }: {
   candles: CandleRow[];
@@ -98,6 +99,7 @@ export function PriceChart({
   height?: number;
   ref?: Ref<PriceChartHandle>;
 }) {
+  const height = useIsMobile() ? Math.min(desktopHeight, 320) : desktopHeight;
   const el = useRef<HTMLDivElement>(null);
   const chart = useRef<IChartApi | null>(null);
   const series = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -145,7 +147,8 @@ export function PriceChart({
       lines.forEach((l) => c.removeSeries(l));
       pls.forEach((p) => s.removePriceLine(p));
     };
-  }, [candles, markers, overlays, priceLines]);
+    // height: the chart is rebuilt when it changes, so its data must be set again.
+  }, [candles, markers, overlays, priceLines, height]);
 
   useImperativeHandle(ref, () => ({
     update: (k) => series.current?.update({ time: sec(k.t), open: k.o, high: k.h, low: k.l, close: k.c }),
@@ -155,11 +158,14 @@ export function PriceChart({
   return <div ref={el} style={{ height }} className="w-full" />;
 }
 
-export function EquityChart({ points, height = 260 }: { points: { t: number; equity: number }[]; height?: number }) {
+export function EquityChart({ points, height: desktopHeight = 260 }: { points: { t: number; equity: number }[]; height?: number }) {
+  const height = useIsMobile() ? Math.min(desktopHeight, 200) : desktopHeight;
   const el = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!el.current) return;
     const c = baseChart(el.current, height);
+    // The whole history must fit the width, however many points it has.
+    c.timeScale().applyOptions({ minBarSpacing: 0.001 });
     const s = c.addSeries(AreaSeries, {
       lineColor: "#4f8cff",
       topColor: "rgba(79,140,255,0.35)",
@@ -176,7 +182,12 @@ export function EquityChart({ points, height = 260 }: { points: { t: number; equ
     }
     s.setData(data);
     c.timeScale().fitContent();
-    return () => c.remove();
+    // autoSize measures the container after creation; fit again once the real width is known.
+    const frame = requestAnimationFrame(() => c.timeScale().fitContent());
+    return () => {
+      cancelAnimationFrame(frame);
+      c.remove();
+    };
   }, [points, height]);
   return <div ref={el} style={{ height }} className="w-full" />;
 }

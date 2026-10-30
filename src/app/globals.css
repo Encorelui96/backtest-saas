@@ -53,3 +53,24 @@ textarea:focus {
 .num {
   font-variant-numeric: tabular-nums;
 }
+
+/* Grid and flex children may shrink below their content width (tables scroll inside instead of pushing the page wider). */
+.grid > * {
+  min-width: 0;
+}
+
+/* iOS zooms into inputs smaller than 16px. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
