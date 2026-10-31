@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
-import { Button, Card } from "./ui";
+import { Alert, Button, Card, Field } from "./ui";
 
 interface Me {
   user: { email: string; name: string } | null;
+  hasPassword: boolean;
   usage: {
     plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number; minInterval: string; alerts: number };
     backtests: number;
@@ -60,15 +61,79 @@ export function Account() {
           {u.plan.id === "free" && <p className="text-sm">Les offres payantes (scalp en 1 minute, plus de tests, alertes Telegram) arrivent bientôt.</p>}
         </div>
       </Card>
+      <PasswordCard hasPassword={me.hasPassword} onSet={() => setMe({ ...me, hasPassword: true })} />
       <Button
         variant="ghost"
         onClick={async () => {
           await authClient.signOut();
-          window.location.href = "/";
+          router.replace("/");
+          router.refresh();
         }}
       >
         Se déconnecter
       </Button>
     </div>
+  );
+}
+
+/** Sets a first password (accounts made with the e-mail link have none) or changes the current one. */
+function PasswordCard({ hasPassword, onSet }: { hasPassword: boolean; onSet: () => void }) {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setDone(null);
+    if (next !== confirm) return setError("Les deux mots de passe ne sont pas identiques.");
+    setBusy(true);
+    try {
+      if (hasPassword) {
+        const { error } = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
+        if (error) throw new Error(error.code === "INVALID_PASSWORD" ? "Mot de passe actuel incorrect." : "Changement impossible. Réessaie.");
+        setDone("Mot de passe changé. Tes autres appareils ont été déconnectés.");
+      } else {
+        await api("/api/password", { json: { password: next } });
+        setDone("Mot de passe enregistré : tu peux maintenant te connecter avec ton e-mail et ce mot de passe.");
+        onSet();
+      }
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title={hasPassword ? "Changer de mot de passe" : "Définir mon mot de passe"}>
+      <form onSubmit={submit} className="flex flex-col gap-3">
+        {!hasPassword && <Alert tone="info">Ton compte n&apos;a pas encore de mot de passe. Choisis-en un pour pouvoir te connecter avec ton e-mail.</Alert>}
+        {hasPassword && (
+          <Field label="Mot de passe actuel">
+            <input type="password" required autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />
+          </Field>
+        )}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Nouveau mot de passe" hint="8 caractères minimum.">
+            <input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />
+          </Field>
+          <Field label="Confirmer">
+            <input type="password" required minLength={8} maxLength={128} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          </Field>
+        </div>
+        {error && <Alert tone="error">{error}</Alert>}
+        {done && <Alert tone="info">{done}</Alert>}
+        <Button type="submit" disabled={busy}>
+          {busy ? "Un instant…" : hasPassword ? "Changer le mot de passe" : "Enregistrer le mot de passe"}
+        </Button>
+      </form>
+    </Card>
   );
 }
