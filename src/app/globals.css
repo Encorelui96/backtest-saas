@@ -68,6 +68,31 @@ textarea:focus {
   }
 }
 
+/* Price strip on the dashboard: scrolls forever, stops under the finger or the mouse. */
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker 40s linear infinite;
+}
+.ticker:hover .ticker-track,
+.ticker:active .ticker-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker {
+    overflow-x: auto;
+  }
+  .ticker-track {
+    animation: none;
+  }
+}
+
 .no-scrollbar {
   scrollbar-width: none;
 }
