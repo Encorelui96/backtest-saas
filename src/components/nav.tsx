@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/strategies/new", label: "Nouvelle stratégie", short: "Stratégie", icon: "M12 5v14M5 12h14" },
   { href: "/live", label: "Live", short: "Live", icon: "M3 17l5-6 4 4 8-9M14 6h6v6" },
   { href: "/apprendre", label: "Apprendre", short: "Apprendre", icon: "M4 5a2 2 0 012-2h13v16H6a2 2 0 00-2 2zM4 21V5M8 7h7M8 11h7" },
+  { href: "/tarifs", label: "Tarifs", short: "Tarifs", icon: "M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L3 13V3h10l7.6 7.6a2 2 0 010 2.8zM8 8h.01" },
   { href: "/compte", label: "Mon compte", short: "Compte", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" },
 ];
 
@@ -65,7 +66,7 @@ export function Nav() {
         </nav>
       </header>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-6">
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${active(path, l.href) ? "text-accent" : "text-muted"}`}>
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>

@@ -11,8 +11,10 @@ import { stopLabel, targetLabel } from "@/lib/strategy/describe";
 import { INTERVAL_MS, type CandleRow } from "@/lib/types";
 import { EquityChart, PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
 import { Help, Term, Tip, useBeginner } from "./learn";
+import { EXIT_LABELS } from "@/lib/engine/insights";
 import { PropFirmPanel } from "./prop-firm-panel";
 import { SharePanel } from "./share-panel";
+import { AnalysisPanel, RiskPanel } from "./trade-insights";
 import { Alert, Button, Card, Stat, Tabs } from "./ui";
 
 interface Stored {
@@ -26,20 +28,7 @@ interface Stored {
   share?: { id: string; featured: boolean } | null;
 }
 
-type Tab = "overview" | "trades" | "robustness" | "prop";
-
-const EXIT_LABELS: Record<Trade["exitReason"], string> = {
-  stop: "Stop",
-  target: "Objectif",
-  trailing: "Stop suiveur",
-  breakeven: "Point mort",
-  signal: "Signal de sortie",
-  reverse: "Retournement",
-  time: "Heure de fin",
-  max_bars: "Durée max",
-  liquidation: "Liquidation",
-  end: "Fin du test",
-};
+type Tab = "overview" | "trades" | "analysis" | "robustness" | "risk" | "prop";
 
 /** "3 ans", "8 mois": the length of a test period, rounded. */
 function spanLabel(ms: number) {
@@ -135,7 +124,9 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
         tabs={[
           { id: "overview", label: "Vue d'ensemble" },
           { id: "trades", label: `Trades (${m.trades})` },
+          { id: "analysis", label: "Analyse" },
           { id: "robustness", label: "Robustesse" },
+          { id: "risk", label: "Risque" },
           { id: "prop", label: "Challenge prop firm" },
         ]}
       />
@@ -151,7 +142,9 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
           }}
         />
       )}
+      {tab === "analysis" && <AnalysisPanel trades={report.trades} strategy={strategy} period={report.period} />}
       {tab === "robustness" && <Robustness report={report} hasR={hasR} />}
+      {tab === "risk" && <RiskPanel trades={report.trades} strategy={strategy} />}
       {tab === "prop" && <PropFirmPanel trades={report.trades} strategy={strategy} />}
     </div>
   );
