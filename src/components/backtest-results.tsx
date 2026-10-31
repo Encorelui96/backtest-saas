@@ -12,6 +12,7 @@ import { INTERVAL_MS, type CandleRow } from "@/lib/types";
 import { EquityChart, PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
 import { Help, Term, Tip, useBeginner } from "./learn";
 import { PropFirmPanel } from "./prop-firm-panel";
+import { SharePanel } from "./share-panel";
 import { Alert, Button, Card, Stat, Tabs } from "./ui";
 
 interface Stored {
@@ -21,6 +22,8 @@ interface Stored {
   config: BacktestConfig;
   report: BacktestReport;
   createdAt: number;
+  /** The owner's public link, if any (absent from shared views). */
+  share?: { id: string; featured: boolean } | null;
 }
 
 type Tab = "overview" | "trades" | "robustness" | "prop";
@@ -38,7 +41,15 @@ const EXIT_LABELS: Record<Trade["exitReason"], string> = {
   end: "Fin du test",
 };
 
-export function BacktestResults({ id }: { id: string }) {
+/** "3 ans", "8 mois": the length of a test period, rounded. */
+function spanLabel(ms: number) {
+  const years = Math.round(ms / (365.25 * 86_400_000));
+  if (years >= 1) return `${years} an${years > 1 ? "s" : ""}`;
+  return `${Math.max(1, Math.round(ms / (30.44 * 86_400_000)))} mois`;
+}
+
+/** `shared`: `id` is a public link id, the report is read-only and anyone can open it. */
+export function BacktestResults({ id, shared = false }: { id: string; shared?: boolean }) {
   const [data, setData] = useState<Stored | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
@@ -46,8 +57,8 @@ export function BacktestResults({ id }: { id: string }) {
   const beginner = useBeginner();
 
   useEffect(() => {
-    api<Stored>(`/api/backtests/${id}`).then(setData).catch((e) => setError(e.message));
-  }, [id]);
+    api<Stored>(shared ? `/api/r/${id}` : `/api/backtests/${id}`).then(setData).catch((e) => setError(e.message));
+  }, [id, shared]);
 
   if (error) return <Alert tone="error">{error}</Alert>;
   if (!data) return <p className="text-muted">Chargement…</p>;
@@ -57,6 +68,16 @@ export function BacktestResults({ id }: { id: string }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {shared && (
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+          <span>
+            Rapport partagé : stratégie testée sur {spanLabel(report.period.to - report.period.from)} de cours réels avec <span className="font-semibold">Backtest Lab</span>.
+          </span>
+          <Link href="/connexion?mode=signup" className="rounded-md bg-accent px-3 py-1.5 font-medium text-white hover:brightness-110">
+            Teste ta propre idée gratuitement
+          </Link>
+        </div>
+      )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{strategy.name}</h1>
@@ -64,18 +85,21 @@ export function BacktestResults({ id }: { id: string }) {
             {strategy.symbol} · {strategy.interval} · {date(report.period.from, false)} → {date(report.period.to, false)} · capital {money(config.initialCapital)} · frais {config.feePercent} % / côté
           </p>
         </div>
-        <div className="flex gap-2">
-          {data.strategyId && (
-            <Link href={`/strategies/${data.strategyId}`}>
-              <Button variant="ghost">Modifier et relancer</Button>
-            </Link>
-          )}
-          {data.strategyId && (
-            <Link href={`/live?strategy=${data.strategyId}`}>
-              <Button variant="ghost">Suivre en direct</Button>
-            </Link>
-          )}
-        </div>
+        {!shared && (
+          <div className="flex flex-wrap gap-2">
+            {data.strategyId && (
+              <Link href={`/strategies/${data.strategyId}`}>
+                <Button variant="ghost">Modifier et relancer</Button>
+              </Link>
+            )}
+            {data.strategyId && (
+              <Link href={`/live?strategy=${data.strategyId}`}>
+                <Button variant="ghost">Suivre en direct</Button>
+              </Link>
+            )}
+            <SharePanel backtestId={id} initial={data.share ?? null} />
+          </div>
+        )}
       </div>
 
       {report.warnings.map((w, i) => (
@@ -116,7 +140,7 @@ export function BacktestResults({ id }: { id: string }) {
         ]}
       />
 
-      {tab === "overview" && <Overview data={data} selected={selected} onSelect={setSelected} />}
+      {tab === "overview" && <Overview data={data} selected={selected} onSelect={setSelected} shared={shared} />}
       {tab === "trades" && (
         <TradesTable
           trades={report.trades}
@@ -164,7 +188,8 @@ function GuidedReading({ data, onOpenRobustness }: { data: Stored; onOpenRobustn
   );
 }
 
-function Overview({ data, selected, onSelect }: { data: Stored; selected: number | null; onSelect: (i: number | null) => void }) {
+/** `shared`: no price chart, the market data providers' licences only cover the account holders' own use. */
+function Overview({ data, selected, onSelect, shared }: { data: Stored; selected: number | null; onSelect: (i: number | null) => void; shared: boolean }) {
   const { report, strategy } = data;
   const m = report.metrics;
   const [candles, setCandles] = useState<CandleRow[]>([]);
@@ -176,6 +201,7 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
 
   // Load the candles around the selected trade, or the end of the test period.
   useEffect(() => {
+    if (shared) return;
     const t = selected !== null ? report.trades[selected] : null;
     const to = t ? Math.min(report.period.to, t.exitTime + 80 * ms) : report.period.to;
     const from = t ? t.entryTime - 150 * ms : Math.max(report.period.from, to - 1500 * ms);
@@ -186,7 +212,7 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
       })
       .catch(() => setCandles([]))
       .finally(() => setLoadedFor(selected));
-  }, [selected, report, strategy, ms]);
+  }, [selected, report, strategy, ms, shared]);
 
   const markers = useMemo<ChartMarker[]>(() => {
     if (!candles.length) return [];
@@ -227,34 +253,36 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
         >
           <EquityChart points={report.equity} />
         </Card>
-        <Card
-          title={sel ? `Trade du ${date(sel.entryTime)} · ${sel.side === "long" ? "achat" : "vente"} · ${sel.r !== null ? r(sel.r) : pct(sel.pnlPercent)}` : "Graphique des trades"}
-          actions={
-            <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs">
-              {loading && <span className="text-muted">chargement…</span>}
-              {selected !== null && (
-                <>
-                  <button disabled={selected === 0} onClick={() => onSelect(selected - 1)} className="text-muted hover:text-fg disabled:opacity-30">
-                    ← précédent
+        {!shared && (
+          <Card
+            title={sel ? `Trade du ${date(sel.entryTime)} · ${sel.side === "long" ? "achat" : "vente"} · ${sel.r !== null ? r(sel.r) : pct(sel.pnlPercent)}` : "Graphique des trades"}
+            actions={
+              <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs">
+                {loading && <span className="text-muted">chargement…</span>}
+                {selected !== null && (
+                  <>
+                    <button disabled={selected === 0} onClick={() => onSelect(selected - 1)} className="text-muted hover:text-fg disabled:opacity-30">
+                      ← précédent
+                    </button>
+                    <button disabled={selected >= report.trades.length - 1} onClick={() => onSelect(selected + 1)} className="text-muted hover:text-fg disabled:opacity-30">
+                      suivant →
+                    </button>
+                    <button onClick={() => onSelect(null)} className="text-muted hover:text-fg">
+                      fin du test
+                    </button>
+                  </>
+                )}
+                {selected === null && report.trades.length > 0 && (
+                  <button onClick={() => onSelect(0)} className="text-accent hover:underline">
+                    voir le premier trade
                   </button>
-                  <button disabled={selected >= report.trades.length - 1} onClick={() => onSelect(selected + 1)} className="text-muted hover:text-fg disabled:opacity-30">
-                    suivant →
-                  </button>
-                  <button onClick={() => onSelect(null)} className="text-muted hover:text-fg">
-                    fin du test
-                  </button>
-                </>
-              )}
-              {selected === null && report.trades.length > 0 && (
-                <button onClick={() => onSelect(0)} className="text-accent hover:underline">
-                  voir le premier trade
-                </button>
-              )}
-            </div>
-          }
-        >
-          <PriceChart ref={chart} candles={candles} markers={markers} priceLines={priceLines} />
-        </Card>
+                )}
+              </div>
+            }
+          >
+            <PriceChart ref={chart} candles={candles} markers={markers} priceLines={priceLines} />
+          </Card>
+        )}
         {!beginner && (
           <Card title="Rendement par mois (%)">
             <MonthlyGrid rows={report.byMonth} />

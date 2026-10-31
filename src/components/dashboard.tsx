@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
+import { welcomeDone } from "@/lib/client/preferences";
 import { date, num, pct, r, tone } from "@/lib/client/format";
 import type { Strategy } from "@/lib/strategy/schema";
 import type { BacktestSummary } from "@/lib/server/backtests";
@@ -12,6 +13,7 @@ import { CandleHero } from "./candle-hero";
 import { TickerTape } from "./ticker-tape";
 import { useBeginner } from "./learn";
 import { PmfSurvey } from "./pmf-survey";
+import { Welcome } from "./welcome";
 
 interface Me {
   usage: { plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number }; backtests: number; ai: number; resetsAt: string } | null;
@@ -98,6 +100,8 @@ export function Dashboard() {
   const [strategies, setStrategies] = useState<{ id: string; name: string; strategy: Strategy; updatedAt: number }[] | null>(null);
   const [backtests, setBacktests] = useState<BacktestRow[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
+  // The dashboard only renders in the browser (after the session check), so storage can be read here.
+  const [welcome, setWelcome] = useState(() => !welcomeDone());
 
   useEffect(() => {
     api<typeof strategies>("/api/strategies").then(setStrategies).catch(() => setStrategies([]));
@@ -130,7 +134,11 @@ export function Dashboard() {
       <TickerTape />
 
       {me?.usage && <QuotaBanner usage={me.usage} />}
-      {beginner && backtests !== null && <FirstSteps backtests={backtests} />}
+      {welcome && backtests !== null && backtests.length === 0 ? (
+        <Welcome onDone={() => setWelcome(false)} />
+      ) : (
+        beginner && backtests !== null && <FirstSteps backtests={backtests} />
+      )}
       {me && !me.surveyAnswered && backtests !== null && backtests.length >= 3 && <PmfSurvey />}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">

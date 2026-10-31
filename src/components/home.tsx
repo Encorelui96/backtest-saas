@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { CandleHero } from "./candle-hero";
 import { Dashboard } from "./dashboard";
@@ -11,6 +13,22 @@ const POINTS = [
   { title: "Robustesse en 4 contrôles", text: "Hasard ou vrai avantage ? Tenue dans le temps, réglages voisins, frais doublés." },
   { title: "Challenge prop firm", text: "Ta chance de passer un challenge selon ton risque par trade, comparée au simple hasard." },
 ];
+
+/** Visitors see a real report before signing up, when the admin has picked one as the example. */
+function ExampleLink() {
+  const [id, setId] = useState<string | null>(null);
+  useEffect(() => {
+    api<{ id: string | null }>("/api/example")
+      .then((r) => setId(r.id))
+      .catch(() => {});
+  }, []);
+  if (!id) return null;
+  return (
+    <Link href={`/r/${id}`} className="text-sm text-accent hover:underline">
+      Voir un exemple de rapport, sans créer de compte →
+    </Link>
+  );
+}
 
 /** The dashboard for signed-in users, a short presentation for visitors. */
 export function Home() {
@@ -44,6 +62,9 @@ export function Home() {
             </Link>
           </div>
           <p className="mt-3 text-xs text-muted">5 backtests par mois offerts, sans carte bancaire.</p>
+          <div className="mt-3">
+            <ExampleLink />
+          </div>
         </div>
       </section>
       <div className="grid gap-3 sm:grid-cols-2">
@@ -54,6 +75,16 @@ export function Home() {
           </div>
         ))}
       </div>
+      <p className="text-center text-sm text-muted">
+        Des questions ?{" "}
+        <Link href="/questions" className="text-accent hover:underline">
+          Ce que fait Backtest Lab, pour qui, à quel prix
+        </Link>{" "}
+        ·{" "}
+        <Link href="/tarifs" className="text-accent hover:underline">
+          Tarifs
+        </Link>
+      </p>
     </div>
   );
 }

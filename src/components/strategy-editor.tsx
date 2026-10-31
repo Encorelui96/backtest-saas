@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
+import { preferredMarket } from "@/lib/client/preferences";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
 import type { Template } from "@/lib/strategy/templates";
 import { INTERVALS, MAX_HISTORY_DAYS } from "@/lib/types";
@@ -58,10 +59,13 @@ export function StrategyEditor({ id }: { id?: string }) {
   const router = useRouter();
   const beginner = useBeginner();
   const [meta, setMeta] = useState<Meta | null>(null);
-  const [strategy, setStrategy] = useState<Strategy>(defaultStrategy);
-  // Plain spot buying is what most people mean by "buying crypto": start with its costs.
-  const [config, setConfig] = useState<BacktestConfig>(() => ({ ...withDefaultPeriod(defaultConfig(), defaultStrategy()), ...FEE_PRESETS[SPOT].config }));
-  const [fees, setFees] = useState<number | null>(SPOT);
+  // A new strategy starts on the market chosen in the welcome questions. The editor only
+  // renders in the browser (after the session check), so the choice can be read right away.
+  const [market] = useState(() => (id ? null : preferredMarket()) ?? defaultStrategy().symbol);
+  const [strategy, setStrategy] = useState<Strategy>(() => ({ ...defaultStrategy(), symbol: market }));
+  // Plain spot buying is what most people mean by "buying crypto": start with its costs; a CFD broker's otherwise.
+  const [fees, setFees] = useState<number | null>(isCrypto(market) ? SPOT : CFD);
+  const [config, setConfig] = useState<BacktestConfig>(() => ({ ...withDefaultPeriod(defaultConfig(), defaultStrategy()), ...FEE_PRESETS[isCrypto(market) ? SPOT : CFD].config }));
   const [text, setText] = useState("");
   const [savedId, setSavedId] = useState<string | undefined>(id);
   const [ai, setAi] = useState<AiResult | null>(null);
@@ -87,7 +91,7 @@ export function StrategyEditor({ id }: { id?: string }) {
     }
   }, [id]);
 
-  const set = <K extends keyof Strategy>(k: K, v: Strategy[K]) => setStrategy((s) => ({ ...s, [k]: v }));
+  const set =<K extends keyof Strategy>(k: K, v: Strategy[K]) => setStrategy((s) => ({ ...s, [k]: v }));
 
   const applyFees = (i: number) => {
     setFees(i);
@@ -182,9 +186,11 @@ export function StrategyEditor({ id }: { id?: string }) {
   const runLabel = job ? jobLabel(job) : "Backtest en cours…";
 
   const applyTemplate = (t: Template) => {
+    // With a market chosen in the welcome questions, a template brings its rules but keeps that market.
+    const s = preferredMarket() ? { ...t.strategy, symbol: strategy.symbol } : t.strategy;
     setText(t.prompt);
-    setStrategy(t.strategy);
-    setConfig((c) => withDefaultPeriod(c, t.strategy));
+    setStrategy(s);
+    setConfig((c) => withDefaultPeriod(c, s));
     setAi(null);
   };
 
