@@ -11,6 +11,8 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Octobre 2026",
     items: [
+      { title: "Onglet Analyse", text: "Tes trades regroupés par heure, jour, sens et sortie, avec les groupes qui perdent tout le long du test, et ce que le pire et le meilleur moment de chaque trade disent de ton stop et de tes sorties." },
+      { title: "Onglet Risque", text: "Tes trades rejoués à 0,5 %, 1 %, 2 %, 3 % et 5 % de risque par trade : baisse à prévoir, séries de pertes, critère de Kelly et poids des frais sur le taux de gagnants nécessaire." },
       { title: "Partage d'un rapport", text: "Un lien public vers un backtest, à coller dans Discord, X ou un message, avec un aperçu de ses résultats. Tu peux le retirer à tout moment." },
       { title: "Accueil personnalisé", text: "Deux questions à l'inscription règlent le mode Débutant ou Expert et le marché de ta première stratégie." },
       { title: "Questions fréquentes", text: "Ce que fait Backtest Lab, pour qui, à quel prix, et une comparaison honnête avec TradingView, un tableur ou le backtest à la main." },
