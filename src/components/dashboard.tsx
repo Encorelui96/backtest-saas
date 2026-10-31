@@ -8,6 +8,7 @@ import { date, num, pct, price, r, tone } from "@/lib/client/format";
 import type { Strategy } from "@/lib/strategy/schema";
 import type { BacktestSummary } from "@/lib/server/backtests";
 import { Button, Card } from "./ui";
+import { CandleHero } from "./candle-hero";
 
 const WS_BASE = process.env.NEXT_PUBLIC_BINANCE_WS_URL ?? "wss://data-stream.binance.vision";
 const WATCH = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
@@ -53,6 +54,20 @@ export function Dashboard() {
 
   return (
     <div className="flex flex-col gap-5">
+      <section className="relative -mx-3 h-40 overflow-hidden border-y border-line bg-panel/40 sm:mx-0 sm:h-44 sm:rounded-xl sm:border">
+        <CandleHero className="absolute inset-0" density={1.4} />
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-bg/95 via-bg/70 to-transparent" />
+        <div className="relative flex h-full flex-col justify-center gap-2 px-4 sm:px-6">
+          <h1 className="text-xl font-semibold sm:text-2xl">Une idée de stratégie ?</h1>
+          <p className="max-w-sm text-sm text-fg/75">Teste-la sur des années de cours avant d&apos;y mettre un euro.</p>
+          <div>
+            <Link href="/strategies/new" className="inline-block rounded-md bg-accent px-4 py-2 text-sm font-medium text-white shadow-lg shadow-accent/30 hover:brightness-110">
+              Nouveau backtest
+            </Link>
+          </div>
+        </div>
+      </section>
+
       <div className="no-scrollbar -mx-3 flex gap-2 overflow-x-auto px-3 md:mx-0 md:grid md:grid-cols-5 md:px-0">
         {WATCH.map((s) => (
           <Link key={s} href={`/live`} className="min-w-36 shrink-0 rounded-lg border border-line bg-panel px-3 py-2 hover:border-accent">

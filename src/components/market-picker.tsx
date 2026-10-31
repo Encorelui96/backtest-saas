@@ -31,8 +31,7 @@ const CRYPTO: { symbol: string; label: string }[] = [
   { symbol: "LTCUSDT", label: "Litecoin" },
 ];
 
-// NAS100 itself needs a paid data plan: the picker offers QQQ, which tracks it.
-const OTHERS = MARKETS.filter((m) => m.symbol !== "NAS100");
+const OTHERS = MARKETS;
 
 function familyOf(symbol: string): Family {
   return market(symbol)?.kind ?? "crypto";
@@ -143,7 +142,11 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
           )}
         </div>
       )}
-      {family === "index" && <p className="text-[11px] text-muted">QQQ suit le Nasdaq 100 et ne cote que pendant la bourse américaine (15h30-22h à Paris).</p>}
+      {family === "index" && (
+        <p className="text-[11px] text-muted">
+          NAS100 : le future Nasdaq (vers 28 000), presque 24h/24 en semaine. QQQ : le fonds qui suit le Nasdaq, coté seulement de 15h30 à 22h à Paris.
+        </p>
+      )}
       {family !== "crypto" && family !== "index" && <p className="text-[11px] text-muted">Fermé du vendredi soir au dimanche soir.</p>}
     </div>
   );
