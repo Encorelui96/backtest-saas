@@ -44,6 +44,9 @@ export const auth = betterAuth({
     : {},
   account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
   session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },
+  // Behind Render's proxies X-Forwarded-For holds several addresses, which better-auth won't guess from:
+  // read the single-value client IP headers first, so sign-in attempts are rate-limited per visitor, not all together.
+  advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "true-client-ip", "x-real-ip", "x-forwarded-for"] } },
   plugins: [magicLink({ sendMagicLink, expiresIn: 10 * 60 }), nextCookies()],
 });
 
