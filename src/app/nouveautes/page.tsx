@@ -11,6 +11,9 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Octobre 2026",
     items: [
+      { title: "Partage d'un rapport", text: "Un lien public vers un backtest, à coller dans Discord, X ou un message, avec un aperçu de ses résultats. Tu peux le retirer à tout moment." },
+      { title: "Accueil personnalisé", text: "Deux questions à l'inscription règlent le mode Débutant ou Expert et le marché de ta première stratégie." },
+      { title: "Questions fréquentes", text: "Ce que fait Backtest Lab, pour qui, à quel prix, et une comparaison honnête avec TradingView, un tableur ou le backtest à la main." },
       { title: "Page Tarifs", text: "Les offres Découverte, Trader et Pro, au mois ou à l'année avec 2 mois offerts, et un avertissement quand ton quota du mois approche." },
       { title: "Tes données", text: "Télécharge tout ce que Backtest Lab garde sur toi, ou supprime ton compte en deux clics, depuis « Mon compte »." },
       { title: "Connexion par mot de passe", text: "Crée ton compte avec ton e-mail et un mot de passe, sans attendre de lien par e-mail." },
