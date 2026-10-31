@@ -20,9 +20,12 @@ export function Home() {
     <div className="mx-auto flex max-w-3xl flex-col gap-8 py-6 sm:py-12">
       <div className="text-center">
         <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">
-          Teste ta stratégie de trading crypto <span className="text-accent">avant d&apos;y mettre ton argent</span>
+          Teste ta stratégie de trading <span className="text-accent">avant d&apos;y mettre ton argent</span>
         </h1>
-        <p className="mx-auto mt-3 max-w-xl text-muted">Scalp, day trading ou swing : écris tes règles en français, Backtest Lab les teste sur des années de cours Binance et te dit si le résultat tient la route.</p>
+        <p className="mx-auto mt-3 max-w-xl text-muted">
+          Scalp, day trading ou swing, sur les cryptos, le forex, l&apos;or et le Nasdaq : écris tes règles en français, Backtest Lab les teste sur des années de cours et te dit si le
+          résultat tient la route.
+        </p>
         <Link href="/connexion" className="mt-6 inline-block rounded-md bg-accent px-5 py-2.5 font-medium text-white hover:brightness-110">
           Commencer gratuitement
         </Link>

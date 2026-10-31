@@ -6,6 +6,7 @@ import { api } from "@/lib/client/api";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
 import type { Template } from "@/lib/strategy/templates";
 import { INTERVALS, MAX_HISTORY_DAYS } from "@/lib/types";
+import { isCrypto, market } from "@/lib/markets";
 import Link from "next/link";
 import { FieldHelp, Term, Tip } from "./learn";
 import { GroupsEditor } from "./rule-builder";
@@ -28,8 +29,12 @@ const FEE_PRESETS: { label: string; config: Partial<BacktestConfig> }[] = [
   { label: "Binance Spot (0,1 %)", config: { feePercent: 0.1, spreadPercent: 0.01, slippagePercent: 0.01, fundingPercentPer8h: 0 } },
   { label: "Binance Futures, ordres au marché (0,05 %)", config: { feePercent: 0.05, spreadPercent: 0.01, slippagePercent: 0.01, fundingPercentPer8h: 0.01 } },
   { label: "Binance Futures, ordres limites (0,02 %)", config: { feePercent: 0.02, spreadPercent: 0.01, slippagePercent: 0, fundingPercentPer8h: 0.01 } },
+  { label: "Forex, or, Nasdaq (CFD, spread serré)", config: { feePercent: 0.0035, spreadPercent: 0.01, slippagePercent: 0.005, fundingPercentPer8h: 0.002 } },
   { label: "Sans frais (irréaliste)", config: { feePercent: 0, spreadPercent: 0, slippagePercent: 0, fundingPercentPer8h: 0 } },
 ];
+
+/** One-click markets above the symbol field. */
+const QUICK_MARKETS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "NAS100"];
 
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
@@ -231,7 +236,23 @@ export function StrategyEditor({ id }: { id?: string }) {
             <Field label="Nom">
               <input value={strategy.name} onChange={(e) => set("name", e.target.value)} />
             </Field>
-            <Field label={<Term id="symbole">Symbole (Binance)</Term>} help={<FieldHelp>BTCUSDT = bitcoin en dollars.</FieldHelp>}>
+            <div className="col-span-2 flex flex-wrap items-center gap-1.5 md:col-span-4">
+              <span className="text-xs text-muted">Marchés :</span>
+              {QUICK_MARKETS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => set("symbol", s)}
+                  title={market(s)?.label}
+                  className={`rounded-full border px-2.5 py-0.5 text-xs ${strategy.symbol === s ? "border-accent text-fg" : "border-line text-muted hover:border-accent hover:text-fg"}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            <Field
+              label={<Term id="symbole">Marché</Term>}
+              help={<FieldHelp>{market(strategy.symbol) ? `${market(strategy.symbol)!.label} : fermé le week-end.` : "BTCUSDT = bitcoin en dollars."}</FieldHelp>}
+            >
               <input list="symbols" value={strategy.symbol} onChange={(e) => set("symbol", e.target.value.toUpperCase())} />
               <datalist id="symbols">
                 {symbols.map((s) => (
@@ -239,7 +260,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 ))}
               </datalist>
               {symbolsFor === strategy.symbol && strategy.symbol.length >= 5 && !symbols.includes(strategy.symbol) && (
-                <span className="text-[11px] text-warn">Symbole introuvable sur Binance{symbols[0] ? ` : ${symbols[0]} ?` : "."}</span>
+                <span className="text-[11px] text-warn">Marché introuvable{symbols[0] ? ` : ${symbols[0]} ?` : "."}</span>
               )}
             </Field>
             <Field label={<Term id="unite-de-temps">Unité de temps</Term>} help={<FieldHelp>Durée d&apos;une bougie. Débute en 4h ou 1d.</FieldHelp>}>
@@ -426,7 +447,10 @@ export function StrategyEditor({ id }: { id?: string }) {
             <Field label={<Term id="capital">Capital de départ (USD)</Term>} help={<FieldHelp>Argent fictif : rien n&apos;est réellement investi.</FieldHelp>}>
               <input type="number" value={config.initialCapital} onChange={(e) => setConfig({ ...config, initialCapital: Number(e.target.value) })} />
             </Field>
-            <Field label={<Term id="frais">Frais</Term>} help={<FieldHelp>Choisis « Binance Spot » si tu achètes sur Binance sans levier.</FieldHelp>}>
+            <Field
+              label={<Term id="frais">Frais</Term>}
+              help={<FieldHelp>{isCrypto(strategy.symbol) ? "Choisis « Binance Spot » si tu achètes sur Binance sans levier." : "Choisis « Forex, or, Nasdaq » pour un courtier CFD."}</FieldHelp>}
+            >
               <select
                 onChange={(e) => {
                   const p = FEE_PRESETS[Number(e.target.value)];

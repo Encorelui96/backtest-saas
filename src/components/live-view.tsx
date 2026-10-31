@@ -7,6 +7,7 @@ import { date, num, pct, price, r, tone } from "@/lib/client/format";
 import type { Trade } from "@/lib/engine/backtest";
 import type { Strategy } from "@/lib/strategy/schema";
 import { INTERVALS, INTERVAL_MS, type CandleRow, type Interval } from "@/lib/types";
+import { isCrypto } from "@/lib/markets";
 import { PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
 import { Alert, Card, Field } from "./ui";
 
@@ -80,8 +81,18 @@ export function LiveView() {
     refresh();
   }, [refresh, strategyId, strategies.length]);
 
+  const crypto = isCrypto(sym);
+
+  // Forex, gold and the Nasdaq have no stream the browser can open: poll the server every minute.
+  useEffect(() => {
+    if (crypto) return;
+    const timer = setInterval(refresh, 60_000);
+    return () => clearInterval(timer);
+  }, [crypto, refresh]);
+
   // Live candle stream; a closed candle triggers a re-evaluation of the strategy.
   useEffect(() => {
+    if (!crypto) return;
     const ws = new WebSocket(`${WS_BASE}/ws/${sym.toLowerCase()}@kline_${ivl}`);
     ws.onopen = () => setConnected(true);
     ws.onclose = () => setConnected(false);
@@ -94,7 +105,7 @@ export function LiveView() {
       if (k.x) setTimeout(refresh, 1500);
     };
     return () => ws.close();
-  }, [sym, ivl, refresh]);
+  }, [crypto, sym, ivl, refresh]);
 
   const candles = useMemo(() => (data ? data.candles : plain), [data, plain]);
   const markers = useMemo<ChartMarker[]>(() => {
@@ -113,9 +124,11 @@ export function LiveView() {
     ];
   }, [data]);
 
+  // Without a stream, the latest price is the last closed candle.
+  const lastBar = crypto ? last : (candles.at(-1) ?? null);
   const open = data?.openTrade ?? null;
-  const unrealized = open && last ? ((open.side === "long" ? 1 : -1) * (last.c - open.entryPrice)) / open.entryPrice * 100 : null;
-  const change = last && candles.length ? ((last.c - candles[0].o) / candles[0].o) * 100 : null;
+  const unrealized = open && lastBar ? ((open.side === "long" ? 1 : -1) * (lastBar.c - open.entryPrice)) / open.entryPrice * 100 : null;
+  const change = lastBar && candles.length ? ((lastBar.c - candles[0].o) / candles[0].o) * 100 : null;
 
   return (
     <div className="flex flex-col gap-4">
@@ -145,9 +158,16 @@ export function LiveView() {
           </>
         )}
         <div className="ml-auto text-right">
-          <div className="num text-2xl font-semibold">{last ? price(last.c) : "—"}</div>
+          <div className="num text-2xl font-semibold">{lastBar ? price(lastBar.c) : "—"}</div>
           <div className="text-xs text-muted">
-            {sym} · {ivl} · <span className={connected ? "text-up" : "text-down"}>{connected ? "● en direct" : "● déconnecté"}</span>
+            {sym} · {ivl} ·{" "}
+            {crypto ? (
+              <span className={connected ? "text-up" : "text-down"}>{connected ? "● en direct" : "● déconnecté"}</span>
+            ) : (
+              <span className="text-warn" title="Forex, or et Nasdaq : actualisé chaque minute, à la clôture des bougies.">
+                ● chaque minute{lastBar ? ` (dernière bougie : ${date(lastBar.t)})` : ""}
+              </span>
+            )}
             {change !== null && <span className={`ml-2 ${tone(change)}`}>{pct(change, 2)} sur l&apos;écran</span>}
           </div>
         </div>
