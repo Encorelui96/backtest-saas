@@ -31,6 +31,20 @@ export function market(symbol: string): Market | undefined {
   return BY_SYMBOL.get(symbol.toUpperCase());
 }
 
+const NEW_YORK = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hourCycle: "h23" });
+
+/**
+ * Forex, gold and the Nasdaq stop from Friday 17:00 to Sunday 17:00 New York
+ * time. Twelve Data still sends bars then, with made-up wicks and no volume:
+ * a backtest must never see them.
+ */
+export function isWeekendClose(t: number) {
+  const parts = NEW_YORK.formatToParts(new Date(t));
+  const day = parts.find((p) => p.type === "weekday")!.value;
+  const hour = Number(parts.find((p) => p.type === "hour")!.value);
+  return day === "Sat" || (day === "Fri" && hour >= 17) || (day === "Sun" && hour < 17);
+}
+
 /** Crypto pairs trade around the clock on Binance, with a free live stream. */
 export function isCrypto(symbol: string) {
   return !BY_SYMBOL.has(symbol.toUpperCase());
