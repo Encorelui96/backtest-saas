@@ -1,14 +1,16 @@
 import { connection } from "next/server";
 import { deleteBacktest, getBacktest } from "@/lib/server/backtests";
 import { requireUser } from "@/lib/server/auth";
+import { shareOf } from "@/lib/server/shares";
 import { handle } from "@/lib/server/http";
 
 export async function GET(req: Request, ctx: RouteContext<"/api/backtests/[id]">) {
   await connection();
   return handle(async () => {
     const user = await requireUser(req.headers);
-    const b = await getBacktest(user.id, (await ctx.params).id);
-    return b ? Response.json(b) : Response.json({ error: "Backtest introuvable" }, { status: 404 });
+    const id = (await ctx.params).id;
+    const [b, share] = await Promise.all([getBacktest(user.id, id), shareOf(user.id, id)]);
+    return b ? Response.json({ ...b, share }) : Response.json({ error: "Backtest introuvable" }, { status: 404 });
   });
 }
 
