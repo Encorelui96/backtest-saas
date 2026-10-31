@@ -22,7 +22,9 @@ export const MARKETS: Market[] = [
   { symbol: "EURJPY", label: "Euro / Yen", kind: "forex", feed: "EUR/JPY" },
   { symbol: "GBPJPY", label: "Livre / Yen", kind: "forex", feed: "GBP/JPY" },
   { symbol: "XAUUSD", label: "Or (once en dollars)", kind: "metal", feed: "XAU/USD" },
+  // The index itself needs a paid Twelve Data plan; QQQ, the fund that tracks it, is in the free one.
   { symbol: "NAS100", label: "Nasdaq 100", kind: "index", feed: "NDX" },
+  { symbol: "QQQ", label: "Nasdaq 100 via QQQ (heures de bourse US : 15h30-22h à Paris)", kind: "index", feed: "QQQ" },
 ];
 
 const BY_SYMBOL = new Map(MARKETS.map((m) => [m.symbol, m]));
