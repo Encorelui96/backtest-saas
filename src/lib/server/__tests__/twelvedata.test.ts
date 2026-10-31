@@ -59,6 +59,39 @@ describe("fetchTwelveData", () => {
     expect(calls.every((u) => u.searchParams.get("symbol") === "XAU/USD")).toBe(true);
   });
 
+  it("drops the weekend filler bars from Friday 17:00 New York", async () => {
+    const fri = Date.UTC(2026, 9, 30, 19); // Friday 30 Oct 2026, 15:00 in New York
+    reply = (u) => {
+      const from = Date.parse(u.searchParams.get("start_date")!.replace(" ", "T") + "Z");
+      const values = [];
+      for (let t = from; t < from + 6 * H; t += H) values.push({ datetime: utc(t), open: "1", high: "1.01", low: "0.99", close: "1" });
+      return { status: "ok", values };
+    };
+    const rows = await fetchTwelveData(market("EURUSD")!, "1h", fri, fri + 5 * H);
+    // 19:00 and 20:00 UTC are 15:00 and 16:00 in New York; 21:00 UTC is 17:00, the weekly close.
+    expect(rows.map((r) => new Date(r.t).getUTCHours())).toEqual([19, 20]);
+  });
+
+  it("builds daily bars from clean hourly bars", async () => {
+    const thu = Date.UTC(2026, 9, 29);
+    reply = (u) => {
+      const from = Date.parse(u.searchParams.get("start_date")!.replace(" ", "T") + "Z");
+      const to = Date.parse(u.searchParams.get("end_date")!.replace(" ", "T") + "Z");
+      expect(u.searchParams.get("interval")).toBe("1h");
+      const values = [];
+      for (let t = from; t <= to; t += H) {
+        const filler = t >= Date.UTC(2026, 9, 30, 21);
+        values.push({ datetime: utc(t), open: "1", high: filler ? "1.5" : "1.01", low: filler ? "0.5" : "0.99", close: "1" });
+      }
+      return { status: "ok", values };
+    };
+    const days = await fetchTwelveData(market("EURUSD")!, "1d", thu, thu + 24 * H);
+    expect(days.map((d) => [new Date(d.t).getUTCDate(), d.h, d.l])).toEqual([
+      [29, 1.01, 0.99],
+      [30, 1.01, 0.99], // Friday: the filler after 21:00 UTC is not in the wicks
+    ]);
+  });
+
   it("returns nothing for a span without data (weekend)", async () => {
     reply = () => ({ status: "error", code: 400, message: "No data is available on the specified dates. Try setting different start/end dates." });
     expect(await fetchTwelveData(market("EURUSD")!, "1h", T0 - 48 * H, T0 - 24 * H)).toEqual([]);
