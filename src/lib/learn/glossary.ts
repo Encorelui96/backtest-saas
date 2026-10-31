@@ -45,7 +45,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "Forex, or et Nasdaq",
     category: "bases",
     short: "En plus des cryptos : les grandes paires de devises (EURUSD…), l'or (XAUUSD) et l'indice Nasdaq 100 (NAS100). Ces marchés sont fermés le week-end.",
-    long: "On les trade surtout en CFD chez un courtier : pas de frais de plateforme mais un spread, et un petit coût de financement si la position reste ouverte la nuit. Choisis le profil de frais « Forex, or, Nasdaq ». Le suivi en direct de ces marchés est actualisé chaque minute.",
+    long: "On les trade surtout en CFD chez un courtier : pas de frais de plateforme mais un spread, et un petit coût de financement si la position reste ouverte la nuit. Choisis le profil de frais « Forex, or, Nasdaq ». Le suivi en direct de ces marchés est actualisé toutes les 5 minutes.",
     example: "EURUSD à 1,08 = 1 euro vaut 1,08 dollar. XAUUSD à 2 400 = une once d'or vaut 2 400 dollars.",
   },
   {
