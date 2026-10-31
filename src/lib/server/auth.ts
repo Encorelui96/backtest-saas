@@ -6,10 +6,12 @@ import { Resend } from "resend";
 import { pool } from "./db";
 
 /**
- * Accounts: passwordless sign-in by e-mail link, plus Google when its keys are
- * set. Without RESEND_API_KEY the link is printed in the server logs, which is
- * enough for local development.
+ * Accounts: e-mail and password, plus Google when its keys are set. The e-mail
+ * link sign-in stays available once RESEND_API_KEY can actually deliver it;
+ * without it the link only reaches the server logs, so the page hides it.
  */
+
+export const emailLinksEnabled = Boolean(process.env.RESEND_API_KEY);
 
 async function sendMagicLink({ email, url }: { email: string; url: string }) {
   const key = process.env.RESEND_API_KEY;
@@ -35,6 +37,8 @@ export const auth = betterAuth({
   // Render gives the public address in RENDER_EXTERNAL_URL; BETTER_AUTH_URL wins when you use your own domain.
   baseURL: process.env.BETTER_AUTH_URL ?? process.env.RENDER_EXTERNAL_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET,
+  // No e-mail is sent, so addresses are not verified: an address can only be registered once, by whoever signs up first.
+  emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128, autoSignIn: true },
   socialProviders: googleEnabled
     ? { google: { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET!, prompt: "select_account" } }
     : {},
@@ -59,6 +63,12 @@ export async function currentUser(headers: Headers): Promise<SessionUser | null>
   const session = await auth.api.getSession({ headers });
   if (!session) return null;
   return { id: session.user.id, email: session.user.email, name: session.user.name };
+}
+
+/** Whether the signed-in user can sign in with a password (accounts made with the e-mail link or Google have none). */
+export async function hasPassword(headers: Headers): Promise<boolean> {
+  const accounts = await auth.api.listUserAccounts({ headers });
+  return accounts.some((a) => a.providerId === "credential");
 }
 
 /** The signed-in user, or an AuthError the API turns into a 401. */
