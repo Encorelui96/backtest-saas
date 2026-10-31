@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
 import type { Template } from "@/lib/strategy/templates";
 import { INTERVALS, MAX_HISTORY_DAYS } from "@/lib/types";
 import { isCrypto } from "@/lib/markets";
-import { FieldHelp, Help, Term, Tip, useBeginner } from "./learn";
+import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
+import { Help, useBeginner } from "./learn";
 import { MarketPicker } from "./market-picker";
 import { GroupsEditor } from "./rule-builder";
 import { Alert, Button, Card, Field } from "./ui";
@@ -59,9 +59,9 @@ export function StrategyEditor({ id }: { id?: string }) {
   const beginner = useBeginner();
   const [meta, setMeta] = useState<Meta | null>(null);
   const [strategy, setStrategy] = useState<Strategy>(defaultStrategy);
-  const [config, setConfig] = useState<BacktestConfig>(() => withDefaultPeriod(defaultConfig(), defaultStrategy()));
-  // defaultConfig() matches the Binance Futures market-order profile.
-  const [fees, setFees] = useState<number | null>(1);
+  // Plain spot buying is what most people mean by "buying crypto": start with its costs.
+  const [config, setConfig] = useState<BacktestConfig>(() => ({ ...withDefaultPeriod(defaultConfig(), defaultStrategy()), ...FEE_PRESETS[SPOT].config }));
+  const [fees, setFees] = useState<number | null>(SPOT);
   const [text, setText] = useState("");
   const [savedId, setSavedId] = useState<string | undefined>(id);
   const [ai, setAi] = useState<AiResult | null>(null);
@@ -69,6 +69,9 @@ export function StrategyEditor({ id }: { id?: string }) {
   const [job, setJob] = useState<JobState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Beginners see a summary of the rules and no idea box until they ask for them.
+  const [editRules, setEditRules] = useState(false);
+  const [showIdea, setShowIdea] = useState(false);
 
   useEffect(() => {
     api<Meta>("/api/meta").then(setMeta).catch((e) => setError(e.message));
@@ -190,23 +193,13 @@ export function StrategyEditor({ id }: { id?: string }) {
   return (
     <div className="grid gap-4 pb-24 md:pb-0 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="flex flex-col gap-4">
-        <Tip title="Ton premier backtest en 4 étapes">
-          <ol className="ml-4 list-decimal">
-            <li>Choisis un modèle (ou décris ton idée en français).</li>
-            <li>Choisis le marché et l&apos;unité de temps.</li>
-            <li>Garde un stop et 1 % de risque par trade.</li>
-            <li>Lance le backtest et lis la lecture guidée.</li>
-          </ol>
-          <p className="mt-1">
-            Touche un <span className="font-bold text-accent">?</span> pour savoir ce qu&apos;est une case et à quoi elle sert. Tout le vocabulaire est dans{" "}
-            <Link href="/apprendre" className="underline">
-              Apprendre
-            </Link>
-            .
+        {beginner && (
+          <p className="text-sm text-muted">
+            Choisis un modèle, un marché, puis lance le test. Un <span className="font-bold text-accent">?</span> explique chaque case.
           </p>
-        </Tip>
+        )}
 
-        <Card title={beginner ? "1. Choisis une idée de départ" : "1. Stratégie"}>
+        <Card title={beginner ? "1. Choisis un modèle" : "1. Stratégie"}>
           <div className="flex flex-col gap-3">
             {meta && (
               <Templates
@@ -216,8 +209,12 @@ export function StrategyEditor({ id }: { id?: string }) {
                 beginner={beginner}
               />
             )}
+            {beginner && !showIdea ? (
+              <button onClick={() => setShowIdea(true)} className="self-start text-sm text-accent hover:underline">
+                Ou décris ta propre idée en français →
+              </button>
+            ) : (
             <div className="flex flex-col gap-2">
-              {beginner && <span className="text-xs text-muted">… ou décris ta propre idée en français :</span>}
               <textarea
                 rows={beginner ? 3 : 4}
                 value={text}
@@ -232,11 +229,12 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {meta && !meta.aiEnabled && <span className="text-xs text-muted">IA indisponible : le constructeur ci-dessous marche sans.</span>}
               </div>
             </div>
+            )}
             {ai && <AiSummary ai={ai} />}
           </div>
         </Card>
 
-        <Card title={beginner ? "2. Marché et unité de temps" : "2. Marché"}>
+        <Card title={beginner ? "2. Choisis le marché" : "2. Marché"}>
           <div className="flex flex-col gap-4">
             <div>
               <div className="mb-1.5 flex items-center text-xs text-muted">
@@ -266,7 +264,8 @@ export function StrategyEditor({ id }: { id?: string }) {
               </div>
             </div>
 
-            <div className={`grid gap-3 ${beginner ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-2 md:grid-cols-4"}`}>
+            {!beginner && (
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <Field label="Sens" term="sens">
                 <select value={strategy.direction} onChange={(e) => set("direction", e.target.value as Strategy["direction"])}>
                   <option value="long">Achat seulement</option>
@@ -277,8 +276,6 @@ export function StrategyEditor({ id }: { id?: string }) {
               <Field label="Nom">
                 <input value={strategy.name} onChange={(e) => set("name", e.target.value)} />
               </Field>
-              {!beginner && (
-                <>
                   <Field label="Style" term="style">
                     <select value={strategy.style} onChange={(e) => set("style", e.target.value as Strategy["style"])}>
                       <option value="scalp">Scalp</option>
@@ -295,19 +292,21 @@ export function StrategyEditor({ id }: { id?: string }) {
                       ))}
                     </select>
                   </Field>
-                </>
-              )}
             </div>
+            )}
           </div>
         </Card>
 
-        <Card title="3. Règles d'entrée et de sortie">
+        <Card title={beginner ? "3. Les règles" : "3. Règles d'entrée et de sortie"}>
+          {beginner && !editRules ? (
+            <div className="flex flex-col gap-2">
+              <RulesSummary strategy={strategy} />
+              <button onClick={() => setEditRules(true)} className="self-start text-sm text-accent hover:underline">
+                Modifier les règles →
+              </button>
+            </div>
+          ) : (
           <div className="flex flex-col gap-5">
-            <Tip title="Lire une règle">
-              Chaque ligne est une <Term id="signal">condition</Term>, par exemple « RSI 14 &lt; 30 ». Les conditions reliées par <Term id="et-ou">ET</Term> doivent être vraies en même
-              temps ; un nouveau groupe (OU) est une autre façon d&apos;entrer. Le chiffre à côté d&apos;un indicateur est sa <Term id="periode">période</Term>. Touche le ? à côté
-              d&apos;un indicateur pour savoir ce qu&apos;il mesure.
-            </Tip>
             {strategy.direction !== "short" && (
               <RuleSection title="Quand acheter" color="text-up">
                 <GroupsEditor value={strategy.entryLong} onChange={(v) => set("entryLong", v)} emptyHint="Aucune règle d'achat." />
@@ -335,13 +334,11 @@ export function StrategyEditor({ id }: { id?: string }) {
               </p>
             )}
           </div>
+          )}
         </Card>
 
         <Card title={beginner ? "4. Limiter les pertes" : "4. Risque, sorties et horaires"}>
           <div className="flex flex-col gap-3">
-            <Tip title="La partie la plus importante">
-              Une bonne gestion du risque compte plus que les règles d&apos;entrée. Avec un stop et 1 % de risque par trade, tu sais à l&apos;avance combien chaque trade peut te coûter.
-            </Tip>
             <div className={`grid gap-3 ${beginner ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"}`}>
               <Field label="Stop" term="stop">
                 <select
@@ -385,7 +382,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                   />
                 </Field>
               )}
-              <Field label="Risque par trade (%)" term="risque-par-trade" help={<FieldHelp>1 % est un bon départ.</FieldHelp>}>
+              <Field label="Risque par trade (%)" term="risque-par-trade">
                 <input type="number" step="any" inputMode="decimal" value={strategy.riskPerTradePercent} onChange={(e) => set("riskPerTradePercent", Number(e.target.value))} />
               </Field>
               {!beginner && (
@@ -459,13 +456,12 @@ export function StrategyEditor({ id }: { id?: string }) {
                 </>
               )}
             </div>
-            {beginner && <p className="text-[11px] text-muted">Stop suiveur, point mort, horaires, levier… sont réglables en mode Expert.</p>}
           </div>
         </Card>
       </div>
 
       <div className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-        <Card title="5. Paramètres du test">
+        <Card title={beginner ? "5. Lance le test" : "5. Paramètres du test"}>
           <div className="flex flex-col gap-3">
             <div>
               <div className="mb-1.5 flex items-center text-xs text-muted">
@@ -488,31 +484,45 @@ export function StrategyEditor({ id }: { id?: string }) {
                 })}
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Field label="Du">
-                <input type="date" value={config.startDate} onChange={(e) => setConfig({ ...config, startDate: e.target.value })} />
-              </Field>
-              <Field label="Au">
-                <input type="date" value={config.endDate} onChange={(e) => setConfig({ ...config, endDate: e.target.value })} />
-              </Field>
-            </div>
-            {beginner && years < 2.5 && <p className="text-[11px] text-warn">Moins de 3 ans : le résultat dépend peut-être d&apos;un seul type de marché.</p>}
-            {!beginner && <p className="text-[11px] text-muted">Max {MAX_HISTORY_DAYS[strategy.interval]} jours en {strategy.interval}.</p>}
+            {beginner ? (
+              <p className="text-[11px] text-muted">
+                Du {new Date(config.startDate).toLocaleDateString("fr-FR")} au {new Date(config.endDate).toLocaleDateString("fr-FR")}
+              </p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="Du">
+                    <input type="date" value={config.startDate} onChange={(e) => setConfig({ ...config, startDate: e.target.value })} />
+                  </Field>
+                  <Field label="Au">
+                    <input type="date" value={config.endDate} onChange={(e) => setConfig({ ...config, endDate: e.target.value })} />
+                  </Field>
+                </div>
+                <p className="text-[11px] text-muted">Max {MAX_HISTORY_DAYS[strategy.interval]} jours en {strategy.interval}.</p>
+              </>
+            )}
             <Field label="Capital de départ (USD)" term="capital">
               <input type="number" inputMode="numeric" value={config.initialCapital} onChange={(e) => setConfig({ ...config, initialCapital: Number(e.target.value) })} />
             </Field>
-            <Field label="Frais" term="frais" help={beginner ? <FieldHelp>Choisis là où tu tradais en vrai.</FieldHelp> : undefined}>
-              <select value={fees ?? ""} onChange={(e) => e.target.value !== "" && applyFees(Number(e.target.value))}>
-                <option value="" disabled>
-                  Personnalisés
-                </option>
-                {FEE_PRESETS.map((p, i) => (
-                  <option key={p.label} value={i}>
-                    {p.label}
+            {beginner ? (
+              <div className="flex items-center text-xs text-muted">
+                Frais : <span className="ml-1 text-fg">{fees !== null ? FEE_PRESETS[fees].short : "personnalisés"}</span>
+                <Help id="frais" />
+              </div>
+            ) : (
+              <Field label="Frais" term="frais">
+                <select value={fees ?? ""} onChange={(e) => e.target.value !== "" && applyFees(Number(e.target.value))}>
+                  <option value="" disabled>
+                    Personnalisés
                   </option>
-                ))}
-              </select>
-            </Field>
+                  {FEE_PRESETS.map((p, i) => (
+                    <option key={p.label} value={i}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            )}
             {!beginner && (
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Frais / côté (%)" term="frais">
@@ -588,11 +598,35 @@ function Templates({ templates, current, onPick, beginner }: { templates: Templa
           >
             <div className="text-[11px] uppercase tracking-wide text-accent">{style}</div>
             <div className="mt-0.5 text-sm font-semibold leading-snug">{name ?? t.label}</div>
-            <div className="mt-1 line-clamp-3 text-xs text-muted">{t.prompt}</div>
+            <div className="mt-1 line-clamp-2 text-xs text-muted">{t.prompt}</div>
           </button>
         );
       })}
     </div>
+  );
+}
+
+/** The rules in one line per side, for beginners: "Achète quand : RSI 2 < 10 et Clôture > MM 200". */
+function RulesSummary({ strategy }: { strategy: Strategy }) {
+  const phrase = (groups: Strategy["entryLong"]) =>
+    groups
+      .filter((g) => g.conditions.length)
+      .map((g) => g.conditions.map((c) => `${operandLabel(c.left)} ${COMPARATOR_LABELS[c.op]} ${operandLabel(c.right)}`).join(" et "))
+      .join(", ou ");
+  const lines = [
+    strategy.direction !== "short" && { label: "Achète quand", text: phrase(strategy.entryLong), tone: "text-up" },
+    strategy.direction !== "long" && { label: "Vend à découvert quand", text: phrase(strategy.entryShort), tone: "text-down" },
+    strategy.direction !== "short" && phrase(strategy.exitLong) && { label: "Sort quand", text: phrase(strategy.exitLong), tone: "text-fg" },
+  ].filter(Boolean) as { label: string; text: string; tone: string }[];
+  return (
+    <ul className="flex flex-col gap-1 text-sm">
+      {lines.map((l) => (
+        <li key={l.label}>
+          <span className={`font-semibold ${l.tone}`}>{l.label} : </span>
+          {l.text || <span className="text-muted">aucune règle, choisis un modèle</span>}
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -679,7 +713,7 @@ function numOrNull(v: string) {
 }
 
 /** A useful default test length per interval: long for swing, shorter where data is heavy. */
-const DEFAULT_PERIOD_DAYS: Record<Strategy["interval"], number> = { "1m": 90, "5m": 365, "15m": 730, "1h": 1095, "4h": 1825, "1d": 2555 };
+const DEFAULT_PERIOD_DAYS: Record<Strategy["interval"], number> = { "1m": 90, "5m": 365, "15m": 730, "1h": 1095, "4h": 1825, "1d": 1825 };
 
 function withDefaultPeriod(c: BacktestConfig, s: Strategy): BacktestConfig {
   const end = Date.parse(c.endDate);

@@ -10,6 +10,7 @@ import type { BacktestSummary } from "@/lib/server/backtests";
 import { Button, Card } from "./ui";
 import { CandleHero } from "./candle-hero";
 import { TickerTape } from "./ticker-tape";
+import { useBeginner } from "./learn";
 
 interface BacktestRow {
   id: string;
@@ -23,8 +24,50 @@ interface BacktestRow {
   createdAt: number;
 }
 
+/** A one-word judgement of a backtest, for beginners who don't read profit factors. */
+function verdict(s: BacktestSummary) {
+  if (s.trades < 30) return { label: "Trop peu de trades", style: "border-line text-muted" };
+  if (s.totalReturnPercent <= 0) return { label: "Perdante", style: "border-down/40 text-down" };
+  if (s.profitFactor !== null && s.profitFactor >= 1.3) return { label: "Prometteuse", style: "border-up/40 text-up" };
+  return { label: "Fragile", style: "border-warn/40 text-warn" };
+}
+
+/** Beginner mode: three first steps that tick themselves as the user goes. */
+function FirstSteps({ backtests }: { backtests: BacktestRow[] }) {
+  const markets = new Set(backtests.map((b) => b.symbol)).size;
+  const steps = [
+    { done: backtests.length > 0, text: "Lancer ton premier backtest", href: "/strategies/new" },
+    { done: markets >= 2, text: "Tester la même idée sur un autre marché", href: "/strategies/new" },
+    { done: backtests.length >= 3, text: "Comparer au moins 3 tests", href: "/strategies/new" },
+  ];
+  if (steps.every((s) => s.done)) return null;
+  return (
+    <Card title="Tes premiers pas">
+      <ol className="flex flex-col gap-2">
+        {steps.map((s, i) => (
+          <li key={s.text}>
+            <Link href={s.href} className="flex items-center gap-3 text-sm">
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${s.done ? "bg-up text-white" : "border border-line text-muted"}`}
+                aria-hidden
+              >
+                {s.done ? "✓" : i + 1}
+              </span>
+              <span className={s.done ? "text-muted line-through" : "hover:text-accent"}>{s.text}</span>
+            </Link>
+          </li>
+        ))}
+      </ol>
+      <Link href="/apprendre" className="mt-3 inline-block text-xs text-accent hover:underline">
+        Les mots du trading expliqués simplement →
+      </Link>
+    </Card>
+  );
+}
+
 export function Dashboard() {
   const router = useRouter();
+  const beginner = useBeginner();
   const [strategies, setStrategies] = useState<{ id: string; name: string; strategy: Strategy; updatedAt: number }[] | null>(null);
   const [backtests, setBacktests] = useState<BacktestRow[] | null>(null);
 
@@ -57,8 +100,10 @@ export function Dashboard() {
 
       <TickerTape />
 
+      {beginner && backtests !== null && <FirstSteps backtests={backtests} />}
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Card title="Derniers backtests">
+        <Card title={beginner ? "Mes tests" : "Derniers backtests"}>
           {backtests === null ? (
             <p className="text-sm text-muted">Chargement…</p>
           ) : backtests.length === 0 ? (
@@ -66,6 +111,26 @@ export function Dashboard() {
               <p>Aucun backtest pour l&apos;instant. Décris une stratégie en français ou pars d&apos;un modèle.</p>
               <Button onClick={() => router.push("/strategies/new")}>Créer ma première stratégie</Button>
             </div>
+          ) : beginner ? (
+            <ul className="-my-1 flex flex-col divide-y divide-line/50">
+              {backtests.map((b) => {
+                const v = verdict(b.summary);
+                return (
+                  <li key={b.id}>
+                    <Link href={`/backtests/${b.id}`} className="flex items-center gap-3 py-3">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium">{b.name}</div>
+                        <div className="text-[11px] text-muted">
+                          {b.symbol} · {date(b.createdAt, false)}
+                        </div>
+                      </div>
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] ${v.style}`}>{v.label}</span>
+                      <span className={`num w-16 shrink-0 text-right text-sm font-semibold ${tone(b.summary.totalReturnPercent)}`}>{pct(b.summary.totalReturnPercent)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
           ) : (
             <>
             {/* Phones: one card per backtest. */}
@@ -97,6 +162,7 @@ export function Dashboard() {
                     <th className="text-right font-normal">Trades</th>
                     <th className="text-right font-normal">Rendement</th>
                     <th className="text-right font-normal">Baisse max</th>
+                    <th className="text-right font-normal">Gagnants</th>
                     <th className="text-right font-normal">PF</th>
                     <th className="text-right font-normal">Moy.</th>
                   </tr>
@@ -117,6 +183,7 @@ export function Dashboard() {
                       <td className="text-right">{b.summary.trades}</td>
                       <td className={`text-right ${tone(b.summary.totalReturnPercent)}`}>{pct(b.summary.totalReturnPercent)}</td>
                       <td className="text-right text-down">{pct(-b.summary.maxDrawdownPercent)}</td>
+                      <td className="text-right">{pct(b.summary.winRate, 0, false)}</td>
                       <td className="text-right">{num(b.summary.profitFactor)}</td>
                       <td className={`text-right ${tone(b.summary.avgR)}`}>{b.summary.avgR !== null ? r(b.summary.avgR) : "—"}</td>
                     </tr>

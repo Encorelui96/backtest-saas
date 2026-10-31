@@ -57,7 +57,8 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
-          <LevelToggle className="ml-auto" />
+          {/* Only where the level changes the page: the dashboard, the editor and the results. */}
+          {(path === "/" || path.startsWith("/strategies") || path.startsWith("/backtests")) && <LevelToggle className="ml-auto" />}
         </nav>
       </header>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
