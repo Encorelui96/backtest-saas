@@ -75,6 +75,16 @@ CREATE TABLE IF NOT EXISTS feedback (
   PRIMARY KEY (user_id, kind)
 );
 
+-- Public read-only links to a backtest report, one per backtest, removed with it.
+-- "featured" marks the one the home page shows as an example (an admin's own report).
+CREATE TABLE IF NOT EXISTS shares (
+  id text PRIMARY KEY,
+  backtest_id text NOT NULL UNIQUE REFERENCES backtests(id) ON DELETE CASCADE,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  featured boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
 -- "I want this offer" clicks, while online payment isn't open.
 CREATE TABLE IF NOT EXISTS plan_interest (
   user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
