@@ -4,13 +4,13 @@ import type { CandleRow, Candles, Interval } from "../types";
 import { INTERVAL_MS, emptyCandles } from "../types";
 import { query } from "./db";
 import { fetchKlines } from "./binance";
-import { fetchOanda } from "./oanda";
+import { fetchTwelveData } from "./twelvedata";
 import { market } from "../markets";
 
-/** Candles opening in [from, to] from the symbol's source: Binance, or OANDA for forex, gold and the Nasdaq. */
+/** Candles opening in [from, to] from the symbol's source: Binance, or Twelve Data for forex, gold and the Nasdaq. */
 export function fetchHistory(symbol: string, interval: Interval, from: number, to: number): Promise<CandleRow[]> {
   const m = market(symbol);
-  return m ? fetchOanda(m, interval, from, to) : fetchKlines(symbol, interval, from, to);
+  return m ? fetchTwelveData(m, interval, from, to) : fetchKlines(symbol, interval, from, to);
 }
 
 /** The latest `limit` candles (on Binance, with the one still forming), for the live view. */
@@ -19,9 +19,12 @@ export async function fetchRecent(symbol: string, interval: Interval, limit: num
   const end = Date.now();
   const m = market(symbol);
   if (!m) return fetchKlines(symbol, interval, end - limit * ms, end);
+  // Twelve Data's daily quota is small: go through the shared cache, which only asks for the bars since its last fill.
   // Closed on weekends (and the Nasdaq at night): look back far enough to still find `limit` bars.
-  const rows = await fetchOanda(m, interval, end - Math.ceil(limit * ms * 1.6) - 3 * 86_400_000, end);
-  return rows.slice(-limit);
+  const c = await getCandles(symbol, interval, end - Math.ceil(limit * ms * 1.6) - 3 * 86_400_000, end);
+  const rows: CandleRow[] = [];
+  for (let i = Math.max(0, c.t.length - limit); i < c.t.length; i++) rows.push({ t: c.t[i], o: c.o[i], h: c.h[i], l: c.l[i], c: c.c[i], v: c.v[i] });
+  return rows;
 }
 
 /**
@@ -69,6 +72,41 @@ function monthsBetween(from: number, to: number): string[] {
   return out;
 }
 
+function saveMonth(symbol: string, interval: Interval, month: string, rows: CandleRow[], filledTo: number, complete: boolean) {
+  return query(
+    `INSERT INTO candle_chunks (symbol, interval, month, bars, data, filled_to, complete) VALUES ($1, $2, $3, $4, $5, $6, $7)
+     ON CONFLICT (symbol, interval, month) DO UPDATE SET bars = $4, data = $5, filled_to = $6, complete = $7`,
+    [symbol, interval, month, rows.length, encode(rows), filledTo, complete],
+  );
+}
+
+/**
+ * Twelve Data allows only a few requests a minute, so one request per month is
+ * too slow: every month still missing is fetched in one run of 4500-bar
+ * requests, then stored month by month for monthRows to find.
+ */
+async function prefillMonths(symbol: string, interval: Interval, months: string[], needUntil: number) {
+  const ms = INTERVAL_MS[interval];
+  const lastClosed = Math.floor((Date.now() - ms) / ms) * ms;
+  const cached = await query<{ month: string; filled_to: string; complete: boolean }>(
+    "SELECT month, filled_to, complete FROM candle_chunks WHERE symbol = $1 AND interval = $2 AND month = ANY($3)",
+    [symbol, interval, months],
+  );
+  const state = new Map(cached.map((c) => [c.month, c]));
+  const missing = months.filter((key) => {
+    const c = state.get(key);
+    return !c || !(c.complete || Number(c.filled_to) >= Math.min(needUntil, monthBounds(key).end - ms, lastClosed));
+  });
+  if (missing.length < 2) return;
+  const fetchTo = Math.min(monthBounds(missing[missing.length - 1]).end - ms, lastClosed);
+  const rows = await fetchHistory(symbol, interval, monthBounds(missing[0]).start, fetchTo);
+  for (const key of missing) {
+    const { start, end } = monthBounds(key);
+    const part = rows.filter((r) => r.t >= start && r.t < end);
+    await saveMonth(symbol, interval, key, part, Math.min(end - ms, lastClosed), end - ms <= lastClosed);
+  }
+}
+
 const inflight = new Map<string, Promise<CandleRow[]>>();
 
 /** One month of closed candles, from the shared cache or the market's source. */
@@ -92,12 +130,7 @@ async function monthRows(symbol: string, interval: Interval, month: string, need
     const fetchTo = Math.min(end - ms, lastClosed);
     const fresh = fetchTo >= fetchFrom ? (await fetchHistory(symbol, interval, fetchFrom, fetchTo)).filter((r) => r.t <= lastClosed) : [];
     const rows = [...have, ...fresh];
-    const complete = end - ms <= lastClosed;
-    await query(
-      `INSERT INTO candle_chunks (symbol, interval, month, bars, data, filled_to, complete) VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (symbol, interval, month) DO UPDATE SET bars = $4, data = $5, filled_to = $6, complete = $7`,
-      [symbol, interval, month, rows.length, encode(rows), fetchTo, complete],
-    );
+    await saveMonth(symbol, interval, month, rows, fetchTo, end - ms <= lastClosed);
     return rows;
   })();
   inflight.set(key, job);
@@ -111,6 +144,7 @@ async function monthRows(symbol: string, interval: Interval, month: string, need
 /** Every closed candle in [from, to]. Months load a few at a time to stay gentle with the sources. */
 export async function getCandles(symbol: string, interval: Interval, from: number, to: number): Promise<Candles> {
   const months = monthsBetween(from, to);
+  if (market(symbol)) await prefillMonths(symbol, interval, months, to);
   const parts: CandleRow[][] = new Array(months.length);
   let next = 0;
   const worker = async () => {
