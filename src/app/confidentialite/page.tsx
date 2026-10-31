@@ -82,6 +82,10 @@ export default function ConfidentialitePage() {
           <li>
             <strong>Twelve Data et Databento</strong> ne reçoivent que des demandes de cours (marché, dates) envoyées par nos serveurs, sans aucune donnée te concernant.
           </li>
+          <li>
+            <strong>Les personnes à qui tu donnes un lien de partage</strong> voient les règles et les résultats de ce backtest, sans ton nom ni ton e-mail. Tu peux retirer
+            le lien à tout moment depuis le rapport ; il ne mène alors plus nulle part.
+          </li>
         </ul>
         <p>
           {HOST.name} et Anthropic sont des sociétés américaines. Les transferts éventuels hors de l&apos;Union européenne sont encadrés par les garanties prévues par le
