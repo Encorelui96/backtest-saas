@@ -5,7 +5,7 @@ import { INTERVAL_MS, emptyCandles } from "../types";
 import { query } from "./db";
 import { fetchKlines } from "./binance";
 import { fetchTwelveData } from "./twelvedata";
-import { market } from "../markets";
+import { isWeekendClose, market } from "../markets";
 
 /** Candles opening in [from, to] from the symbol's source: Binance, or Twelve Data for forex, gold and the Nasdaq. */
 export function fetchHistory(symbol: string, interval: Interval, from: number, to: number): Promise<CandleRow[]> {
@@ -154,7 +154,9 @@ export async function getCandles(symbol: string, interval: Interval, from: numbe
     }
   };
   await Promise.all(Array.from({ length: Math.min(3, months.length) }, worker));
-  const rows = parts.flat().filter((r) => r.t >= from && r.t <= to);
+  const closedWeekends = !!market(symbol);
+  // Also drops weekend filler stored before Twelve Data's fetch filtered it out.
+  const rows = parts.flat().filter((r) => r.t >= from && r.t <= to && !(closedWeekends && isWeekendClose(r.t)));
   const out = emptyCandles(rows.length);
   rows.forEach((r, i) => {
     out.t[i] = r.t;

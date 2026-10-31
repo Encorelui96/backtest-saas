@@ -1,7 +1,7 @@
 import "server-only";
 import type { CandleRow, Interval } from "../types";
 import { INTERVAL_MS } from "../types";
-import type { Market } from "../markets";
+import { isWeekendClose, type Market } from "../markets";
 import { UserError } from "./backtests";
 
 /**
@@ -14,7 +14,8 @@ const BASE = process.env.TWELVEDATA_API_URL ?? "https://api.twelvedata.com";
 export const TWELVEDATA_PAGE = 4500; // Twelve Data returns at most 5000 bars per request.
 const PER_MINUTE = Number(process.env.TWELVEDATA_PER_MINUTE ?? 8);
 
-const INTERVAL: Record<Interval, string> = { "1m": "1min", "5m": "5min", "15m": "15min", "1h": "1h", "4h": "4h", "1d": "1day" };
+// 4h and 1d are built from 1h bars (see fetchTwelveData).
+const INTERVAL: Record<Interval, string> = { "1m": "1min", "5m": "5min", "15m": "15min", "1h": "1h", "4h": "1h", "1d": "1h" };
 
 /** Start times of the calls made in the last minute, to stay under the per-minute cap. */
 const recent: number[] = [];
@@ -83,9 +84,32 @@ async function getPage(m: Market, interval: Interval, from: number, to: number, 
   throw new Error(`Twelve Data ${code}: ${message.slice(0, 200)}`);
 }
 
+/** Merges hourly candles into UTC-aligned buckets of `ms`. */
+function aggregate(rows: CandleRow[], ms: number): CandleRow[] {
+  const out: CandleRow[] = [];
+  for (const r of rows) {
+    const t = Math.floor(r.t / ms) * ms;
+    const last = out[out.length - 1];
+    if (last && last.t === t) {
+      last.h = Math.max(last.h, r.h);
+      last.l = Math.min(last.l, r.l);
+      last.c = r.c;
+      last.v += r.v;
+    } else out.push({ ...r, t });
+  }
+  return out;
+}
+
 /** Every closed candle opening in [from, to], in requests of up to 4500 bars. */
 export async function fetchTwelveData(m: Market, interval: Interval, from: number, to: number): Promise<CandleRow[]> {
   const ms = INTERVAL_MS[interval];
+  // A Friday 4h or daily bar from Twelve Data already holds the weekend filler in its wicks:
+  // build those from clean hourly bars instead.
+  if (ms > INTERVAL_MS["1h"]) {
+    const start = Math.floor(from / ms) * ms;
+    const hours = await fetchTwelveData(m, "1h", start, Math.min(to + ms - INTERVAL_MS["1h"], Date.now()));
+    return aggregate(hours, ms).filter((r) => r.t >= from && r.t <= to && r.t + ms <= Date.now());
+  }
   const now = Date.now();
   const end = Math.min(to, now);
   const rows: CandleRow[] = [];
@@ -93,6 +117,6 @@ export async function fetchTwelveData(m: Market, interval: Interval, from: numbe
   for (let s = from; s <= end; s += TWELVEDATA_PAGE * ms) {
     rows.push(...(await getPage(m, interval, s, Math.min(end, s + TWELVEDATA_PAGE * ms - 1))));
   }
-  // The last bar may still be forming.
-  return rows.filter((r) => r.t >= from && r.t <= to && r.t + ms <= now);
+  // The last bar may still be forming; weekend bars are filler.
+  return rows.filter((r) => r.t >= from && r.t <= to && r.t + ms <= now && !isWeekendClose(r.t));
 }
