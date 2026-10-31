@@ -1,5 +1,6 @@
 import { INTERVAL_MS, type Candles, type Interval } from "../types";
 import type { BacktestConfig, Strategy } from "../strategy/schema";
+import { isCrypto } from "../markets";
 import { runBacktest, type Trade } from "./backtest";
 import { SeriesContext } from "./evaluate";
 import { computeMetrics, downsampleEquity, periodBreakdown, type Metrics } from "./metrics";
@@ -69,7 +70,8 @@ export async function buildReport(
   if (config.feePercent === 0 && config.spreadPercent === 0 && config.slippagePercent === 0) warnings.push("Aucun frais : le résultat réel sera moins bon.");
   if (metrics.trades > 0 && metrics.losses === 0) warnings.push("Aucun trade perdant : c'est presque toujours le signe d'une erreur ou d'un échantillon trop court.");
   const gaps = countGaps(candles, startIndex, INTERVAL_MS[strategy.interval]);
-  if (gaps.missing > 0) {
+  // Forex, gold and indices close at night and on weekends: their holes are not outages.
+  if (gaps.missing > 0 && isCrypto(strategy.symbol)) {
     warnings.push(
       `${gaps.missing} bougie${gaps.missing > 1 ? "s" : ""} manquante${gaps.missing > 1 ? "s" : ""} dans les données (${gaps.holes} trou${gaps.holes > 1 ? "s" : ""}, souvent une panne de la plateforme) : les indicateurs enjambent ces trous.`,
     );
