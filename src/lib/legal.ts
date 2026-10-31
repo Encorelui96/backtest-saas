@@ -5,17 +5,17 @@
  */
 export const EDITOR = {
   /** First and last name, or company name. */
-  name: "",
-  /** e.g. "Entrepreneur individuel (micro-entreprise)" or "SAS au capital de 1 000 €". */
+  name: "Gabin Le Meur",
+  /** e.g. "Entrepreneur individuel (micro-entreprise)" or "SAS au capital de 1 000 €". Empty until the company exists. */
   status: "",
   /** SIREN or RCS number, once the business is registered. */
   siren: "",
   /** Postal address. */
-  address: "",
+  address: "3 allée des Patissiaux, 35510 Cesson-Sévigné",
   /** Contact address for users and for personal data requests. */
-  email: "",
+  email: "lemeurg35@gmail.com",
   /** Person responsible for the content (usually the same as name). */
-  director: "",
+  director: "Gabin Le Meur",
 };
 
 export const HOST = {
