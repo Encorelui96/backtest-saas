@@ -35,6 +35,9 @@ export function Nav() {
             <Link href="/apprendre" className={path.startsWith("/apprendre") ? "text-fg" : "text-muted hover:text-fg"}>
               Apprendre
             </Link>
+            <Link href="/tarifs" className={path.startsWith("/tarifs") ? "text-fg" : "text-muted hover:text-fg"}>
+              Tarifs
+            </Link>
             {!path.startsWith("/connexion") && (
               <Link href="/connexion" className="rounded-md bg-accent px-3 py-1.5 font-medium text-white">
                 Connexion

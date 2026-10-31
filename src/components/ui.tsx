@@ -37,7 +37,7 @@ export function Button({
   const styles = {
     primary: "bg-accent text-white hover:brightness-110 disabled:opacity-50",
     ghost: "border border-line text-fg hover:bg-panel-2 disabled:opacity-50",
-    danger: "border border-down/50 text-down hover:bg-down/10",
+    danger: "border border-down/50 text-down hover:bg-down/10 disabled:opacity-50",
   }[variant];
   return (
     <button {...props} className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${styles} ${className}`}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
@@ -168,7 +169,17 @@ export function SignIn() {
           </form>
         )}
       </Card>
-      <p className="text-center text-[11px] text-muted">En te connectant, tu acceptes que Backtest Lab soit un outil de simulation : aucun conseil en investissement.</p>
+      <p className="text-center text-[11px] text-muted">
+        En créant un compte, tu acceptes les{" "}
+        <Link href="/conditions" className="underline hover:text-fg">
+          conditions d&apos;utilisation
+        </Link>{" "}
+        et la{" "}
+        <Link href="/confidentialite" className="underline hover:text-fg">
+          politique de confidentialité
+        </Link>
+        . Backtest Lab est un outil de simulation : aucun conseil en investissement.
+      </p>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
@@ -9,6 +10,7 @@ import { Alert, Button, Card, Field } from "./ui";
 interface Me {
   user: { email: string; name: string } | null;
   hasPassword: boolean;
+  isAdmin: boolean;
   usage: {
     plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number; minInterval: string; alerts: number };
     backtests: number;
@@ -58,21 +60,113 @@ export function Account() {
           <p className="text-xs text-muted">
             Unité de temps minimale : {u.plan.minInterval} · alertes : {u.plan.alerts} · compteurs remis à zéro le {new Date(u.resetsAt).toLocaleDateString("fr-FR")}.
           </p>
-          {u.plan.id === "free" && <p className="text-sm">Les offres payantes (scalp en 1 minute, plus de tests, alertes Telegram) arrivent bientôt.</p>}
+          {u.plan.id === "free" && (
+            <p className="text-sm">
+              Plus de tests, le scalp dès 1 minute :{" "}
+              <Link href="/tarifs" className="text-accent hover:underline">
+                voir les offres Trader et Pro →
+              </Link>
+            </p>
+          )}
         </div>
       </Card>
+      {me.isAdmin && (
+        <Link href="/admin" className="rounded-lg border border-line bg-panel px-4 py-3 text-sm hover:border-accent">
+          Pilotage : activation, rétention, coût de l&apos;IA →
+        </Link>
+      )}
       <PasswordCard hasPassword={me.hasPassword} onSet={() => setMe({ ...me, hasPassword: true })} />
+      <DataCard hasPassword={me.hasPassword} />
       <Button
         variant="ghost"
         onClick={async () => {
           await authClient.signOut();
-          router.replace("/");
-          router.refresh();
+          window.location.assign("/");
         }}
       >
         Se déconnecter
       </Button>
     </div>
+  );
+}
+
+/** Personal data rights: a copy of everything stored, and deleting the account for good. */
+function DataCard({ hasPassword }: { hasPassword: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [word, setWord] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const remove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      const { error } = await authClient.deleteUser(hasPassword ? { password } : {});
+      if (error) {
+        throw new Error(
+          error.code === "INVALID_PASSWORD"
+            ? "Mot de passe incorrect."
+            : error.code === "SESSION_EXPIRED"
+              ? "Par sécurité, déconnecte-toi puis reconnecte-toi avant de supprimer ton compte."
+              : "Suppression impossible. Réessaie.",
+        );
+      }
+      // A full reload: the cached session would otherwise show the dashboard, whose calls bounce to the sign-in page.
+      window.location.assign("/");
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card title="Mes données">
+      <div className="flex flex-col gap-3 text-sm">
+        <p className="text-muted">
+          Tu peux récupérer à tout moment une copie de ce que Backtest Lab garde sur toi : compte, stratégies, résultats des backtests, connexions. Le détail est dans la{" "}
+          <Link href="/confidentialite" className="underline hover:text-fg">
+            politique de confidentialité
+          </Link>
+          .
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <a href="/api/me/export" download className="rounded-md border border-line px-3 py-1.5 font-medium hover:bg-panel-2">
+            Télécharger mes données
+          </a>
+          {!open && (
+            <Button variant="danger" onClick={() => setOpen(true)}>
+              Supprimer mon compte
+            </Button>
+          )}
+        </div>
+        {open && (
+          <form onSubmit={remove} className="flex flex-col gap-3 rounded-md border border-down/40 p-3">
+            <p>
+              Ton compte, tes stratégies et tous tes backtests seront <strong>effacés définitivement</strong>. Cette action ne peut pas être annulée.
+            </p>
+            {hasPassword && (
+              <Field label="Ton mot de passe">
+                <input type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+              </Field>
+            )}
+            <Field label="Écris SUPPRIMER pour confirmer">
+              <input value={word} onChange={(e) => setWord(e.target.value)} autoComplete="off" />
+            </Field>
+            {error && <Alert tone="error">{error}</Alert>}
+            <div className="flex gap-2">
+              <Button type="submit" variant="danger" disabled={busy || word.trim().toUpperCase() !== "SUPPRIMER" || (hasPassword && !password)}>
+                {busy ? "Suppression…" : "Supprimer définitivement"}
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+                Annuler
+              </Button>
+            </div>
+          </form>
+        )}
+      </div>
+    </Card>
   );
 }
 

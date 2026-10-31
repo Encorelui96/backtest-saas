@@ -11,6 +11,33 @@ import { Button, Card } from "./ui";
 import { CandleHero } from "./candle-hero";
 import { TickerTape } from "./ticker-tape";
 import { useBeginner } from "./learn";
+import { PmfSurvey } from "./pmf-survey";
+
+interface Me {
+  usage: { plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number }; backtests: number; ai: number; resetsAt: string } | null;
+  surveyAnswered: boolean;
+}
+
+/** From 80 % of a monthly quota: says how much is left and where the bigger offers are. */
+function QuotaBanner({ usage }: { usage: NonNullable<Me["usage"]> }) {
+  if (usage.plan.id === "pro") return null;
+  const items = [
+    { used: usage.backtests, max: usage.plan.backtestsPerMonth, what: "backtests" },
+    { used: usage.ai, max: usage.plan.aiPerMonth, what: "traductions par l'IA" },
+  ].filter((i) => i.used >= 0.8 * i.max);
+  if (!items.length) return null;
+  const reset = new Date(usage.resetsAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2.5 text-sm">
+      <span className="flex-1">
+        {items.map((i) => `${Math.min(i.used, i.max)} de tes ${i.max} ${i.what}`).join(" et ")} du mois sont utilisés (offre {usage.plan.label}). Compteurs remis à zéro le {reset}.
+      </span>
+      <Link href="/tarifs" className="font-medium text-accent hover:underline">
+        Voir les offres →
+      </Link>
+    </div>
+  );
+}
 
 interface BacktestRow {
   id: string;
@@ -70,10 +97,12 @@ export function Dashboard() {
   const beginner = useBeginner();
   const [strategies, setStrategies] = useState<{ id: string; name: string; strategy: Strategy; updatedAt: number }[] | null>(null);
   const [backtests, setBacktests] = useState<BacktestRow[] | null>(null);
+  const [me, setMe] = useState<Me | null>(null);
 
   useEffect(() => {
     api<typeof strategies>("/api/strategies").then(setStrategies).catch(() => setStrategies([]));
     api<BacktestRow[]>("/api/backtests").then(setBacktests).catch(() => setBacktests([]));
+    api<Me>("/api/me").then(setMe).catch(() => {});
   }, []);
 
   const remove = async (id: string) => {
@@ -100,7 +129,9 @@ export function Dashboard() {
 
       <TickerTape />
 
+      {me?.usage && <QuotaBanner usage={me.usage} />}
       {beginner && backtests !== null && <FirstSteps backtests={backtests} />}
+      {me && !me.surveyAnswered && backtests !== null && backtests.length >= 3 && <PmfSurvey />}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card title={beginner ? "Mes tests" : "Derniers backtests"}>
