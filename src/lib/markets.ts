@@ -1,30 +1,32 @@
 /**
- * Markets beyond Binance crypto: forex majors, gold and the Nasdaq 100, with
- * candles from Twelve Data. Any other symbol is a Binance pair.
+ * Markets beyond Binance crypto: forex majors and gold from Twelve Data, the
+ * Nasdaq 100 future (NQ) from Databento, and QQQ, the fund that tracks the
+ * Nasdaq 100, from Twelve Data. Any other symbol is a Binance pair.
  */
 
 export interface Market {
   symbol: string;
   label: string;
   kind: "forex" | "metal" | "index";
-  /** Symbol at Twelve Data. */
+  source: "twelvedata" | "databento";
+  /** Symbol at the source. */
   feed: string;
 }
 
 export const MARKETS: Market[] = [
-  { symbol: "EURUSD", label: "Euro / Dollar", kind: "forex", feed: "EUR/USD" },
-  { symbol: "GBPUSD", label: "Livre / Dollar", kind: "forex", feed: "GBP/USD" },
-  { symbol: "USDJPY", label: "Dollar / Yen", kind: "forex", feed: "USD/JPY" },
-  { symbol: "USDCHF", label: "Dollar / Franc suisse", kind: "forex", feed: "USD/CHF" },
-  { symbol: "AUDUSD", label: "Dollar australien / Dollar", kind: "forex", feed: "AUD/USD" },
-  { symbol: "USDCAD", label: "Dollar / Dollar canadien", kind: "forex", feed: "USD/CAD" },
-  { symbol: "EURGBP", label: "Euro / Livre", kind: "forex", feed: "EUR/GBP" },
-  { symbol: "EURJPY", label: "Euro / Yen", kind: "forex", feed: "EUR/JPY" },
-  { symbol: "GBPJPY", label: "Livre / Yen", kind: "forex", feed: "GBP/JPY" },
-  { symbol: "XAUUSD", label: "Or (once en dollars)", kind: "metal", feed: "XAU/USD" },
-  // The index itself needs a paid Twelve Data plan; QQQ, the fund that tracks it, is in the free one.
-  { symbol: "NAS100", label: "Nasdaq 100", kind: "index", feed: "NDX" },
-  { symbol: "QQQ", label: "Nasdaq 100 via QQQ (heures de bourse US : 15h30-22h à Paris)", kind: "index", feed: "QQQ" },
+  { symbol: "EURUSD", label: "Euro / Dollar", kind: "forex", source: "twelvedata", feed: "EUR/USD" },
+  { symbol: "GBPUSD", label: "Livre / Dollar", kind: "forex", source: "twelvedata", feed: "GBP/USD" },
+  { symbol: "USDJPY", label: "Dollar / Yen", kind: "forex", source: "twelvedata", feed: "USD/JPY" },
+  { symbol: "USDCHF", label: "Dollar / Franc suisse", kind: "forex", source: "twelvedata", feed: "USD/CHF" },
+  { symbol: "AUDUSD", label: "Dollar australien / Dollar", kind: "forex", source: "twelvedata", feed: "AUD/USD" },
+  { symbol: "USDCAD", label: "Dollar / Dollar canadien", kind: "forex", source: "twelvedata", feed: "USD/CAD" },
+  { symbol: "EURGBP", label: "Euro / Livre", kind: "forex", source: "twelvedata", feed: "EUR/GBP" },
+  { symbol: "EURJPY", label: "Euro / Yen", kind: "forex", source: "twelvedata", feed: "EUR/JPY" },
+  { symbol: "GBPJPY", label: "Livre / Yen", kind: "forex", source: "twelvedata", feed: "GBP/JPY" },
+  { symbol: "XAUUSD", label: "Or (once en dollars)", kind: "metal", source: "twelvedata", feed: "XAU/USD" },
+  // The CME future, front month rolled over continuously: the ~28 000 level, trading nearly 24 hours a day.
+  { symbol: "NAS100", label: "Nasdaq 100 (future NQ, presque 24h/24)", kind: "index", source: "databento", feed: "NQ.c.0" },
+  { symbol: "QQQ", label: "Nasdaq 100 via QQQ (heures de bourse US : 15h30-22h à Paris)", kind: "index", source: "twelvedata", feed: "QQQ" },
 ];
 
 const BY_SYMBOL = new Map(MARKETS.map((m) => [m.symbol, m]));
