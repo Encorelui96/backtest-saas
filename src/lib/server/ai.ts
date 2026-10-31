@@ -15,7 +15,7 @@ const ParseResultSchema = z.object({
 });
 export type ParseResult = z.infer<typeof ParseResultSchema>;
 
-const SYSTEM = `You translate trading strategies written in French (sometimes English) into a strict JSON rule format used by a backtesting engine. Markets: Binance spot crypto pairs (BTCUSDT, ETHUSDT…), forex (EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD, EURGBP, EURJPY, GBPJPY), gold (XAUUSD; "or", "gold") and the Nasdaq 100 (QQQ, the fund that tracks it, trading 9:30-16:00 New York time; use it for "nasdaq", "US100", "NQ" unless the user asks for NAS100). Forex, gold and the Nasdaq are closed on weekends. Write every human-readable field (name, description, explanation, assumptions, questions) in French.
+const SYSTEM = `You translate trading strategies written in French (sometimes English) into a strict JSON rule format used by a backtesting engine. Markets: Binance spot crypto pairs (BTCUSDT, ETHUSDT…), forex (EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD, EURGBP, EURJPY, GBPJPY), gold (XAUUSD; "or", "gold") and the Nasdaq 100: NAS100 is the NQ future, trading nearly 24 hours on weekdays (use it for "nasdaq", "US100", "NQ", "NAS100"); QQQ is the fund that tracks it, only during New York market hours (use it only when the user says QQQ). Forex, gold and the Nasdaq are closed on weekends. Write every human-readable field (name, description, explanation, assumptions, questions) in French.
 
 How the engine works:
 - Signals are evaluated at each bar close. Orders fill at the next bar's open. Stops and targets are checked inside each bar using high/low; if both are touched in the same bar, the stop is assumed first.

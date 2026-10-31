@@ -5,12 +5,14 @@ import { INTERVAL_MS, emptyCandles } from "../types";
 import { query } from "./db";
 import { fetchKlines } from "./binance";
 import { fetchTwelveData } from "./twelvedata";
+import { fetchDatabento } from "./databento";
 import { isWeekendClose, market } from "../markets";
 
-/** Candles opening in [from, to] from the symbol's source: Binance, or Twelve Data for forex, gold and the Nasdaq. */
+/** Candles opening in [from, to] from the symbol's source: Binance, Twelve Data (forex, gold, QQQ) or Databento (NQ). */
 export function fetchHistory(symbol: string, interval: Interval, from: number, to: number): Promise<CandleRow[]> {
   const m = market(symbol);
-  return m ? fetchTwelveData(m, interval, from, to) : fetchKlines(symbol, interval, from, to);
+  if (!m) return fetchKlines(symbol, interval, from, to);
+  return m.source === "databento" ? fetchDatabento(m, interval, from, to) : fetchTwelveData(m, interval, from, to);
 }
 
 /** The latest `limit` candles (on Binance, with the one still forming), for the live view. */
