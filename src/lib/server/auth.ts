@@ -43,6 +43,9 @@ export const auth = betterAuth({
     ? { google: { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET!, prompt: "select_account" } }
     : {},
   account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
+  // Right to erasure: the user deletes the account from "Mon compte" (password, or a sign-in less than a day old).
+  // Every app table references "user" with ON DELETE CASCADE, so strategies, backtests and usage go with it.
+  user: { deleteUser: { enabled: true } },
   session: { expiresIn: 60 * 60 * 24 * 30, updateAge: 60 * 60 * 24 },
   // Behind Render's proxies X-Forwarded-For holds several addresses, which better-auth won't guess from:
   // read the single-value client IP headers first, so sign-in attempts are rate-limited per visitor, not all together.

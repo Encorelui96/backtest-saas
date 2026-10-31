@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { StrategySchema, normalizeStrategy, type Strategy } from "../strategy/schema";
+import type { AiUsage } from "./quotas";
 
 export function aiEnabled() {
   return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
@@ -63,7 +64,15 @@ function readJson(raw: string): unknown {
   return JSON.parse(raw.slice(start, end + 1));
 }
 
-export async function parseStrategyText(text: string, current?: Strategy): Promise<ParseResult & { problems: string[] }> {
+/** Anthropic list prices in dollars per million tokens (input, output), for the cost estimates of the admin page. */
+export const AI_PRICES: Record<string, [number, number]> = {
+  "claude-opus-5-5": [4, 20],
+  "claude-opus-5": [5, 25],
+  "claude-opus-4-8": [5, 25],
+};
+
+/** `usage` accumulates the tokens of every attempt, even when the translation fails. */
+export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage): Promise<ParseResult & { problems: string[] }> {
   const client = new Anthropic();
   const userContent = current
     ? `Stratégie actuelle (JSON) à modifier selon la demande :\n${JSON.stringify(current)}\n\nDemande :\n${text}`
@@ -79,6 +88,10 @@ export async function parseStrategyText(text: string, current?: Strategy): Promi
       system: `${SYSTEM}\n\n${OUTPUT_FORMAT}`,
       messages,
     });
+    const u = response.usage;
+    usage.inputTokens += u.input_tokens + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
+    usage.outputTokens += u.output_tokens;
+    usage.model = response.model;
     if (response.stop_reason === "refusal") {
       throw new Error("L'IA a refusé de traiter cette demande. Reformule la stratégie ou utilise le constructeur manuel.");
     }

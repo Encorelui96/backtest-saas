@@ -1,36 +1,18 @@
 import "server-only";
 import { INTERVAL_MS, type Interval } from "../types";
 import type { PoolClient } from "pg";
+import { PLANS, type Plan, type PlanId } from "../plans";
 import { query, queryOne, transaction } from "./db";
 import type { SessionUser } from "./auth";
 
-export type PlanId = "free" | "trader" | "pro";
-
-export interface Plan {
-  id: PlanId;
-  label: string;
-  backtestsPerMonth: number;
-  aiPerMonth: number;
-  /** Shortest strategy timeframe allowed. */
-  minInterval: Interval;
-  /** Backtests running or waiting at the same time. */
-  concurrentJobs: number;
-  alerts: number;
-}
-
-export const PLANS: Record<PlanId, Plan> = {
-  free: { id: "free", label: "Découverte", backtestsPerMonth: 5, aiPerMonth: 3, minInterval: "1h", concurrentJobs: 1, alerts: 0 },
-  trader: { id: "trader", label: "Trader", backtestsPerMonth: 100, aiPerMonth: 50, minInterval: "1m", concurrentJobs: 2, alerts: 3 },
-  // "Without a fixed quota" for customers, with a ceiling that protects the bill.
-  pro: { id: "pro", label: "Pro", backtestsPerMonth: 1000, aiPerMonth: 400, minInterval: "1m", concurrentJobs: 3, alerts: 20 },
-};
+export { PLANS, type Plan, type PlanId };
 
 /** AI translations per minute, whatever the plan: a scripted loop must not drain the API key. */
 const AI_PER_MINUTE = 5;
 
 export class QuotaError extends Error {}
 
-function isAdmin(email: string) {
+export function isAdmin(email: string) {
   return (process.env.ADMIN_EMAILS ?? "")
     .split(",")
     .map((e) => e.trim().toLowerCase())
@@ -100,15 +82,29 @@ export async function checkBacktestAllowed(user: SessionUser, interval: Interval
   }
 }
 
-/** Checks the AI quotas and records the use. */
-export async function consumeAi(user: SessionUser) {
-  await withUserLock(user, async (run) => {
+/** Checks the AI quotas and records the use. Returns the event's id, to attach the tokens once the call is done. */
+export async function consumeAi(user: SessionUser): Promise<string> {
+  return withUserLock(user, async (run) => {
     const u = await usageOf(user, run);
     if (u.ai >= u.plan.aiPerMonth) {
       throw new QuotaError(`Tu as utilisé tes ${u.plan.aiPerMonth} traductions IA du mois (offre ${u.plan.label}). Le constructeur manuel reste disponible.`);
     }
     const [recent] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'ai' AND created_at > now() - interval '1 minute'", [user.id]);
     if (Number(recent.n) >= AI_PER_MINUTE) throw new QuotaError("Trop de traductions d'affilée : attends une minute.");
-    await run("INSERT INTO usage_events (user_id, kind) VALUES ($1, 'ai')", [user.id]);
+    const [row] = await run<{ id: string }>("INSERT INTO usage_events (user_id, kind) VALUES ($1, 'ai') RETURNING id", [user.id]);
+    return row.id;
   });
+}
+
+export interface AiUsage {
+  inputTokens: number;
+  outputTokens: number;
+  /** The model that answered last (a fallback model can stand in). */
+  model: string | null;
+}
+
+/** Stores what an AI translation consumed, so the cost per user can be followed. */
+export async function recordAiUsage(eventId: string, usage: AiUsage) {
+  if (!usage.model) return;
+  await query("UPDATE usage_events SET input_tokens = $2, output_tokens = $3, model = $4 WHERE id = $1", [eventId, usage.inputTokens, usage.outputTokens, usage.model]);
 }
