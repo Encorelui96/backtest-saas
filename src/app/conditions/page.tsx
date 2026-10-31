@@ -72,8 +72,9 @@ export default function ConditionsPage() {
 
       <Section title="9. Ce qui t'appartient">
         <p>
-          Tes stratégies et leurs descriptions restent les tiennes. Tu autorises Backtest Lab à les conserver et à les traiter uniquement pour te fournir le service. Le
-          logiciel, le nom et le design du site restent la propriété de l&apos;éditeur.
+          Tes stratégies et leurs descriptions restent les tiennes. Tu autorises Backtest Lab à les conserver et à les traiter uniquement pour te fournir le service. Quand
+          tu partages un rapport, toute personne qui a le lien peut le consulter, jusqu&apos;à ce que tu retires le lien. Le logiciel, le nom et le design du site restent la
+          propriété de l&apos;éditeur.
         </p>
       </Section>
 
