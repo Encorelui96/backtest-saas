@@ -2,7 +2,7 @@ import { z } from "zod";
 import { StrategySchema, normalizeStrategy, type Operand } from "@/lib/strategy/schema";
 import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "@/lib/strategy/warmup";
 import { INTERVAL_MS, rowsToCandles } from "@/lib/types";
-import { fetchRecentKlines } from "@/lib/server/binance";
+import { fetchRecent } from "@/lib/server/candles";
 import { SeriesContext } from "@/lib/engine/evaluate";
 import { runBacktest } from "@/lib/engine/backtest";
 import { defaultConfig } from "@/lib/strategy/schema";
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     const display = body.display ?? 300;
     const ms = INTERVAL_MS[strategy.interval];
     const warmBars = Math.min(4000, Math.ceil(warmupMs(strategy) / ms) + 10);
-    const rows = await fetchRecentKlines(strategy.symbol, strategy.interval, display + warmBars + 1);
+    const rows = await fetchRecent(strategy.symbol, strategy.interval, display + warmBars + 1);
     const now = Date.now();
     const closed = rows.filter((r) => r.t + ms <= now);
     const forming = rows.find((r) => r.t + ms > now) ?? null;
@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     // Higher-timeframe filters get their own candles: rebuilding a daily MM50 from 300 bars of 15m would leave it empty.
     for (const tf of higherTimeframes(strategy)) {
       const bars = Math.ceil(higherTimeframeWarmupMs(strategy, tf) / INTERVAL_MS[tf]) + Math.ceil(((display + 1) * ms) / INTERVAL_MS[tf]) + 2;
-      const htfRows = (await fetchRecentKlines(strategy.symbol, tf, Math.min(bars, 1500))).filter((r) => r.t + INTERVAL_MS[tf] <= now);
+      const htfRows = (await fetchRecent(strategy.symbol, tf, Math.min(bars, 1500))).filter((r) => r.t + INTERVAL_MS[tf] <= now);
       ctx.attachHigherTimeframe(tf, rowsToCandles(htfRows));
     }
     const run = runBacktest(candles, strategy, { ...defaultConfig(), initialCapital: 10_000 }, ctx, startIndex);
