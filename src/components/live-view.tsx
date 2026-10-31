@@ -83,10 +83,10 @@ export function LiveView() {
 
   const crypto = isCrypto(sym);
 
-  // Forex, gold and the Nasdaq have no stream the browser can open: poll the server every minute.
+  // Forex, gold and the Nasdaq have no stream the browser can open, and a small daily quota: poll every 5 minutes.
   useEffect(() => {
     if (crypto) return;
-    const timer = setInterval(refresh, 60_000);
+    const timer = setInterval(refresh, 5 * 60_000);
     return () => clearInterval(timer);
   }, [crypto, refresh]);
 
@@ -164,8 +164,8 @@ export function LiveView() {
             {crypto ? (
               <span className={connected ? "text-up" : "text-down"}>{connected ? "● en direct" : "● déconnecté"}</span>
             ) : (
-              <span className="text-warn" title="Forex, or et Nasdaq : actualisé chaque minute, à la clôture des bougies.">
-                ● chaque minute{lastBar ? ` (dernière bougie : ${date(lastBar.t)})` : ""}
+              <span className="text-warn" title="Forex, or et Nasdaq : actualisé toutes les 5 minutes.">
+                ● toutes les 5 min{lastBar ? ` (dernière bougie : ${date(lastBar.t)})` : ""}
               </span>
             )}
             {change !== null && <span className={`ml-2 ${tone(change)}`}>{pct(change, 2)} sur l&apos;écran</span>}
