@@ -15,7 +15,7 @@ const ParseResultSchema = z.object({
 });
 export type ParseResult = z.infer<typeof ParseResultSchema>;
 
-const SYSTEM = `You translate trading strategies written in French (sometimes English) into a strict JSON rule format used by a backtesting engine for Binance spot crypto data. Write every human-readable field (name, description, explanation, assumptions, questions) in French.
+const SYSTEM = `You translate trading strategies written in French (sometimes English) into a strict JSON rule format used by a backtesting engine. Markets: Binance spot crypto pairs (BTCUSDT, ETHUSDT…), forex (EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD, EURGBP, EURJPY, GBPJPY), gold (XAUUSD; "or", "gold") and the Nasdaq 100 (NAS100; "nasdaq", "US100", "NQ"). Forex, gold and the Nasdaq are closed on weekends. Write every human-readable field (name, description, explanation, assumptions, questions) in French.
 
 How the engine works:
 - Signals are evaluated at each bar close. Orders fill at the next bar's open. Stops and targets are checked inside each bar using high/low; if both are touched in the same bar, the stop is assumed first.

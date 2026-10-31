@@ -4,6 +4,25 @@ import type { CandleRow, Candles, Interval } from "../types";
 import { INTERVAL_MS, emptyCandles } from "../types";
 import { query } from "./db";
 import { fetchKlines } from "./binance";
+import { fetchOanda } from "./oanda";
+import { market } from "../markets";
+
+/** Candles opening in [from, to] from the symbol's source: Binance, or OANDA for forex, gold and the Nasdaq. */
+export function fetchHistory(symbol: string, interval: Interval, from: number, to: number): Promise<CandleRow[]> {
+  const m = market(symbol);
+  return m ? fetchOanda(m, interval, from, to) : fetchKlines(symbol, interval, from, to);
+}
+
+/** The latest `limit` candles (on Binance, with the one still forming), for the live view. */
+export async function fetchRecent(symbol: string, interval: Interval, limit: number): Promise<CandleRow[]> {
+  const ms = INTERVAL_MS[interval];
+  const end = Date.now();
+  const m = market(symbol);
+  if (!m) return fetchKlines(symbol, interval, end - limit * ms, end);
+  // Closed on weekends (and the Nasdaq at night): look back far enough to still find `limit` bars.
+  const rows = await fetchOanda(m, interval, end - Math.ceil(limit * ms * 1.6) - 3 * 86_400_000, end);
+  return rows.slice(-limit);
+}
 
 /**
  * Historical candles shared by every user. Each symbol, interval and UTC month
@@ -52,7 +71,7 @@ function monthsBetween(from: number, to: number): string[] {
 
 const inflight = new Map<string, Promise<CandleRow[]>>();
 
-/** One month of closed candles, from the shared cache or Binance. */
+/** One month of closed candles, from the shared cache or the market's source. */
 async function monthRows(symbol: string, interval: Interval, month: string, needUntil: number): Promise<CandleRow[]> {
   const key = `${symbol}:${interval}:${month}`;
   const running = inflight.get(key);
@@ -71,7 +90,7 @@ async function monthRows(symbol: string, interval: Interval, month: string, need
     const have = cached ? decode(cached.data) : [];
     const fetchFrom = have.length ? have[have.length - 1].t + ms : start;
     const fetchTo = Math.min(end - ms, lastClosed);
-    const fresh = fetchTo >= fetchFrom ? (await fetchKlines(symbol, interval, fetchFrom, fetchTo)).filter((r) => r.t <= lastClosed) : [];
+    const fresh = fetchTo >= fetchFrom ? (await fetchHistory(symbol, interval, fetchFrom, fetchTo)).filter((r) => r.t <= lastClosed) : [];
     const rows = [...have, ...fresh];
     const complete = end - ms <= lastClosed;
     await query(
@@ -89,7 +108,7 @@ async function monthRows(symbol: string, interval: Interval, month: string, need
   }
 }
 
-/** Every closed candle in [from, to]. Months load a few at a time to stay gentle with Binance. */
+/** Every closed candle in [from, to]. Months load a few at a time to stay gentle with the sources. */
 export async function getCandles(symbol: string, interval: Interval, from: number, to: number): Promise<Candles> {
   const months = monthsBetween(from, to);
   const parts: CandleRow[][] = new Array(months.length);

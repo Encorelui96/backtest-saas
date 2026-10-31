@@ -72,13 +72,6 @@ export async function fetchKlines(symbol: string, interval: Interval, from: numb
   return pages.flat();
 }
 
-/** The latest `limit` klines, including the one still forming. */
-export async function fetchRecentKlines(symbol: string, interval: Interval, limit: number): Promise<CandleRow[]> {
-  const ms = INTERVAL_MS[interval];
-  const end = Date.now();
-  return fetchKlines(symbol, interval, end - limit * ms, end);
-}
-
 let symbolCache: { at: number; symbols: { symbol: string; base: string; quote: string; volume: number }[] } | null = null;
 
 /** Spot USDT/USDC/BTC/EUR pairs ranked by 24h quote volume. */
