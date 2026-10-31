@@ -37,7 +37,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     id: "symbole",
     term: "Symbole (paire)",
     category: "bases",
-    short: "Ce que tu trades : une crypto (BTCUSDT = bitcoin en dollars), une paire de devises (EURUSD), l'or (XAUUSD) ou le Nasdaq 100 (NAS100).",
+    short: "Ce que tu trades : une crypto (BTCUSDT = bitcoin en dollars), une paire de devises (EURUSD), l'or (XAUUSD) ou le Nasdaq 100 (via QQQ).",
     example: "ETHUSDT = l'ether en dollars, GBPUSD = la livre en dollars.",
   },
   {
@@ -442,6 +442,89 @@ export const GLOSSARY: GlossaryEntry[] = [
   },
 ];
 
+/** Settings that only exist as a form field, with no trading term behind them. */
+GLOSSARY.push(
+  {
+    id: "sens",
+    term: "Sens",
+    category: "bases",
+    short: "Si la stratégie achète (parie sur la hausse), vend à découvert (parie sur la baisse), ou les deux.",
+  },
+  {
+    id: "periode-test",
+    term: "Période du test",
+    category: "bases",
+    short: "Les dates entre lesquelles la stratégie est rejouée sur les cours passés.",
+  },
+  {
+    id: "horaires",
+    term: "Horaires d'entrée",
+    category: "risque",
+    short: "N'ouvrir des trades qu'entre deux heures (heure locale), par exemple pendant la séance de New York.",
+  },
+  {
+    id: "valeur",
+    term: "Valeur fixe",
+    category: "regles",
+    short: "Un nombre que tu choisis, pour comparer un indicateur à un seuil : « RSI < 30 », « ADX > 25 ».",
+  },
+  {
+    id: "jours",
+    term: "Jours d'entrée",
+    category: "risque",
+    short: "Les jours de la semaine où la stratégie a le droit d'ouvrir un trade.",
+  },
+  {
+    id: "fermer-a",
+    term: "Tout fermer à",
+    category: "risque",
+    short: "L'heure à laquelle toute position encore ouverte est fermée, quoi qu'il arrive.",
+  },
+);
+
+/** "À quoi ça sert" for the "?" next to each field in beginner mode. */
+export const USES: Record<string, string> = {
+  symbole: "Choisir le marché sur lequel tester. Le même réglage peut gagner sur l'un et perdre sur l'autre.",
+  "unite-de-temps": "Plus elle est longue, moins il y a de trades et moins les frais pèsent. 4h ou 1j pour débuter.",
+  style: "Ranger ta stratégie. Ça ne change pas le calcul, mais aide l'IA à proposer des réglages adaptés.",
+  sens: "Garde « Achat seulement » pour débuter : c'est le plus simple à comprendre et à trader.",
+  fuseau: "Pour que « 9h » ou « la veille » veuillent dire la même chose que sur ta montre.",
+  stop: "Limiter la perte de chaque trade. Sans stop, un seul mauvais trade peut effacer des mois de gains.",
+  objectif: "Encaisser le gain au lieu d'attendre qu'il disparaisse.",
+  "stop-suiveur": "Laisser courir un trade gagnant tout en protégeant une partie du gain.",
+  "point-mort": "Ne plus pouvoir perdre sur un trade qui est déjà bien parti.",
+  "duree-max": "Ne pas rester coincé dans un trade qui ne va nulle part.",
+  "risque-par-trade": "Décider combien tu acceptes de perdre si le stop est touché. C'est lui qui fixe la taille des positions.",
+  taille: "Fixer la somme engagée quand il n'y a pas de stop pour la calculer.",
+  levier: "Limiter la taille des positions. Un levier bas protège d'une perte trop forte.",
+  horaires: "Éviter les heures calmes ou trop agitées, ou trader une seule séance.",
+  jours: "Éviter certains jours (le lundi, le week-end en crypto…).",
+  "fermer-a": "Ne jamais garder de position la nuit, en day trading.",
+  "periode-test": "Plus la période est longue, plus le résultat est fiable : vise plusieurs années.",
+  capital: "Donner une taille au compte fictif pour lire les résultats en dollars.",
+  frais: "Rendre le test réaliste : les frais transforment souvent une stratégie gagnante en perdante.",
+  spread: "Compter l'écart entre achat et vente que tu paies à chaque trade.",
+  glissement: "Compter le petit écart entre le prix voulu et le prix obtenu.",
+  financement: "Compter le coût de garder une position ouverte sur des contrats perpétuels ou des CFD.",
+  bougie: "Comparer le prix à un indicateur ou à un niveau : « clôture > MM 200 » = le prix est au-dessus de sa moyenne.",
+  valeur: "Fixer le seuil qui déclenche la règle.",
+  mm: "Savoir si la tendance monte ou baisse, et filtrer les trades à contre-courant.",
+  mme: "Suivre la tendance de plus près qu'une MM ; les croisements de deux MME sont des signaux classiques.",
+  rsi: "Repérer un marché qui a trop baissé (pour acheter un rebond) ou trop monté.",
+  atr: "Placer un stop ou un objectif à une distance adaptée à l'agitation du moment.",
+  bollinger: "Repérer un prix anormalement loin de sa moyenne, ou une cassure.",
+  macd: "Suivre la force et le changement de tendance.",
+  stochastique: "Repérer un rebond depuis le bas ou le haut de la fourchette récente.",
+  adx: "N'entrer que quand le marché suit vraiment une tendance.",
+  roc: "Mesurer l'élan : le prix accélère-t-il ?",
+  ibs: "Acheter les clôtures faibles en espérant un rebond le lendemain.",
+  vwap: "Savoir si le prix est cher ou bon marché par rapport à la journée.",
+  volume: "Vérifier qu'un mouvement est porté par beaucoup d'échanges.",
+  niveaux: "Détecter une cassure du plus haut ou du plus bas récent.",
+  veille: "S'appuyer sur les niveaux que beaucoup de traders surveillent.",
+  croise: "Ne déclencher qu'au moment du croisement, pas tant que la condition reste vraie.",
+};
+
 const BY_ID = new Map(GLOSSARY.map((e) => [e.id, e]));
 
 export function glossary(id: string): GlossaryEntry | undefined {
@@ -450,6 +533,15 @@ export function glossary(id: string): GlossaryEntry | undefined {
 
 /** The glossary entry that explains each indicator of the rule builder. */
 export const INDICATOR_TERMS: Partial<Record<IndicatorName, string>> = {
+  close: "bougie",
+  open: "bougie",
+  high: "bougie",
+  low: "bougie",
+  number: "valeur",
+  day_open: "veille",
+  hour: "horaires",
+  minute: "horaires",
+  weekday: "jours",
   volume: "volume",
   sma: "mm",
   ema: "mme",
