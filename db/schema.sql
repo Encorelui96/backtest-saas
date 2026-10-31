@@ -60,6 +60,29 @@ CREATE TABLE IF NOT EXISTS usage_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS usage_by_user ON usage_events (user_id, kind, created_at);
+-- What an AI translation consumed, for the cost per user (empty for the calls made before it was measured).
+ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS input_tokens integer;
+ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS output_tokens integer;
+ALTER TABLE usage_events ADD COLUMN IF NOT EXISTS model text;
+
+-- Answers to the in-app questions (kind 'pmf': "how would you feel if you could no longer use Backtest Lab?").
+CREATE TABLE IF NOT EXISTS feedback (
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  answer text NOT NULL,
+  comment text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, kind)
+);
+
+-- "I want this offer" clicks, while online payment isn't open.
+CREATE TABLE IF NOT EXISTS plan_interest (
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  plan text NOT NULL,
+  billing text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, plan)
+);
 
 -- Candles shared by every user: one gzipped chunk per symbol, interval and UTC month.
 CREATE TABLE IF NOT EXISTS candle_chunks (
