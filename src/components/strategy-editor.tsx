@@ -34,7 +34,7 @@ const FEE_PRESETS: { label: string; config: Partial<BacktestConfig> }[] = [
 ];
 
 /** One-click markets above the symbol field. */
-const QUICK_MARKETS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "NAS100"];
+const QUICK_MARKETS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "EURUSD", "GBPUSD", "USDJPY", "XAUUSD", "QQQ"];
 
 const DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 
