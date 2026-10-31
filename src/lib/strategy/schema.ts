@@ -99,7 +99,7 @@ export const StrategySchema = z.object({
   name: z.string(),
   description: z.string(),
   style: z.enum(["scalp", "day", "swing"]),
-  symbol: z.string().describe("Binance spot symbol, e.g. BTCUSDT."),
+  symbol: z.string().describe("Binance spot symbol (e.g. BTCUSDT), or one of EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD, EURGBP, EURJPY, GBPJPY, XAUUSD (gold), NAS100 (Nasdaq 100)."),
   interval: z.enum(INTERVALS),
   timezone: z.string().describe("IANA timezone used for hours, sessions and daily levels, e.g. Europe/Paris."),
   direction: z.enum(["long", "short", "both"]),
