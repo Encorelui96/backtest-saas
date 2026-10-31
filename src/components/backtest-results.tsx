@@ -10,7 +10,7 @@ import type { BacktestConfig, Strategy } from "@/lib/strategy/schema";
 import { stopLabel, targetLabel } from "@/lib/strategy/describe";
 import { INTERVAL_MS, type CandleRow } from "@/lib/types";
 import { EquityChart, PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
-import { Term, Tip, useBeginner } from "./learn";
+import { Help, Term, Tip, useBeginner } from "./learn";
 import { PropFirmPanel } from "./prop-firm-panel";
 import { Alert, Button, Card, Stat, Tabs } from "./ui";
 
@@ -43,6 +43,7 @@ export function BacktestResults({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
   const [selected, setSelected] = useState<number | null>(null);
+  const beginner = useBeginner();
 
   useEffect(() => {
     api<Stored>(`/api/backtests/${id}`).then(setData).catch((e) => setError(e.message));
@@ -81,25 +82,26 @@ export function BacktestResults({ id }: { id: string }) {
         <Alert key={i}>{w}</Alert>
       ))}
 
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:grid-cols-4 lg:grid-cols-8">
-        <Stat
-          label={<Term id="rendement">Rendement total</Term>}
-          value={pct(m.totalReturnPercent)}
-          className={tone(m.totalReturnPercent)}
-          hint={
-            <>
-              <Term id="achat-conservation">Achat-conservation</Term> : {pct(m.buyAndHoldPercent)}
-            </>
-          }
-        />
-        <Stat label={<Term id="rendement-annuel">Rendement annuel</Term>} value={pct(m.cagrPercent)} className={tone(m.cagrPercent)} />
-        <Stat label={<Term id="drawdown">Baisse max</Term>} value={pct(-m.maxDrawdownPercent)} className="text-down" />
-        <Stat label={<Term id="trades">Trades</Term>} value={m.trades} hint={`${num(m.tradesPerMonth, 1)} par mois`} />
-        <Stat label={<Term id="gagnants">Gagnants</Term>} value={pct(m.winRate, 0, false)} />
-        <Stat label={<Term id="profit-factor">Profit factor</Term>} value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} />
-        <Stat label={<Term id="gain-moyen">Gain moyen / trade</Term>} value={hasR ? r(m.avgR) : pct(m.avgTradePercent, 2)} className={tone(hasR ? m.avgR : m.avgTradePercent)} />
-        <Stat label={<Term id="sharpe">Sharpe</Term>} value={num(m.sharpe)} hint={`Sortino ${num(m.sortino)}`} />
-      </div>
+      {beginner ? (
+        // Beginners: the four numbers that matter most, each with its "?", then the guided reading.
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:grid-cols-4">
+          <Stat label="Rendement total" term="rendement" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={`Acheter et garder : ${pct(m.buyAndHoldPercent)}`} />
+          <Stat label="Baisse max" term="drawdown" value={pct(-m.maxDrawdownPercent)} className="text-down" hint={`≈ ${money((data.config.initialCapital * m.maxDrawdownPercent) / 100)} au pire moment`} />
+          <Stat label="Trades" term="trades" value={m.trades} hint={m.trades < 30 ? "trop peu pour conclure" : `${num(m.tradesPerMonth, 1)} par mois`} />
+          <Stat label="Profit factor" term="profit-factor" value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} hint={`${pct(m.winRate, 0, false)} de gagnants`} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:grid-cols-4 lg:grid-cols-8">
+          <Stat label="Rendement total" term="rendement" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={`B&H ${pct(m.buyAndHoldPercent)}`} />
+          <Stat label="CAGR" term="rendement-annuel" value={pct(m.cagrPercent)} className={tone(m.cagrPercent)} />
+          <Stat label="Max DD" term="drawdown" value={pct(-m.maxDrawdownPercent)} className="text-down" />
+          <Stat label="Trades" term="trades" value={m.trades} hint={`${num(m.tradesPerMonth, 1)} / mois`} />
+          <Stat label="Win rate" term="gagnants" value={pct(m.winRate, 0, false)} />
+          <Stat label="Profit factor" term="profit-factor" value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} />
+          <Stat label="Espérance" term="gain-moyen" value={hasR ? r(m.avgR) : pct(m.avgTradePercent, 2)} className={tone(hasR ? m.avgR : m.avgTradePercent)} />
+          <Stat label="Sharpe" term="sharpe" value={num(m.sharpe)} hint={`Sortino ${num(m.sortino)}`} />
+        </div>
+      )}
 
       <GuidedReading data={data} onOpenRobustness={() => setTab("robustness")} />
 
@@ -226,6 +228,7 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
   const loading = loadedFor !== selected;
   const chart = useRef<PriceChartHandle>(null);
   const ms = INTERVAL_MS[strategy.interval];
+  const beginner = useBeginner();
 
   // Load the candles around the selected trade, or the end of the test period.
   useEffect(() => {
@@ -270,7 +273,14 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="flex flex-col gap-4">
-        <Card title={<Term id="courbe-capital">Courbe du capital</Term>}>
+        <Card
+          title={
+            <span className="flex items-center">
+              Courbe du capital
+              <Help id="courbe-capital" />
+            </span>
+          }
+        >
           <EquityChart points={report.equity} />
           <div className="mt-2">
             <Tip>L&apos;évolution de ton compte, trade après trade. Cherche une pente régulière ; les longues descentes sont les périodes difficiles.</Tip>
@@ -310,6 +320,11 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
             </Tip>
           </div>
         </Card>
+        {!beginner && (
+          <Card title="Rendement par mois (%)">
+            <MonthlyGrid rows={report.byMonth} />
+          </Card>
+        )}
       </div>
       <div className="flex flex-col gap-4">
         <Card title="Détails">
@@ -324,27 +339,17 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
             <Dd>{pct(m.bestTradePercent, 2)}</Dd>
             <Dt>Pire trade</Dt>
             <Dd>{pct(m.worstTradePercent, 2)}</Dd>
-            <Dt>
-              <Term id="pertes-affilee">Pertes d&apos;affilée max</Term>
-            </Dt>
+            <Dt term="pertes-affilee">Pertes d&apos;affilée max</Dt>
             <Dd>{m.longestLosingStreak}</Dd>
             <Dt>Durée moyenne</Dt>
             <Dd>{num(m.avgBars, 1)} bougies</Dd>
-            <Dt>
-              <Term id="exposition">Temps en position</Term>
-            </Dt>
+            <Dt term="exposition">Temps en position</Dt>
             <Dd>{pct(m.exposurePercent, 0, false)}</Dd>
-            <Dt>
-              <Term id="frais">Frais payés</Term>
-            </Dt>
+            <Dt term="frais">Frais payés</Dt>
             <Dd>{money(m.totalCosts)}</Dd>
-            <Dt>
-              <Term id="stop">Stop</Term>
-            </Dt>
+            <Dt term="stop">Stop</Dt>
             <Dd>{stopLabel(strategy)}</Dd>
-            <Dt>
-              <Term id="objectif">Objectif</Term>
-            </Dt>
+            <Dt term="objectif">Objectif</Dt>
             <Dd>{targetLabel(strategy)}</Dd>
           </dl>
         </Card>
@@ -356,8 +361,58 @@ function Overview({ data, selected, onSelect }: { data: Stored; selected: number
   );
 }
 
-const Dt = ({ children }: { children: React.ReactNode }) => <dt className="text-muted">{children}</dt>;
+const Dt = ({ children, term }: { children: React.ReactNode; term?: string }) => (
+  <dt className="flex items-center text-muted">
+    {children}
+    {term && <Help id={term} />}
+  </dt>
+);
 const Dd = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => <dd className={`num text-right ${className}`}>{children}</dd>;
+
+const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+/** Expert view: one row per year, one cell per month, coloured by return. */
+function MonthlyGrid({ rows }: { rows: BacktestReport["byMonth"] }) {
+  if (!rows.length) return <p className="text-sm text-muted">Aucun trade.</p>;
+  const byKey = new Map(rows.map((r) => [r.key, r]));
+  const years = [...new Set(rows.map((r) => r.key.slice(0, 4)))];
+  const max = Math.max(...rows.map((r) => Math.abs(r.pnlPercent)), 0.01);
+  return (
+    <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
+      <table className="num w-full min-w-[560px] text-[11px]">
+        <thead className="text-muted">
+          <tr>
+            <th className="text-left font-normal"></th>
+            {MONTHS.map((m, i) => (
+              <th key={i} className="font-normal">
+                {m}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {years.map((y) => (
+            <tr key={y}>
+              <td className="pr-2 text-muted">{y}</td>
+              {MONTHS.map((_, i) => {
+                const row = byKey.get(`${y}-${String(i + 1).padStart(2, "0")}`);
+                const a = row ? Math.min(1, Math.abs(row.pnlPercent) / max) : 0;
+                const bg = row ? (row.pnlPercent >= 0 ? `rgba(34,197,94,${0.12 + a * 0.5})` : `rgba(239,68,68,${0.12 + a * 0.5})`) : undefined;
+                return (
+                  <td key={i} className="p-0.5">
+                    <div className="rounded px-1 py-1 text-center" style={{ background: bg }} title={row ? `${row.trades} trades` : undefined}>
+                      {row ? num(row.pnlPercent, 1) : ""}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 function PeriodTable({ rows, hasR }: { rows: BacktestReport["byYear"]; hasR: boolean }) {
   if (!rows.length) return <p className="text-sm text-muted">Aucun trade.</p>;

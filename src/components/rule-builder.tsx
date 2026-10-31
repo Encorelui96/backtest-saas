@@ -5,18 +5,11 @@ import { COMPARATORS, SOURCES, num, operand, type Comparator, type Condition, ty
 import { COMPARATOR_LABELS, DEFAULT_PERIODS, INDICATOR_FIELDS, INDICATOR_LABELS } from "@/lib/strategy/describe";
 import { INTERVALS } from "@/lib/types";
 import { INDICATOR_TERMS } from "@/lib/learn/glossary";
-import { Beginner, Term } from "./learn";
+import { Help } from "./learn";
 
-/** A "?" that explains the term in beginner mode, nothing in expert mode. */
+/** A "?" that explains the indicator or comparison in beginner mode, nothing in expert mode. */
 function Why({ id }: { id: string | undefined }) {
-  if (!id) return null;
-  return (
-    <Beginner>
-      <span className="text-xs text-accent">
-        <Term id={id}>?</Term>
-      </span>
-    </Beginner>
-  );
+  return id ? <Help id={id} /> : null;
 }
 
 const GROUPS: { label: string; items: IndicatorName[] }[] = [

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Help } from "./learn";
 
 export function Card({ title, children, actions, className = "" }: { title?: ReactNode; children: ReactNode; actions?: ReactNode; className?: string }) {
   return (
@@ -14,10 +15,13 @@ export function Card({ title, children, actions, className = "" }: { title?: Rea
   );
 }
 
-export function Stat({ label, value, hint, className = "" }: { label: ReactNode; value: ReactNode; hint?: ReactNode; className?: string }) {
+export function Stat({ label, value, hint, className = "", term }: { label: ReactNode; value: ReactNode; hint?: ReactNode; className?: string; term?: string }) {
   return (
     <div className="rounded-lg border border-line bg-panel px-2.5 py-2 sm:px-3 sm:py-2.5">
-      <div className="text-[11px] leading-tight text-muted sm:text-xs">{label}</div>
+      <div className="flex items-center text-[11px] leading-tight text-muted sm:text-xs">
+        {label}
+        {term && <Help id={term} />}
+      </div>
       <div className={`num mt-0.5 text-base font-semibold sm:text-lg ${className}`}>{value}</div>
       {hint && <div className="mt-0.5 text-[11px] leading-tight text-muted sm:text-xs">{hint}</div>}
     </div>
@@ -42,11 +46,14 @@ export function Button({
   );
 }
 
-/** `help` is a beginner explanation (a FieldHelp), shown under the hint. */
-export function Field({ label, children, hint, help }: { label: ReactNode; children: ReactNode; hint?: string; help?: ReactNode }) {
+/** `term` adds a "?" with its definition (beginner mode); `help` is a one-line recommendation under the hint. */
+export function Field({ label, children, hint, help, term }: { label: ReactNode; children: ReactNode; hint?: string; help?: ReactNode; term?: string }) {
   return (
     <label className="flex flex-col gap-1 text-xs text-muted">
-      <span>{label}</span>
+      <span className="flex items-center">
+        {label}
+        {term && <Help id={term} />}
+      </span>
       {children}
       {hint && <span className="text-[11px] text-muted/80">{hint}</span>}
       {help}

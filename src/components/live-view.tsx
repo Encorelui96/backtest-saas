@@ -8,6 +8,7 @@ import type { Trade } from "@/lib/engine/backtest";
 import type { Strategy } from "@/lib/strategy/schema";
 import { INTERVALS, INTERVAL_MS, type CandleRow, type Interval } from "@/lib/types";
 import { isCrypto } from "@/lib/markets";
+import { MarketPicker } from "./market-picker";
 import { PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
 import { Alert, Card, Field } from "./ui";
 
@@ -145,9 +146,6 @@ export function LiveView() {
         </Field>
         {!strategy && (
           <>
-            <Field label="Symbole">
-              <input value={symbol} onChange={(e) => setSymbol(e.target.value.toUpperCase())} className="w-32" />
-            </Field>
             <Field label="Unité de temps">
               <select value={interval} onChange={(e) => setInterval_(e.target.value as Interval)}>
                 {INTERVALS.map((i) => (
@@ -172,6 +170,11 @@ export function LiveView() {
           </div>
         </div>
       </div>
+      {!strategy && (
+        <Card>
+          <MarketPicker value={symbol} onChange={setSymbol} />
+        </Card>
+      )}
       {error && <Alert tone="error">{error}</Alert>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">

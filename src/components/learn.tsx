@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
-import { glossary } from "@/lib/learn/glossary";
+import { USES, glossary } from "@/lib/learn/glossary";
 
 /**
- * Beginner mode: explanations under the fields, clickable terms and a guided
- * reading of the results. The choice is a per-browser preference, so it lives
- * in localStorage; new visitors start in beginner mode.
+ * Beginner mode: clickable terms, explanation boxes and a guided reading of
+ * the results. Expert mode drops those for a denser screen with every setting.
+ * Both keep a "?" next to every field. The choice is a per-browser preference,
+ * so it lives in localStorage; new visitors start in beginner mode.
  */
 
 export type Level = "beginner" | "expert";
@@ -59,7 +60,7 @@ export function LevelToggle({ className = "" }: { className?: string }) {
           key={l}
           onClick={() => setLevel(l)}
           aria-pressed={level === l}
-          className={`rounded px-2 py-1 ${level === l ? "bg-accent text-white" : "text-muted hover:text-fg"}`}
+          className={`rounded px-2.5 py-1 ${level === l ? "bg-accent text-white" : "text-muted hover:text-fg"}`}
         >
           {l === "beginner" ? "Débutant" : "Expert"}
         </button>
@@ -73,6 +74,11 @@ export function Beginner({ children }: { children: ReactNode }) {
   return useBeginner() ? <>{children}</> : null;
 }
 
+/** Children only in expert mode. */
+export function Expert({ children }: { children: ReactNode }) {
+  return useBeginner() ? null : <>{children}</>;
+}
+
 /** A short explanation box, beginner mode only. */
 export function Tip({ children, title }: { children: ReactNode; title?: string }) {
   if (!useBeginner()) return null;
@@ -84,36 +90,18 @@ export function Tip({ children, title }: { children: ReactNode; title?: string }
   );
 }
 
-/** A one-line help under a form field, beginner mode only. */
-export function FieldHelp({ children, term }: { children: ReactNode; term?: string }) {
+/** A one-line recommendation under a form field, beginner mode only. */
+export function FieldHelp({ children }: { children: ReactNode }) {
   if (!useBeginner()) return null;
-  return (
-    <span className="text-[11px] leading-snug text-accent/90">
-      {children}
-      {term && (
-        <>
-          {" "}
-          <TermLink id={term} />
-        </>
-      )}
-    </span>
-  );
-}
-
-function TermLink({ id }: { id: string }) {
-  return (
-    <Link href={`/apprendre#${id}`} className="underline decoration-dotted underline-offset-2 hover:text-fg">
-      En savoir plus
-    </Link>
-  );
+  return <span className="text-[11px] leading-snug text-accent/90">{children}</span>;
 }
 
 /**
- * A word with its definition one tap away (beginner mode). On phones there is
- * no hover, so the pop-up opens on click and closes on a click elsewhere.
+ * The definition of a glossary entry, opened by its trigger. On phones there is
+ * no hover and little width, so it opens as a sheet above the tab bar; on
+ * larger screens, as a bubble under the trigger. A click elsewhere closes it.
  */
-export function Term({ id, children }: { id: string; children?: ReactNode }) {
-  const beginner = useBeginner();
+function Definition({ id, trigger, triggerClass, label }: { id: string; trigger: ReactNode; triggerClass: string; label: string }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const entry = glossary(id);
@@ -123,36 +111,82 @@ export function Term({ id, children }: { id: string; children?: ReactNode }) {
     const close = (e: MouseEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("keydown", esc);
+    };
   }, [open]);
 
-  const label = children ?? entry?.term ?? id;
-  if (!beginner || !entry) return <>{label}</>;
+  if (!entry) return <>{trigger}</>;
+  const use = USES[id];
   return (
     <span ref={ref} className="relative inline">
       <button
         type="button"
         onClick={(e) => {
+          // Inside a <label>, a click would otherwise focus the input.
           e.preventDefault();
           e.stopPropagation();
           setOpen((o) => !o);
         }}
         aria-expanded={open}
-        className="cursor-help text-left underline decoration-accent/70 decoration-dotted underline-offset-2"
+        aria-label={label}
+        className={triggerClass}
       >
-        {label}
+        {trigger}
       </button>
       {open && (
         <span
-          role="tooltip"
-          className="absolute left-0 top-full z-40 mt-1 block w-64 max-w-[80vw] rounded-md border border-line bg-panel-2 p-2.5 text-left text-xs font-normal normal-case leading-relaxed text-fg shadow-lg"
+          role="dialog"
+          aria-label={entry.term}
+          className="fixed inset-x-3 bottom-[calc(72px+env(safe-area-inset-bottom))] z-50 block rounded-lg border border-line bg-panel-2 p-3 text-left text-sm font-normal normal-case leading-relaxed text-fg shadow-2xl md:absolute md:inset-x-auto md:bottom-auto md:left-0 md:top-full md:mt-1 md:w-80 md:p-2.5 md:text-xs"
         >
-          <span className="mb-0.5 block font-semibold text-accent">{entry.term}</span>
-          {entry.short}{" "}
-          <TermLink id={entry.id} />
+          <span className="mb-1 flex items-start justify-between gap-2">
+            <span className="font-semibold text-accent">{entry.term}</span>
+            <span className="text-muted md:hidden" aria-hidden>
+              ✕
+            </span>
+          </span>
+          <span className="block">{entry.short}</span>
+          {use && (
+            <span className="mt-1.5 block">
+              <span className="font-semibold">À quoi ça sert : </span>
+              {use}
+            </span>
+          )}
+          <Link href={`/apprendre#${entry.id}`} className="mt-1.5 inline-block text-accent underline decoration-dotted underline-offset-2">
+            En savoir plus
+          </Link>
         </span>
       )}
     </span>
+  );
+}
+
+/** A round "?" that explains a field: blue in beginner mode, grey and quieter in expert mode. */
+export function Help({ id }: { id: string }) {
+  const beginner = useBeginner();
+  const tone = beginner ? "border-accent/60 text-accent hover:bg-accent hover:text-white" : "border-line text-muted hover:border-accent hover:text-accent";
+  return (
+    <Definition
+      id={id}
+      label="Explication"
+      trigger="?"
+      triggerClass={`ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border align-middle text-[11px] font-bold leading-none md:h-4 md:w-4 md:text-[10px] ${tone}`}
+    />
+  );
+}
+
+/** A word with its definition one tap away in beginner mode; plain text in expert mode. */
+export function Term({ id, children }: { id: string; children?: ReactNode }) {
+  const beginner = useBeginner();
+  const entry = glossary(id);
+  const label = children ?? entry?.term ?? id;
+  if (!beginner || !entry) return <>{label}</>;
+  return (
+    <Definition id={id} label={`Définition : ${entry.term}`} trigger={label} triggerClass="cursor-help text-left underline decoration-accent/70 decoration-dotted underline-offset-2" />
   );
 }
