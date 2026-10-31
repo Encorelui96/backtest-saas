@@ -287,6 +287,13 @@ export const GLOSSARY: GlossaryEntry[] = [
     category: "risque",
     short: "Avec du levier, si la perte mange ta mise, la plateforme ferme ta position de force et tu perds la mise.",
   },
+  {
+    id: "kelly",
+    term: "Critère de Kelly",
+    category: "risque",
+    short: "Une formule qui donne le risque par trade qui ferait grossir le capital le plus vite, si la suite ressemblait exactement au test. Trop agressif en pratique : c'est un plafond, pas un réglage.",
+    long: "Elle part du taux de gagnants et du rapport entre gain moyen et perte moyenne. Comme ces chiffres sont estimés sur le passé, la plupart des traders n'en prennent qu'un quart, ou restent entre 0,5 et 2 % par trade.",
+  },
 
   // Coûts
   {
@@ -312,6 +319,13 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "Financement",
     category: "couts",
     short: "Sur les contrats perpétuels (futures), un petit coût payé toutes les 8 heures tant que la position est ouverte.",
+  },
+  {
+    id: "taux-equilibre",
+    term: "Taux de gagnants nécessaire",
+    category: "couts",
+    short: "Le % de trades gagnants qu'il faut pour ne pas perdre d'argent, vu ton gain moyen et ta perte moyenne. Les frais le font monter : chaque gain est plus petit, chaque perte plus grande.",
+    example: "Gain moyen de 2 R pour une perte de 1 R : il suffit d'un trade gagnant sur trois.",
   },
 
   // Lire les résultats
@@ -394,6 +408,20 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "Courbe du capital",
     category: "resultats",
     short: "L'évolution du compte trade après trade. Une courbe qui monte régulièrement vaut mieux qu'une courbe en montagnes russes.",
+  },
+  {
+    id: "analyse-trades",
+    term: "Analyse des trades",
+    category: "resultats",
+    short: "Tes trades regroupés par heure, par jour, par sens et par raison de sortie, pour voir si les pertes viennent toujours du même endroit.",
+    long: "Un groupe qui perd sur tout le test est un vrai point faible. Un groupe qui n'a perdu que sur une période peut tenir du hasard : le retirer embellit le passé sans rien promettre pour la suite.",
+  },
+  {
+    id: "mae-mfe",
+    term: "Pire et meilleur moment (MAE / MFE)",
+    category: "resultats",
+    short: "Jusqu'où chaque trade est allé contre toi (MAE) et en ta faveur (MFE) avant de se fermer, en R. Ça aide à placer le stop et les sorties.",
+    example: "Si presque aucun gagnant ne descend sous −0,5 R, un stop à −1 R est peut-être trop loin.",
   },
 
   // Robustesse
