@@ -99,7 +99,7 @@ describe("fetchTwelveData", () => {
 
   it("says which market the plan does not include", async () => {
     reply = () => ({ status: "error", code: 403, message: "This symbol is available starting with the Grow plan." });
-    await expect(fetchTwelveData(market("NAS100")!, "1d", T0 - 30 * 24 * H, T0)).rejects.toThrow(/Nasdaq 100 n'est pas inclus/);
+    await expect(fetchTwelveData(market("QQQ")!, "1d", T0 - 30 * 24 * H, T0)).rejects.toThrow(/via QQQ .* n'est pas inclus/);
   });
 
   it("says plainly when the key is missing", async () => {
