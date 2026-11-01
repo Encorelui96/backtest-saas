@@ -3,8 +3,8 @@ import { UserError, computeBacktest, saveBacktest } from "../lib/server/backtest
 import { pool } from "../lib/server/db";
 
 /**
- * The calculation process. It runs apart from the web server (on Railway, a
- * second service with `npm run worker`), so a heavy backtest never slows the
+ * The calculation process. It runs apart from the web server (on Render, the
+ * worker service of render.yaml, `npm run worker`), so a heavy backtest never slows the
  * site down. Several workers can run at once.
  */
 
@@ -52,7 +52,7 @@ async function loop() {
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
   process.on(sig, () => {
-    // Finish the current job, then exit: Railway waits before killing on redeploy.
+    // Finish the current job, then exit: Render waits before killing on redeploy (30 s by default).
     stopping = true;
   });
 }
