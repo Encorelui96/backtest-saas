@@ -9,8 +9,11 @@ import { defaultConfig } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { handle } from "@/lib/server/http";
 import { requireUser } from "@/lib/server/auth";
+import { limitPerMinute } from "@/lib/server/rate-limit";
 
 const Body = z.object({ strategy: StrategySchema, display: z.number().min(50).max(1000).optional() });
+/** The Live page refreshes at each closed candle (once a minute at most) and every 5 minutes. */
+const PER_MINUTE = 20;
 
 const OVERLAY = new Set<Operand["indicator"]>([
   "sma", "ema", "bb_upper", "bb_middle", "bb_lower", "vwap", "highest", "lowest", "day_open", "prev_day_high", "prev_day_low", "prev_day_close",
@@ -25,7 +28,8 @@ const OVERLAY = new Set<Operand["indicator"]>([
  */
 export async function POST(req: Request) {
   return handle(async () => {
-    await requireUser(req.headers);
+    const user = await requireUser(req.headers);
+    limitPerMinute(user.id, "live", PER_MINUTE);
     const body = Body.parse(await req.json());
     const { strategy } = normalizeStrategy(body.strategy);
     const display = body.display ?? 300;
