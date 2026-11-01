@@ -34,11 +34,45 @@ export const INDICATORS = [
   "lowest",
   "ibs",
   "vwap",
+  "supertrend",
+  "psar",
+  "ichimoku_tenkan",
+  "ichimoku_kijun",
+  "ichimoku_span_a",
+  "ichimoku_span_b",
+  "keltner_upper",
+  "keltner_middle",
+  "keltner_lower",
+  "bb_percent",
+  "bb_width",
+  "squeeze",
+  "chop",
+  "obv",
+  "mfi",
+  "zscore",
+  // Candle patterns: 1 bullish, −1 bearish, 0 none
+  "inside_bar",
+  "engulfing",
+  "pin_bar",
+  "narrow_range",
   // Daily reference levels (local timezone)
   "day_open",
   "prev_day_high",
   "prev_day_low",
   "prev_day_close",
+  "prev_week_high",
+  "prev_week_low",
+  "range_high",
+  "range_low",
+  "pivot",
+  "pivot_r1",
+  "pivot_s1",
+  "pivot_r2",
+  "pivot_s2",
+  "cam_r3",
+  "cam_s3",
+  "cam_r4",
+  "cam_s4",
   // Time filters (local timezone, bar open time)
   "hour",
   "minute",
@@ -58,8 +92,17 @@ export const OperandSchema = z.object({
   value: z.number().nullable().describe("Constant value, only for indicator 'number'."),
   offset: z.number().describe("How many bars back to read the value (0 = current closed bar, 1 = previous bar)."),
   timeframe: z.enum(INTERVALS).nullable().describe("Higher timeframe to compute the indicator on (only completed higher-timeframe bars are used). null = strategy timeframe."),
+  // Defaults to null so strategies saved before this field existed still parse.
+  window: z
+    .object({ start: z.string(), end: z.string() })
+    .nullable()
+    .default(null)
+    .describe("Daily time window HH:MM–HH:MM in the strategy timezone, only for range_high / range_low. null otherwise."),
 });
 export type Operand = z.infer<typeof OperandSchema>;
+
+/** Indicators read on a daily time window (the `window` field). */
+export const WINDOW_INDICATORS: IndicatorName[] = ["range_high", "range_low"];
 
 export const COMPARATORS = [">", ">=", "<", "<=", "==", "crosses_above", "crosses_below"] as const;
 export type Comparator = (typeof COMPARATORS)[number];
@@ -146,6 +189,7 @@ export function operand(indicator: IndicatorName, opts: Partial<Operand> = {}): 
     value: null,
     offset: 0,
     timeframe: null,
+    window: null,
     ...opts,
   };
 }
@@ -224,6 +268,14 @@ export function normalizeStrategy(input: Strategy): { strategy: Strategy; proble
           if (o.indicator === "number" && o.value == null) {
             problems.push("Une valeur numérique est vide.");
             o.value = 0;
+          }
+          if (WINDOW_INDICATORS.includes(o.indicator)) {
+            if (!o.window || !HHMM.test(o.window.start) || !HHMM.test(o.window.end) || o.window.start === o.window.end) {
+              problems.push("Plage horaire invalide pour un haut ou bas de plage : 00:00–08:00 utilisée.");
+              o.window = { start: "00:00", end: "08:00" };
+            }
+          } else {
+            o.window = null;
           }
         }
       }
