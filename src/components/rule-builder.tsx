@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { COMPARATORS, SOURCES, num, operand, type Comparator, type Condition, type Group, type IndicatorName, type Operand } from "@/lib/strategy/schema";
-import { COMPARATOR_LABELS, DEFAULT_PERIODS, INDICATOR_FIELDS, INDICATOR_LABELS } from "@/lib/strategy/describe";
+import { COMPARATOR_LABELS, DEFAULT_PERIODS, FIELD_HINTS, INDICATOR_FIELDS, INDICATOR_LABELS } from "@/lib/strategy/describe";
 import { INTERVALS } from "@/lib/types";
 import { INDICATOR_TERMS } from "@/lib/learn/glossary";
 import { Help } from "./learn";
@@ -13,15 +13,27 @@ function Why({ id }: { id: string | undefined }) {
 }
 
 const GROUPS: { label: string; items: IndicatorName[] }[] = [
-  { label: "Prix", items: ["close", "open", "high", "low", "volume", "number"] },
-  { label: "Tendance", items: ["sma", "ema", "vwap", "adx", "macd", "macd_signal", "macd_hist"] },
-  { label: "Oscillateurs", items: ["rsi", "stoch_k", "stoch_d", "roc", "ibs"] },
-  { label: "Volatilité", items: ["atr", "atr_percent", "bb_upper", "bb_middle", "bb_lower"] },
-  { label: "Niveaux", items: ["highest", "lowest", "day_open", "prev_day_high", "prev_day_low", "prev_day_close"] },
+  { label: "Prix", items: ["close", "open", "high", "low", "number"] },
+  {
+    label: "Tendance",
+    items: ["sma", "ema", "vwap", "adx", "macd", "macd_signal", "macd_hist", "supertrend", "psar", "ichimoku_tenkan", "ichimoku_kijun", "ichimoku_span_a", "ichimoku_span_b"],
+  },
+  { label: "Oscillateurs", items: ["rsi", "stoch_k", "stoch_d", "roc", "ibs", "zscore"] },
+  {
+    label: "Volatilité",
+    items: ["atr", "atr_percent", "bb_upper", "bb_middle", "bb_lower", "bb_percent", "bb_width", "keltner_upper", "keltner_middle", "keltner_lower", "squeeze", "chop"],
+  },
+  { label: "Volume", items: ["volume", "obv", "mfi"] },
+  {
+    label: "Niveaux",
+    items: ["highest", "lowest", "day_open", "prev_day_high", "prev_day_low", "prev_day_close", "prev_week_high", "prev_week_low", "range_high", "range_low"],
+  },
+  { label: "Pivots", items: ["pivot", "pivot_r1", "pivot_s1", "pivot_r2", "pivot_s2", "cam_r3", "cam_s3", "cam_r4", "cam_s4"] },
+  { label: "Figures de bougies", items: ["inside_bar", "engulfing", "pin_bar", "narrow_range"] },
   { label: "Temps", items: ["hour", "minute", "weekday"] },
 ];
 
-const FIELD_LABELS = { period: "Période", period2: "Période 2", period3: "Période 3", multiplier: "Écart-type", source: "Source", value: "Valeur" } as const;
+const FIELD_LABELS = { period: "Période", period2: "Période 2", period3: "Période 3", multiplier: "Écart-type", value: "Valeur" } as const;
 
 function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Operand) => void }) {
   const fields = INDICATOR_FIELDS[value.indicator];
@@ -41,29 +53,42 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
         ))}
       </select>
       <Why id={INDICATOR_TERMS[value.indicator]} />
-      {fields.map((f) =>
-        f === "source" ? (
-          <select key={f} title="Source" value={value.source ?? ""} onChange={(e) => onChange({ ...value, source: (e.target.value || null) as Operand["source"] })}>
-            <option value="">{value.indicator === "highest" ? "haut" : value.indicator === "lowest" ? "bas" : "clôture"}</option>
-            {SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        ) : (
+      {fields.map((f) => {
+        if (f === "source")
+          return (
+            <select key={f} title="Source" value={value.source ?? ""} onChange={(e) => onChange({ ...value, source: (e.target.value || null) as Operand["source"] })}>
+              <option value="">{value.indicator === "highest" ? "haut" : value.indicator === "lowest" ? "bas" : "clôture"}</option>
+              {SOURCES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          );
+        if (f === "window") {
+          const w = value.window ?? { start: "00:00", end: "08:00" };
+          return (
+            <span key={f} className="flex items-center gap-1 text-xs text-muted" title="Plage horaire (heure du fuseau de la stratégie)">
+              de
+              <input type="time" className="w-24" value={w.start} onChange={(e) => onChange({ ...value, window: { ...w, start: e.target.value } })} />à
+              <input type="time" className="w-24" value={w.end} onChange={(e) => onChange({ ...value, window: { ...w, end: e.target.value } })} />
+            </span>
+          );
+        }
+        const label = FIELD_HINTS[value.indicator]?.[f] ?? FIELD_LABELS[f];
+        return (
           <input
             key={f}
             type="number"
             step="any"
-            title={FIELD_LABELS[f]}
-            placeholder={FIELD_LABELS[f]}
+            title={label}
+            placeholder={label}
             className="w-20"
             value={value[f] ?? ""}
             onChange={(e) => onChange({ ...value, [f]: e.target.value === "" ? null : Number(e.target.value) })}
           />
-        ),
-      )}
+        );
+      })}
       {value.indicator !== "number" && !advanced && (
         <button onClick={() => setAdvanced(true)} className="px-1 text-xs text-muted hover:text-fg" title="Autre unité de temps (filtre de tendance), bougie précédente (décalage)">
           ⋯
