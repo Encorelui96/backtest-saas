@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { INTERVALS, INTERVAL_MS, type Interval } from "@/lib/types";
-import { getCandles } from "@/lib/server/candles";
+import { getCandles, isKnownSymbol } from "@/lib/server/candles";
 import { handle } from "@/lib/server/http";
 import { UserError } from "@/lib/server/backtests";
 import { requireUser } from "@/lib/server/auth";
@@ -19,10 +19,14 @@ export async function GET(req: NextRequest) {
     const symbol = (p.get("symbol") ?? "").toUpperCase();
     const interval = p.get("interval") as Interval;
     if (!symbol || !INTERVALS.includes(interval)) throw new UserError("symbol et interval requis");
-    const to = Number(p.get("to") ?? Date.now());
+    // Nothing after now: getCandles would otherwise store an empty chunk for every future month asked for.
+    const to = Math.min(Number(p.get("to") ?? Date.now()), Date.now());
     let from = Number(p.get("from") ?? to - 500 * INTERVAL_MS[interval]);
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from > to) throw new UserError("Période invalide.");
     from = Math.max(from, to - MAX_BARS * INTERVAL_MS[interval]);
-    const c = await getCandles(symbol, interval, from, to);
+    // Checked before any download, so an invented symbol costs no request to the sources.
+    if (!(await isKnownSymbol(symbol))) throw new UserError(`Symbole inconnu : ${symbol}.`);
+    const c = await getCandles(symbol, interval, from, to, { metered: true });
     const rows = Array.from(c.t, (t, i) => ({ t, o: c.o[i], h: c.h[i], l: c.l[i], c: c.c[i], v: c.v[i] }));
     return Response.json(rows);
   });
