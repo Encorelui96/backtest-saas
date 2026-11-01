@@ -6,8 +6,23 @@ import { UserError } from "./backtests";
 import { AuthError } from "./auth";
 import { QuotaError } from "./quotas";
 
-/** Turns thrown errors into JSON responses with a message the UI can show as is. */
+/**
+ * Turns thrown errors into JSON responses with a message the UI can show as is.
+ * Answers belong to the signed-in user, or to a link its author can withdraw: no cache keeps them unless the route says so.
+ */
 export async function handle(fn: () => Promise<Response>): Promise<Response> {
+  const res = await settle(fn);
+  if (!res.headers.has("Cache-Control")) {
+    try {
+      res.headers.set("Cache-Control", "private, no-store");
+    } catch {
+      // A response passed through from elsewhere can have read-only headers.
+    }
+  }
+  return res;
+}
+
+async function settle(fn: () => Promise<Response>): Promise<Response> {
   try {
     return await fn();
   } catch (e) {
@@ -21,10 +36,10 @@ export async function handle(fn: () => Promise<Response>): Promise<Response> {
     }
     if (e instanceof Anthropic.AuthenticationError) return Response.json({ error: "Clé API Anthropic invalide." }, { status: 502 });
     if (e instanceof Anthropic.RateLimitError) return Response.json({ error: "Trop de demandes à l'IA, réessaie dans une minute." }, { status: 429 });
-    if (e instanceof Anthropic.APIError) return Response.json({ error: `Erreur de l'IA (${e.status}) : ${e.message}` }, { status: 502 });
     // The details stay in the server logs; the browser only gets a generic message.
     const ref = crypto.randomUUID().slice(0, 8);
     console.error(`[${ref}]`, e);
+    if (e instanceof Anthropic.APIError) return Response.json({ error: `Erreur de l'IA (réf. ${ref}). Réessaie dans un instant.` }, { status: 502 });
     return Response.json({ error: `Erreur interne (réf. ${ref}). Réessaie dans un instant.` }, { status: 500 });
   }
 }

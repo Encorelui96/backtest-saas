@@ -9,19 +9,28 @@ export { PLANS, type Plan, type PlanId };
 
 /** AI translations per minute, whatever the plan: a scripted loop must not drain the API key. */
 const AI_PER_MINUTE = 5;
+/** AI translations a day for the whole site: a crowd of new accounts, each with its free quota, can't run up the bill. */
+const AI_DAILY_CAP = Number(process.env.AI_DAILY_CAP) > 0 ? Number(process.env.AI_DAILY_CAP) : 200;
 
 export class QuotaError extends Error {}
 
-export function isAdmin(email: string) {
-  return (process.env.ADMIN_EMAILS ?? "")
+const listOf = (name: string) =>
+  (process.env[name] ?? "")
     .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(email.toLowerCase());
+    .map((e) => e.trim())
+    .filter(Boolean);
+
+/**
+ * The site's administrators: an account listed by id in ADMIN_USER_IDS, or one whose address is in
+ * ADMIN_EMAILS and confirmed. An unconfirmed address proves nothing: whoever registered it first would be admin.
+ */
+export function isAdmin(user: Pick<SessionUser, "id" | "email" | "emailVerified">) {
+  if (listOf("ADMIN_USER_IDS").includes(user.id)) return true;
+  return user.emailVerified && listOf("ADMIN_EMAILS").some((e) => e.toLowerCase() === user.email.toLowerCase());
 }
 
 export async function planOf(user: SessionUser): Promise<Plan> {
-  if (isAdmin(user.email)) return PLANS.pro;
+  if (isAdmin(user)) return PLANS.pro;
   const row = await queryOne<{ plan: PlanId }>("SELECT plan FROM plans WHERE user_id = $1", [user.id]);
   return PLANS[row?.plan ?? "free"] ?? PLANS.free;
 }
@@ -91,6 +100,10 @@ export async function consumeAi(user: SessionUser): Promise<string> {
     }
     const [recent] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'ai' AND created_at > now() - interval '1 minute'", [user.id]);
     if (Number(recent.n) >= AI_PER_MINUTE) throw new QuotaError("Trop de traductions d'affilée : attends une minute.");
+    // The site-wide count runs under its own lock, so accounts translating at the same moment can't all slip under the cap.
+    await run("SELECT pg_advisory_xact_lock(hashtext('ai:daily'))", []);
+    const [today] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE kind = 'ai' AND created_at > now() - interval '1 day'", []);
+    if (Number(today.n) >= AI_DAILY_CAP) throw new QuotaError("Les traductions par l'IA sont très demandées aujourd'hui : réessaie demain, ou utilise le constructeur manuel.");
     const [row] = await run<{ id: string }>("INSERT INTO usage_events (user_id, kind) VALUES ($1, 'ai') RETURNING id", [user.id]);
     return row.id;
   });

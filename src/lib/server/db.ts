@@ -3,7 +3,7 @@ import { Pool, type PoolClient, type QueryResultRow } from "pg";
 
 /**
  * Postgres connection pool, shared by the web server and the worker.
- * DATABASE_URL is the only setting (Railway provides it).
+ * DATABASE_URL is the only setting (Render provides it, see render.yaml).
  */
 
 declare global {

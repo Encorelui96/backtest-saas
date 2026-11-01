@@ -113,12 +113,14 @@ export interface SessionUser {
   id: string;
   email: string;
   name: string;
+  /** Whether the owner of the address confirmed it (false for every account until e-mail sending is set up). */
+  emailVerified: boolean;
 }
 
 export async function currentUser(headers: Headers): Promise<SessionUser | null> {
   const session = await auth.api.getSession({ headers });
   if (!session) return null;
-  return { id: session.user.id, email: session.user.email, name: session.user.name };
+  return { id: session.user.id, email: session.user.email, name: session.user.name, emailVerified: session.user.emailVerified };
 }
 
 /** Whether the signed-in user can sign in with a password (accounts made with the e-mail link or Google have none). */
