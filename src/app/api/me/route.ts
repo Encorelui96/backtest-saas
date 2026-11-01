@@ -18,7 +18,7 @@ export async function GET(req: Request) {
       user,
       usage: user ? await usageOf(user) : null,
       hasPassword: user ? await hasPassword(req.headers) : false,
-      isAdmin: user ? isAdmin(user.email) : false,
+      isAdmin: user ? isAdmin(user) : false,
       surveyAnswered: Number(surveyed[0]?.n ?? 0) > 0,
       interests: interests.map((i) => i.plan),
       googleEnabled,
