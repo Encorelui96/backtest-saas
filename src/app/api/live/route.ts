@@ -10,6 +10,7 @@ import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { handle } from "@/lib/server/http";
 import { requireUser } from "@/lib/server/auth";
 import { limitPerMinute } from "@/lib/server/rate-limit";
+import { QuotaError, planOf } from "@/lib/server/quotas";
 
 const Body = z.object({ strategy: StrategySchema, display: z.number().min(50).max(1000).optional() });
 /** The Live page refreshes at each closed candle (once a minute at most) and every 5 minutes. */
@@ -32,10 +33,15 @@ export async function POST(req: Request) {
     limitPerMinute(user.id, "live", PER_MINUTE);
     const body = Body.parse(await req.json());
     const { strategy } = normalizeStrategy(body.strategy);
-    const display = body.display ?? 300;
+    // Following a strategy live is a backtest on the latest bars: the plan's smallest unit applies. Plain charts stay open to all.
+    const plan = await planOf(user);
     const ms = INTERVAL_MS[strategy.interval];
+    if (ms < INTERVAL_MS[plan.minInterval]) {
+      throw new QuotaError(`L'offre ${plan.label} suit les stratégies à partir de l'unité ${plan.minInterval}. Passe à l'offre Trader pour le scalp en ${strategy.interval}.`);
+    }
+    const display = body.display ?? 300;
     const warmBars = Math.min(4000, Math.ceil(warmupMs(strategy) / ms) + 10);
-    const rows = await fetchRecent(strategy.symbol, strategy.interval, display + warmBars + 1);
+    const rows = await fetchRecent(strategy.symbol, strategy.interval, display + warmBars + 1, { metered: true });
     const now = Date.now();
     const closed = rows.filter((r) => r.t + ms <= now);
     const forming = rows.find((r) => r.t + ms > now) ?? null;
@@ -48,7 +54,7 @@ export async function POST(req: Request) {
     // Higher-timeframe filters get their own candles: rebuilding a daily MM50 from 300 bars of 15m would leave it empty.
     for (const tf of higherTimeframes(strategy)) {
       const bars = Math.ceil(higherTimeframeWarmupMs(strategy, tf) / INTERVAL_MS[tf]) + Math.ceil(((display + 1) * ms) / INTERVAL_MS[tf]) + 2;
-      const htfRows = (await fetchRecent(strategy.symbol, tf, Math.min(bars, 1500))).filter((r) => r.t + INTERVAL_MS[tf] <= now);
+      const htfRows = (await fetchRecent(strategy.symbol, tf, Math.min(bars, 1500), { metered: true })).filter((r) => r.t + INTERVAL_MS[tf] <= now);
       ctx.attachHigherTimeframe(tf, rowsToCandles(htfRows));
     }
     const run = runBacktest(candles, strategy, { ...defaultConfig(), initialCapital: 10_000 }, ctx, startIndex);
