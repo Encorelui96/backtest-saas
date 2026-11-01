@@ -338,5 +338,6 @@ function ctxAtr(ctx: SeriesContext, period: number) {
     value: null,
     offset: 0,
     timeframe: null,
+    window: null,
   });
 }

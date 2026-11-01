@@ -144,6 +144,17 @@ const OPERAND_LABEL: Partial<Record<Operand["indicator"], string>> = {
   roc: "ROC",
   stoch_k: "Stoch",
   stoch_d: "Stoch",
+  supertrend: "Supertrend",
+  keltner_upper: "Keltner",
+  keltner_middle: "Keltner",
+  keltner_lower: "Keltner",
+  bb_percent: "Bollinger %B",
+  bb_width: "Largeur Bollinger",
+  squeeze: "Squeeze",
+  chop: "Choppiness",
+  mfi: "MFI",
+  zscore: "Score z",
+  narrow_range: "NR",
 };
 
 /** Every numeric setting worth wiggling: indicator periods, thresholds, stop and target sizes. */
@@ -159,7 +170,8 @@ export function strategyKnobs(s: Strategy): Knob[] {
           if (o.indicator === "number" && o.value !== null && o.value !== 0) {
             const otherSide = side === "left" ? "right" : "left";
             const other = c[otherSide];
-            if (["hour", "minute", "weekday"].includes(other.indicator)) return;
+            // Times, days and yes/no signals (patterns, squeeze) have no neighbouring values worth testing.
+            if (["hour", "minute", "weekday", "inside_bar", "engulfing", "pin_bar", "narrow_range", "squeeze"].includes(other.indicator)) return;
             // The same threshold used in several rules (e.g. ADX > 20 for longs and shorts) moves as one setting.
             const key = `v-${JSON.stringify(other)}-${c.op}-${o.value}`;
             if (seen.has(key)) return;

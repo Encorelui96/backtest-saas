@@ -2,7 +2,7 @@ import type { Candles, Interval } from "../types";
 import { INTERVAL_MS, emptyCandles } from "../types";
 import type { Condition, Group, Operand } from "../strategy/schema";
 import * as ind from "./indicators";
-import { localTime, type LocalTime } from "./time";
+import { localTime, parseHHMM, type LocalTime } from "./time";
 
 /**
  * Computes operand series over a candle set, with memoization so that
@@ -156,11 +156,69 @@ export class SeriesContext {
       }
       case "vwap":
         return this.vwap();
+      case "supertrend":
+        return ind.supertrend(c.h, c.l, c.c, op.period ?? 10, op.multiplier ?? 3);
+      case "psar":
+        return ind.psar(c.h, c.l, op.multiplier ?? 0.02, 0.2);
+      case "ichimoku_tenkan":
+      case "ichimoku_kijun":
+      case "ichimoku_span_a":
+      case "ichimoku_span_b": {
+        const k = ind.ichimoku(c.h, c.l, op.period ?? 9, op.period2 ?? 26, op.period3 ?? 52);
+        return { ichimoku_tenkan: k.tenkan, ichimoku_kijun: k.kijun, ichimoku_span_a: k.spanA, ichimoku_span_b: k.spanB }[op.indicator];
+      }
+      case "keltner_upper":
+      case "keltner_middle":
+      case "keltner_lower": {
+        const k = ind.keltner(c.h, c.l, c.c, op.period ?? 20, op.period2 ?? 10, op.multiplier ?? 2);
+        return op.indicator === "keltner_upper" ? k.upper : op.indicator === "keltner_lower" ? k.lower : k.mid;
+      }
+      case "bb_percent":
+      case "bb_width": {
+        const b = ind.bollingerPosition(this.src(op.source), op.period ?? 20, op.multiplier ?? 2);
+        return op.indicator === "bb_percent" ? b.percentB : b.width;
+      }
+      case "squeeze":
+        return ind.squeeze(c.h, c.l, c.c, op.period ?? 20, op.multiplier ?? 1.5);
+      case "chop":
+        return ind.choppiness(c.h, c.l, c.c, p);
+      case "obv":
+        return ind.obv(c.c, c.v);
+      case "mfi":
+        return ind.mfi(c.h, c.l, c.c, c.v, p);
+      case "zscore":
+        return ind.zscore(this.src(op.source), op.period ?? 20);
+      case "inside_bar":
+        return ind.insideBar(c.h, c.l);
+      case "engulfing":
+        return ind.engulfing(c.o, c.c);
+      case "pin_bar":
+        return ind.pinBar(c.o, c.h, c.l, c.c);
+      case "narrow_range":
+        return ind.narrowRange(c.h, c.l, op.period ?? 7);
       case "day_open":
       case "prev_day_high":
       case "prev_day_low":
       case "prev_day_close":
         return this.dailyLevels()[op.indicator];
+      case "prev_week_high":
+      case "prev_week_low":
+        return this.weeklyLevels()[op.indicator];
+      case "range_high":
+      case "range_low": {
+        const r = this.timeRange(op.window ?? null);
+        return op.indicator === "range_high" ? r.high : r.low;
+      }
+      case "pivot":
+      case "pivot_r1":
+      case "pivot_s1":
+      case "pivot_r2":
+      case "pivot_s2":
+      case "cam_r3":
+      case "cam_s3":
+      case "cam_r4":
+      case "cam_s4":
+        return this.pivots()[op.indicator];
       case "hour":
         return Float64Array.from(this.local, (lt) => lt.hour);
       case "minute":
@@ -234,6 +292,118 @@ export class SeriesContext {
     }
     this._daily = { day_open: dayOpen, prev_day_high: pdh, prev_day_low: pdl, prev_day_close: pdc };
     return this._daily;
+  }
+
+  private _weekly: Record<"prev_week_high" | "prev_week_low", Float64Array> | null = null;
+
+  /** High and low of the previous local week, Monday to Sunday. */
+  private weeklyLevels() {
+    if (this._weekly) return this._weekly;
+    const c = this.candles;
+    const pwh = new Float64Array(this.n).fill(NaN);
+    const pwl = new Float64Array(this.n).fill(NaN);
+    let week = NaN;
+    let curHigh = -Infinity;
+    let curLow = Infinity;
+    let prevHigh = NaN;
+    let prevLow = NaN;
+    for (let i = 0; i < this.n; i++) {
+      // Day 0 of the epoch is a Thursday: shifting by 3 makes weeks start on Monday.
+      const w = Math.floor((this.local[i].dayKey + 3) / 7);
+      if (w !== week) {
+        if (!Number.isNaN(week)) {
+          prevHigh = curHigh;
+          prevLow = curLow;
+        }
+        week = w;
+        curHigh = -Infinity;
+        curLow = Infinity;
+      }
+      curHigh = Math.max(curHigh, c.h[i]);
+      curLow = Math.min(curLow, c.l[i]);
+      pwh[i] = prevHigh;
+      pwl[i] = prevLow;
+    }
+    this._weekly = { prev_week_high: pwh, prev_week_low: pwl };
+    return this._weekly;
+  }
+
+  private _pivots: Record<"pivot" | "pivot_r1" | "pivot_s1" | "pivot_r2" | "pivot_s2" | "cam_r3" | "cam_s3" | "cam_r4" | "cam_s4", Float64Array> | null = null;
+
+  /** Classic floor pivots and Camarilla levels, from the previous local day's high, low and close. */
+  private pivots() {
+    if (this._pivots) return this._pivots;
+    const { prev_day_high: H, prev_day_low: L, prev_day_close: C } = this.dailyLevels();
+    const make = (f: (h: number, l: number, c: number, p: number) => number) =>
+      Float64Array.from(H, (h, i) => f(h, L[i], C[i], (h + L[i] + C[i]) / 3));
+    this._pivots = {
+      pivot: make((_h, _l, _c, p) => p),
+      pivot_r1: make((_h, l, _c, p) => 2 * p - l),
+      pivot_s1: make((h, _l, _c, p) => 2 * p - h),
+      pivot_r2: make((h, l, _c, p) => p + (h - l)),
+      pivot_s2: make((h, l, _c, p) => p - (h - l)),
+      cam_r3: make((h, l, c) => c + ((h - l) * 1.1) / 4),
+      cam_s3: make((h, l, c) => c - ((h - l) * 1.1) / 4),
+      cam_r4: make((h, l, c) => c + ((h - l) * 1.1) / 2),
+      cam_s4: make((h, l, c) => c - ((h - l) * 1.1) / 2),
+    };
+    return this._pivots;
+  }
+
+  /**
+   * High and low of a daily time window (e.g. the first 15 minutes of the New
+   * York session, or the night from 00:00 to 08:00). NaN while the window is
+   * still forming; available from the bar that closes on its end until the
+   * end of the local day, or until the next window when it spans midnight.
+   */
+  private timeRange(w: Operand["window"]): { high: Float64Array; low: Float64Array } {
+    const key = `range:${w?.start}-${w?.end}`;
+    const high = this.cache.get(`${key}:h`);
+    const low = this.cache.get(`${key}:l`);
+    if (high && low) return { high, low };
+    const outHigh = new Float64Array(this.n).fill(NaN);
+    const outLow = new Float64Array(this.n).fill(NaN);
+    if (!w) return { high: outHigh, low: outLow };
+    const start = parseHHMM(w.start);
+    const end = parseHHMM(w.end);
+    const spansMidnight = start > end;
+    const inside = (m: number) => (spansMidnight ? m >= start || m < end : m >= start && m < end);
+    const c = this.candles;
+    let forming = false;
+    let hi = -Infinity;
+    let lo = Infinity;
+    let doneHigh = NaN;
+    let doneLow = NaN;
+    let doneDay = NaN;
+    for (let i = 0; i < this.n; i++) {
+      const lt = this.local[i];
+      if (inside(lt.minuteOfDay)) {
+        if (!forming) {
+          forming = true;
+          hi = -Infinity;
+          lo = Infinity;
+          doneHigh = doneLow = NaN;
+        }
+        hi = Math.max(hi, c.h[i]);
+        lo = Math.min(lo, c.l[i]);
+        // The bar that closes on the window's end completes the range.
+        if (!inside(this.closeLocal[i].minuteOfDay)) {
+          forming = false;
+          [doneHigh, doneLow, doneDay] = [hi, lo, lt.dayKey];
+        }
+      } else if (forming) {
+        // A gap skipped the window's last bars: settle on what was traded.
+        forming = false;
+        [doneHigh, doneLow, doneDay] = [hi, lo, lt.dayKey];
+      }
+      if (spansMidnight || lt.dayKey === doneDay) {
+        outHigh[i] = doneHigh;
+        outLow[i] = doneLow;
+      }
+    }
+    this.cache.set(`${key}:h`, outHigh);
+    this.cache.set(`${key}:l`, outLow);
+    return { high: outHigh, low: outLow };
   }
 
   /** Computes the operand on resampled candles and maps back, using only completed higher-timeframe bars. */
