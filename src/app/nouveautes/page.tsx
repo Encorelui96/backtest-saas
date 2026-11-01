@@ -9,6 +9,15 @@ export const metadata: Metadata = {
 /** Newest first. Add a line each time something visible ships: users see the product moving. */
 const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
+    month: "Novembre 2026",
+    items: [
+      { title: "Niveaux du day trader", text: "Haut et bas d'une plage horaire (plage d'ouverture, range de la nuit), plus haut et plus bas de la semaine dernière, points pivots et Camarilla." },
+      { title: "Nouveaux indicateurs", text: "Supertrend, Parabolic SAR, Ichimoku, canaux de Keltner, compression (squeeze), Bollinger %B et largeur, Choppiness, OBV, MFI et score z." },
+      { title: "Figures de bougies", text: "Bougie intérieure, avalement, pin bar et bougie la plus étroite (NR7), utilisables dans les règles et comprises par l'IA." },
+      { title: "Six nouveaux modèles", text: "Tortues, repli sur la MME 21, cassure après compression, plage d'ouverture du Nasdaq, fausse cassure de la veille et Camarilla vers le pivot." },
+    ],
+  },
+  {
     month: "Octobre 2026",
     items: [
       { title: "Onglet Analyse", text: "Tes trades regroupés par heure, jour, sens et sortie, avec les groupes qui perdent tout le long du test, et ce que le pire et le meilleur moment de chaque trade disent de ton stop et de tes sorties." },
