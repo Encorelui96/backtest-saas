@@ -6,30 +6,41 @@ import { Resend } from "resend";
 import { pool } from "./db";
 
 /**
- * Accounts: e-mail and password, plus Google when its keys are set. The e-mail
- * link sign-in stays available once RESEND_API_KEY can actually deliver it;
- * without it the link only reaches the server logs, so the page hides it.
+ * Accounts: e-mail and password, plus Google when its keys are set. Everything
+ * that needs an e-mail (address check, password reset, sign-in link) turns on
+ * once RESEND_API_KEY can actually deliver it.
  */
 
 export const emailLinksEnabled = Boolean(process.env.RESEND_API_KEY);
+/** Without Resend, `next dev` prints sign-in links in the terminal; production never writes them to its logs. */
+const devSignInLinks = !emailLinksEnabled && process.env.NODE_ENV !== "production";
 
-async function sendMagicLink({ email, url }: { email: string; url: string }) {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    console.log(`\n[connexion] Lien de connexion pour ${email} :\n${url}\n`);
-    return;
-  }
-  const { error } = await new Resend(key).emails.send({
+const attr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+/** One e-mail with one button: `action` is what the link does, "pour te connecter". */
+async function sendLinkEmail(to: string, subject: string, action: string, url: string, validity: string) {
+  const { error } = await new Resend(process.env.RESEND_API_KEY).emails.send({
     from: process.env.EMAIL_FROM ?? "Backtest Lab <connexion@example.com>",
-    to: email,
-    subject: "Ton lien de connexion à Backtest Lab",
-    text: `Bonjour,\n\nClique sur ce lien pour te connecter à Backtest Lab (valable 10 minutes) :\n${url}\n\nSi tu n'as rien demandé, ignore ce message.`,
-    html: `<p>Bonjour,</p><p><a href="${url}">Clique ici pour te connecter à Backtest Lab</a>. Le lien est valable 10 minutes.</p><p>Si tu n'as rien demandé, ignore ce message.</p>`,
+    to,
+    subject,
+    text: `Bonjour,\n\nClique sur ce lien ${action} (valable ${validity}) :\n${url}\n\nSi tu n'as rien demandé, ignore ce message.`,
+    html: `<p>Bonjour,</p><p><a href="${attr(url)}">Clique ici ${action}</a>. Le lien est valable ${validity}.</p><p>Si tu n'as rien demandé, ignore ce message.</p>`,
   });
   if (error) throw new Error(`Envoi de l'e-mail impossible : ${error.message}`);
 }
 
+async function sendMagicLink({ email, url }: { email: string; url: string }) {
+  if (devSignInLinks) {
+    console.log(`\n[connexion] Lien de connexion pour ${email} :\n${url}\n`);
+    return;
+  }
+  await sendLinkEmail(email, "Ton lien de connexion à Backtest Lab", "pour te connecter à Backtest Lab", url, "10 minutes");
+}
+
 export const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+/** Sign-in attempts per visitor (IP address), on top of better-auth's limit of 100 requests a minute. */
+const ATTEMPTS = { window: 60, max: 5 };
 
 export const auth = betterAuth({
   appName: "Backtest Lab",
@@ -37,12 +48,51 @@ export const auth = betterAuth({
   // Render gives the public address in RENDER_EXTERNAL_URL; BETTER_AUTH_URL wins when you use your own domain.
   baseURL: process.env.BETTER_AUTH_URL ?? process.env.RENDER_EXTERNAL_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET,
-  // No e-mail is sent, so addresses are not verified: an address can only be registered once, by whoever signs up first.
-  emailAndPassword: { enabled: true, minPasswordLength: 8, maxPasswordLength: 128, autoSignIn: true },
+  emailAndPassword: {
+    enabled: true,
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
+    autoSignIn: true,
+    // With e-mail, an address must be confirmed before its first session, so nobody can sign up with someone else's.
+    // Without it, an address can only be registered once, by whoever signs up first.
+    requireEmailVerification: emailLinksEnabled,
+    ...(emailLinksEnabled && {
+      sendResetPassword: ({ user, url }) => sendLinkEmail(user.email, "Choisis un nouveau mot de passe", "pour choisir un nouveau mot de passe", url, "1 heure"),
+    }),
+    // Whoever knew the old password is signed out everywhere.
+    revokeSessionsOnPasswordReset: true,
+  },
+  ...(emailLinksEnabled && {
+    emailVerification: {
+      sendVerificationEmail: ({ user, url }) => sendLinkEmail(user.email, "Confirme ton adresse e-mail", "pour confirmer ton adresse et entrer dans Backtest Lab", url, "1 heure"),
+      sendOnSignUp: true,
+      // Accounts made before the check get the e-mail at their next sign-in.
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+    },
+  }),
   socialProviders: googleEnabled
     ? { google: { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET!, prompt: "select_account" } }
     : {},
+  // better-auth only links Google to an existing account whose own address is verified (requireLocalEmailVerified,
+  // on by default): an account registered with someone else's address can't capture their Google identity.
   account: { accountLinking: { enabled: true, trustedProviders: ["google"] } },
+  // In memory: there is one web instance, and no IP address is kept once the window has passed.
+  rateLimit: {
+    enabled: true,
+    storage: "memory",
+    window: 60,
+    max: 100,
+    customRules: {
+      "/sign-in/email": ATTEMPTS,
+      "/sign-up/email": ATTEMPTS,
+      "/sign-in/magic-link": ATTEMPTS,
+      "/request-password-reset": ATTEMPTS,
+      "/send-verification-email": ATTEMPTS,
+      "/change-password": ATTEMPTS,
+      "/delete-user": ATTEMPTS,
+    },
+  },
   // Right to erasure: the user deletes the account from "Mon compte" (password, or a sign-in less than a day old).
   // Every app table references "user" with ON DELETE CASCADE, so strategies, backtests and usage go with it.
   user: { deleteUser: { enabled: true } },
@@ -50,7 +100,7 @@ export const auth = betterAuth({
   // Behind Render's proxies X-Forwarded-For holds several addresses, which better-auth won't guess from:
   // read the single-value client IP headers first, so sign-in attempts are rate-limited per visitor, not all together.
   advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "true-client-ip", "x-real-ip", "x-forwarded-for"] } },
-  plugins: [magicLink({ sendMagicLink, expiresIn: 10 * 60 }), nextCookies()],
+  plugins: [...(emailLinksEnabled || devSignInLinks ? [magicLink({ sendMagicLink, expiresIn: 10 * 60 })] : []), nextCookies()],
 });
 
 export class AuthError extends Error {
