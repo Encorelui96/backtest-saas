@@ -23,7 +23,7 @@ How the engine works:
 - One position at a time. With direction "both", an opposite entry signal reverses the position.
 - entryLong / entryShort / exitLong / exitShort are lists of groups. A group fires when ALL its conditions are true; a rule fires when ANY group fires. Use one group for a plain "A and B" rule, several groups for "A or B".
 - A condition compares two operands with >, >=, <, <=, ==, crosses_above, crosses_below.
-- Operand fields: indicator, period, period2, period3, multiplier, source, value, offset, timeframe. Set every field you don't use to null (offset to 0).
+- Operand fields: indicator, period, period2, period3, multiplier, source, value, offset, timeframe, window. Set every field you don't use to null (offset to 0).
   - "number": a constant in value (e.g. RSI threshold 30).
   - close/open/high/low/volume: raw bar values.
   - sma/ema(period, source), rsi(period, source), atr(period), atr_percent(period) = ATR as % of price.
@@ -33,7 +33,18 @@ How the engine works:
   - highest(period, source default high) and lowest(period, source default low) INCLUDE the current bar. For a breakout of the previous N bars, compare close with highest(N) at offset 1.
   - ibs = (close - low) / (high - low), between 0 and 1.
   - vwap: session VWAP reset every local day.
-  - day_open, prev_day_high, prev_day_low, prev_day_close: daily levels in the strategy timezone.
+  - supertrend(period = ATR period, multiplier = ATR multiple): a line under the price in an uptrend, above it in a downtrend. "close > supertrend" = uptrend; crossing it = trend change.
+  - psar(multiplier = acceleration step, default 0.02, max 0.2): Parabolic SAR, same reading as supertrend.
+  - ichimoku_tenkan / ichimoku_kijun / ichimoku_span_a / ichimoku_span_b(period = tenkan 9, period2 = kijun 26, period3 = span B 52). The spans are the cloud drawn under the current bar. "Above the cloud" = close > both spans. Chikou = close compared with close at offset 26.
+  - keltner_upper / keltner_middle / keltner_lower(period = EMA period, period2 = ATR period, multiplier = ATR multiple).
+  - bb_percent(period, multiplier): position of the close between the Bollinger bands, 0 = lower band, 1 = upper band. bb_width(period, multiplier): band width in % of the middle band.
+  - squeeze(period, multiplier = Keltner ATR multiple, default 1.5): 1 while the Bollinger bands (period, 2) are inside the Keltner channel, else 0. A squeeze release is "squeeze at offset 1 == 1 and squeeze == 0".
+  - chop(period): choppiness index, above 61.8 = choppy range, below 38.2 = trending.
+  - obv: on-balance volume, compare it with itself at an offset. mfi(period): money flow index 0–100. zscore(period, source): distance from the N-bar mean in standard deviations.
+  - Candle patterns on the bar that just closed: inside_bar (1 or 0), engulfing (1 bullish, −1 bearish, 0), pin_bar (1 = long lower wick, −1 = long upper wick, 0), narrow_range(period, 7 for NR7: 1 when the bar has the smallest range of the last N). Compare them with a number: "engulfing == 1".
+  - day_open, prev_day_high, prev_day_low, prev_day_close: daily levels in the strategy timezone. prev_week_high, prev_week_low: previous week (Monday to Sunday).
+  - range_high / range_low with window {start, end} (HH:MM, strategy timezone): high and low of a daily time window, available once the window is over, until the end of that day (or the next window when it spans midnight). Opening range of New York: timezone America/New_York, window 09:30–09:45. Asian range: e.g. window 00:00–08:00 Europe/Paris.
+  - pivot, pivot_r1, pivot_s1, pivot_r2, pivot_s2: classic floor pivots; cam_r3, cam_s3, cam_r4, cam_s4: Camarilla levels. Both from the previous local day's high, low and close.
   - hour, minute, weekday (1 = Monday … 7 = Sunday): of the bar OPEN time, in the strategy timezone.
   - offset: bars back (0 = the bar that just closed).
   - timeframe: compute the operand on a higher timeframe (e.g. a daily 200 SMA trend filter on a 15m strategy: sma, period 200, timeframe "1d"). Only completed higher-timeframe bars are used. Leave null for the strategy timeframe.
@@ -50,7 +61,7 @@ Defaults when the user doesn't say (list each one you apply in assumptions):
 - If the user gives no stop, use none, and say so in assumptions; never invent a target the user didn't imply.
 - Name the strategy briefly in French.
 
-Translate faithfully: don't add filters the user didn't ask for. If a part of the strategy can't be expressed with these building blocks (order flow, news, chart patterns, discretionary judgement), approximate it with the closest rule, say so in assumptions, and ask about it in questions.`;
+Translate faithfully: don't add filters the user didn't ask for. If a part of the strategy can't be expressed with these building blocks (order flow, news, chart patterns other than the candle patterns above, discretionary judgement), approximate it with the closest rule, say so in assumptions, and ask about it in questions.`;
 
 // The strategy schema repeats the operand object 8 times, which compiles to a grammar
 // too large for strict structured outputs. So the schema goes in the prompt and the
