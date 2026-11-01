@@ -17,8 +17,14 @@ services:
           property: connectionString
       - key: BETTER_AUTH_SECRET
         generateValue: true
-      # Your e-mail: it gets the Pro plan without paying.
+      # Your e-mail: once confirmed, it gets the Pro plan without paying and the admin page.
       - key: ADMIN_EMAILS
+        sync: false
+      # The same, by account id (shown on /compte): needed while no e-mail can be confirmed (no RESEND_API_KEY).
+      - key: ADMIN_USER_IDS
+        sync: false
+      # Optional: AI translations a day for the whole site (200 by default), to cap the Anthropic bill.
+      - key: AI_DAILY_CAP
         sync: false
       # Optional, can be added later in the service's Environment tab.
       - key: ANTHROPIC_API_KEY
