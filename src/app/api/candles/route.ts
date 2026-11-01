@@ -4,13 +4,17 @@ import { getCandles } from "@/lib/server/candles";
 import { handle } from "@/lib/server/http";
 import { UserError } from "@/lib/server/backtests";
 import { requireUser } from "@/lib/server/auth";
+import { limitPerMinute } from "@/lib/server/rate-limit";
 
 const MAX_BARS = 20_000;
+/** The dashboard's ticker asks for 6 markets at once and a report one chart per trade viewed: 120 a minute leaves room. */
+const PER_MINUTE = 120;
 
 /** Cached candles for charts, as rows. */
 export async function GET(req: NextRequest) {
   return handle(async () => {
-    await requireUser(req.headers);
+    const user = await requireUser(req.headers);
+    limitPerMinute(user.id, "candles", PER_MINUTE);
     const p = req.nextUrl.searchParams;
     const symbol = (p.get("symbol") ?? "").toUpperCase();
     const interval = p.get("interval") as Interval;
