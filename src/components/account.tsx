@@ -8,7 +8,7 @@ import { authClient } from "@/lib/client/auth-client";
 import { Alert, Button, Card, Field } from "./ui";
 
 interface Me {
-  user: { email: string; name: string } | null;
+  user: { id: string; email: string; name: string } | null;
   hasPassword: boolean;
   isAdmin: boolean;
   usage: {
@@ -54,7 +54,13 @@ export function Account() {
       <h1 className="text-xl font-semibold">Mon compte</h1>
       <Card title={`Offre ${u.plan.label}`}>
         <div className="flex flex-col gap-3">
-          <p className="text-sm text-muted">{me.user.email}</p>
+          <p className="text-sm text-muted">
+            {me.user.email}
+            {/* Asked for by support, and what ADMIN_USER_IDS lists. */}
+            <span className="block text-[11px]">
+              Identifiant du compte : <span className="num select-all">{me.user.id}</span>
+            </span>
+          </p>
           <Meter label="Backtests ce mois-ci" used={u.backtests} max={u.plan.backtestsPerMonth} />
           <Meter label="Traductions par l'IA ce mois-ci" used={u.ai} max={u.plan.aiPerMonth} />
           <p className="text-xs text-muted">
