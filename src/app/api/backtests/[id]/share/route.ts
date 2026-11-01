@@ -27,7 +27,7 @@ const Featured = z.object({ featured: z.boolean() });
 export async function PATCH(req: Request, ctx: RouteContext<"/api/backtests/[id]/share">) {
   return handle(async () => {
     const user = await requireUser(req.headers);
-    if (!isAdmin(user.email)) return Response.json({ error: "Réservé à l'administrateur." }, { status: 403 });
+    if (!isAdmin(user)) return Response.json({ error: "Réservé à l'administrateur." }, { status: 403 });
     const id = (await ctx.params).id;
     await setFeatured(user.id, id, Featured.parse(await req.json()).featured);
     return Response.json(await shareOf(user.id, id));
