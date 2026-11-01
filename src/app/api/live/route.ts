@@ -14,6 +14,8 @@ const Body = z.object({ strategy: StrategySchema, display: z.number().min(50).ma
 
 const OVERLAY = new Set<Operand["indicator"]>([
   "sma", "ema", "bb_upper", "bb_middle", "bb_lower", "vwap", "highest", "lowest", "day_open", "prev_day_high", "prev_day_low", "prev_day_close",
+  "supertrend", "psar", "ichimoku_tenkan", "ichimoku_kijun", "ichimoku_span_a", "ichimoku_span_b", "keltner_upper", "keltner_middle", "keltner_lower",
+  "prev_week_high", "prev_week_low", "range_high", "range_low", "pivot", "pivot_r1", "pivot_s1", "pivot_r2", "pivot_s2", "cam_r3", "cam_s3", "cam_r4", "cam_s4",
 ]);
 
 /**
