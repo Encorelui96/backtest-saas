@@ -12,6 +12,10 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
     month: "Novembre 2026",
     items: [
       {
+        title: "FTMO, FundedNext et The5ers",
+        text: "L'onglet Challenge prop firm rejoue ta stratégie avec les règles de ces trois prop firms : réussite ou échec sur ta période, chances de réussite, essais et frais à prévoir, prix, partage des gains, règles sur les annonces, le week-end et le levier.",
+      },
+      {
         title: "Jours d'annonce économique",
         text: "L'onglet Analyse compare tes trades en position les jours de décision de la Fed ou de la BCE, ou de chiffres de l'inflation (CPI) et de l'emploi (NFP) américains, aux autres jours. La liste des trades signale ceux qui étaient concernés.",
       },
