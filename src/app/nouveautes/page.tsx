@@ -11,6 +11,10 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      {
+        title: "Jours d'annonce économique",
+        text: "L'onglet Analyse compare tes trades en position les jours de décision de la Fed ou de la BCE, ou de chiffres de l'inflation (CPI) et de l'emploi (NFP) américains, aux autres jours. La liste des trades signale ceux qui étaient concernés.",
+      },
       { title: "Niveaux du day trader", text: "Haut et bas d'une plage horaire (plage d'ouverture, range de la nuit), plus haut et plus bas de la semaine dernière, points pivots et Camarilla." },
       { title: "Nouveaux indicateurs", text: "Supertrend, Parabolic SAR, Ichimoku, canaux de Keltner, compression (squeeze), Bollinger %B et largeur, Choppiness, OBV, MFI et score z." },
       { title: "Figures de bougies", text: "Bougie intérieure, avalement, pin bar et bougie la plus étroite (NR7), utilisables dans les règles et comprises par l'IA." },
