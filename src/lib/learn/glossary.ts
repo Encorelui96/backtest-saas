@@ -608,6 +608,20 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "Challenge prop firm",
     category: "robustesse",
     short: "Des sociétés confient du capital aux traders qui réussissent un examen (un objectif de gain sans dépasser une perte max). Cet onglet estime tes chances.",
+    long: "L'onglet rejoue tes trades avec les règles de FTMO, FundedNext et The5ers relevées sur leurs sites, et avec des modèles types que tu peux modifier. Il compte aussi combien d'essais, donc de frais, il faudrait en moyenne pour être financé.",
+  },
+  {
+    id: "perte-max-suiveuse",
+    term: "Perte max suiveuse",
+    category: "robustesse",
+    short: "Une perte max qui monte avec ton compte : elle se cale sur ton plus haut solde de fin de journée et ne redescend jamais. Plus exigeante qu'une perte max fixe.",
+    example: "Compte de 100 000 $, perte max 10 % : la limite est à 90 000 $. Si tu finis une journée à 104 000 $, elle passe à 94 000 $.",
+  },
+  {
+    id: "jour-gagnant",
+    term: "Jour gagnant (prop firm)",
+    category: "robustesse",
+    short: "Pour certaines prop firms, un jour ne compte que s'il rapporte au moins 0,5 % du compte. The5ers en demande 3 par étape.",
   },
 ];
 
