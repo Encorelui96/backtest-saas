@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { num, pct, r, tone } from "@/lib/client/format";
 import type { Trade } from "@/lib/engine/backtest";
-import { breakdowns, excursions, riskSizing, safeRisk, tradeUnit, type Band, type Bucket, type Finding, type RiskSizing, type Unit } from "@/lib/engine/insights";
+import { breakdowns, excursions, riskSizing, safeRisk, tradeUnit, type Band, type Bucket, type EventDays, type Finding, type RiskSizing, type Unit } from "@/lib/engine/insights";
 import type { Strategy } from "@/lib/strategy/schema";
 import { Help, Tip } from "./learn";
 import { Alert, Card } from "./ui";
@@ -27,7 +27,7 @@ export function AnalysisPanel({ trades, strategy, period }: { trades: Trade[]; s
 
   return (
     <div className="flex flex-col gap-4">
-      <Tip>Tes trades regroupés par heure, par jour, par sens et par sortie : de quoi voir si les pertes viennent toujours du même endroit.</Tip>
+      <Tip>Tes trades regroupés par heure, par jour, par sens, par sortie et selon les annonces économiques : de quoi voir si les pertes viennent toujours du même endroit.</Tip>
       <Card
         title={
           <span className="flex items-center">
@@ -47,10 +47,13 @@ export function AnalysisPanel({ trades, strategy, period }: { trades: Trade[]; s
             </p>
           </div>
         ) : b.avg > 0 ? (
-          <p className="text-sm">Aucun groupe de trades ne perd nettement : les résultats ne dépendent pas d&apos;une heure, d&apos;un jour ou d&apos;un sens en particulier.</p>
+          <p className="text-sm">
+            Aucun groupe de trades ne perd nettement : les résultats ne dépendent pas d&apos;une heure, d&apos;un jour, d&apos;un sens ou des annonces économiques.
+          </p>
         ) : (
           <p className="text-sm">
-            La stratégie perd dans tous les groupes : le problème vient des règles elles-mêmes, pas d&apos;une heure, d&apos;un jour ou d&apos;un sens qu&apos;il suffirait d&apos;écarter.
+            La stratégie perd dans tous les groupes : le problème vient des règles elles-mêmes, pas d&apos;une heure, d&apos;un jour, d&apos;un sens ou d&apos;annonces qu&apos;il suffirait
+            d&apos;écarter.
           </p>
         )}
       </Card>
@@ -61,6 +64,7 @@ export function AnalysisPanel({ trades, strategy, period }: { trades: Trade[]; s
           </Card>
         ))}
       </div>
+      {b.events && <EventsCard ev={b.events} unit={unit} avgAll={b.avg} />}
       {e ? (
         <ExcursionsCard e={e} strategy={strategy} />
       ) : (
@@ -94,12 +98,64 @@ function FindingNote({ f, unit }: { f: Finding; unit: Unit }) {
         {f.steady
           ? weak
             ? `${They} perdent du début à la fin du test (${halves}) : c'est plus probablement un vrai point faible qu'un hasard.`
-            : `${They} gagnent du début à la fin du test (${halves}) : une piste à tester, en ne gardant que ces trades (heures, jours ou sens).`
+            : `${They} gagnent du début à la fin du test (${halves}) : une piste à tester, en ne gardant que ces trades.`
           : f.study === null || f.validation === null
             ? `Trop peu de ces trades sur une des deux parties du test pour savoir s'${they} ${verb} tout le temps.`
             : `Mais ${they} ne ${verb} pas sur toute la période (${halves}) : ça peut être du hasard.`}
       </p>
     </div>
+  );
+}
+
+/** Fed and ECB decisions, US inflation and jobs figures: how the trades open on those days did against the others. */
+function EventsCard({ ev, unit, avgAll }: { ev: EventDays; unit: Unit; avgAll: number }) {
+  const on = ev.split.find((b) => b.key === "event");
+  const off = ev.split.find((b) => b.key === "quiet");
+  const total = (on?.trades ?? 0) + (off?.trades ?? 0);
+  // Worth a warning when announcement days do clearly worse than the rest (a tenth of a R, or of a %, at least).
+  const worse = on && off && on.trades >= 5 && on.avg < off.avg - 0.1 && on.avg < avgAll;
+  return (
+    <Card
+      title={
+        <span className="flex items-center">
+          Annonces économiques
+          <Help id="annonces-economiques" />
+        </span>
+      }
+    >
+      <div className="flex flex-col gap-3 text-sm">
+        {!on ? (
+          <p>Aucun trade n&apos;était en position un jour d&apos;annonce : la stratégie n&apos;a jamais été exposée à ces rendez-vous.</p>
+        ) : (
+          <p className={worse ? "rounded-md border border-warn/40 bg-warn/10 px-3 py-2" : ""}>
+            <strong>
+              {on.trades} trade{on.trades > 1 ? "s" : ""} sur {total}
+            </strong>{" "}
+            {on.trades > 1 ? "étaient" : "était"} en position un jour d&apos;annonce : <strong className={tone(on.avg)}>{fmt(on.avg, unit)}</strong> en moyenne
+            {off ? (
+              <>
+                , contre <span className={tone(off.avg)}>{fmt(off.avg, unit)}</span> les autres jours.
+              </>
+            ) : (
+              "."
+            )}
+            {worse && " Ces jours-là coûtent à ta stratégie : regarde si l'écart tient sur les deux parties du test avant de les éviter."}
+          </p>
+        )}
+        <BucketTable rows={ev.split} unit={unit} />
+        {ev.kinds.length > 0 && (
+          <div>
+            <p className="mb-1 text-xs text-muted">Par annonce (un trade en position pendant plusieurs annonces compte dans chacune)</p>
+            <BucketTable rows={ev.kinds} unit={unit} />
+          </div>
+        )}
+        <p className="text-xs text-muted">
+          Décisions de taux de la Fed et de la BCE (dont les décisions d&apos;urgence de mars 2020), chiffres de l&apos;inflation (CPI) et de l&apos;emploi (NFP) américains, d&apos;après
+          les calendriers officiels depuis 2017. Un trade compte s&apos;il était en position à un moment du jour de l&apos;annonce, à l&apos;heure de New York (de Francfort pour la BCE).
+          {ev.outside > 0 && ` ${ev.outside} trade${ev.outside > 1 ? "s" : ""} hors des années couvertes ne ${ev.outside > 1 ? "sont" : "est"} pas compté${ev.outside > 1 ? "s" : ""}.`}
+        </p>
+      </div>
+    </Card>
   );
 }
 

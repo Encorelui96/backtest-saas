@@ -11,7 +11,8 @@ import { stopLabel, targetLabel } from "@/lib/strategy/describe";
 import { INTERVAL_MS, type CandleRow } from "@/lib/types";
 import { EquityChart, PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
 import { Help, Term, Tip, useBeginner } from "./learn";
-import { EXIT_LABELS } from "@/lib/engine/insights";
+import { EXIT_LABELS, tradeEvents } from "@/lib/engine/insights";
+import { EVENT_KINDS, type EventKind } from "@/lib/engine/calendar";
 import { PropFirmPanel } from "./prop-firm-panel";
 import { SharePanel } from "./share-panel";
 import { AnalysisPanel, RiskPanel } from "./trade-insights";
@@ -396,14 +397,39 @@ function PeriodTable({ rows, hasR }: { rows: BacktestReport["byYear"]; hasR: boo
   );
 }
 
+const EVENT_SHORT = Object.fromEntries(EVENT_KINDS.map((k) => [k.kind, k.short])) as Record<EventKind, string>;
+const EVENT_LABEL = Object.fromEntries(EVENT_KINDS.map((k) => [k.kind, k.label])) as Record<EventKind, string>;
+
+/** "Fed · CPI": the announcements made while the trade was open. */
+function EventTags({ kinds }: { kinds: EventKind[] }) {
+  if (!kinds.length) return null;
+  return (
+    <span className="text-warn" title={kinds.map((k) => EVENT_LABEL[k]).join(", ")}>
+      {kinds.map((k) => EVENT_SHORT[k]).join(" · ")}
+    </span>
+  );
+}
+
 function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolean; onSelect: (i: number) => void }) {
   const [page, setPage] = useState(0);
   const size = 50;
   const rows = trades.slice(page * size, page * size + size);
   const exportCsv = () => {
-    const header = "entree,sortie,sens,prix_entree,prix_sortie,raison,pnl,pnl_pct,r,bougies";
+    const header = "entree,sortie,sens,prix_entree,prix_sortie,raison,pnl,pnl_pct,r,bougies,annonces";
     const lines = trades.map((t) =>
-      [new Date(t.entryTime).toISOString(), new Date(t.exitTime).toISOString(), t.side, t.entryPrice, t.exitPrice, t.exitReason, t.pnl.toFixed(2), t.pnlPercent.toFixed(3), t.r?.toFixed(3) ?? "", t.bars].join(","),
+      [
+        new Date(t.entryTime).toISOString(),
+        new Date(t.exitTime).toISOString(),
+        t.side,
+        t.entryPrice,
+        t.exitPrice,
+        t.exitReason,
+        t.pnl.toFixed(2),
+        t.pnlPercent.toFixed(3),
+        t.r?.toFixed(3) ?? "",
+        t.bars,
+        tradeEvents(t).map((k) => EVENT_SHORT[k]).join("+"),
+      ].join(","),
     );
     const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
@@ -424,6 +450,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
       <ul className="-my-1 flex flex-col divide-y divide-line/50 md:hidden">
         {rows.map((t, k) => {
           const i = page * size + k;
+          const kinds = tradeEvents(t);
           return (
             <li key={i}>
               <button onClick={() => onSelect(i)} className="flex w-full items-center gap-3 py-2 text-left">
@@ -431,6 +458,12 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
                 <div className="min-w-0 flex-1">
                   <div className="text-sm">
                     <span className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? "Achat" : "Vente"}</span> · {date(t.entryTime)}
+                    {kinds.length > 0 && (
+                      <span className="text-xs">
+                        {" "}
+                        · <EventTags kinds={kinds} />
+                      </span>
+                    )}
                   </div>
                   <div className="num text-[11px] text-muted">
                     {price(t.entryPrice)} → {price(t.exitPrice)} · {EXIT_LABELS[t.exitReason]} · {t.bars} bougies
@@ -453,6 +486,12 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
               <th className="text-right font-normal">Prix de sortie</th>
               <th className="font-normal">Sortie</th>
               <th className="text-right font-normal">Durée</th>
+              <th className="font-normal">
+                <span className="inline-flex items-center">
+                  Annonces
+                  <Help id="annonces-economiques" />
+                </span>
+              </th>
               <th className="text-right font-normal">Résultat</th>
               {hasR && <th className="text-right font-normal">R</th>}
             </tr>
@@ -469,6 +508,9 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
                   <td className="text-right">{price(t.exitPrice)}</td>
                   <td className="text-muted">{EXIT_LABELS[t.exitReason]}</td>
                   <td className="text-right">{t.bars}</td>
+                  <td className="text-xs">
+                    <EventTags kinds={tradeEvents(t)} />
+                  </td>
                   <td className={`text-right ${tone(t.pnl)}`}>{pct(t.pnlPercent, 2)}</td>
                   {hasR && <td className={`text-right ${tone(t.r)}`}>{r(t.r)}</td>}
                 </tr>
