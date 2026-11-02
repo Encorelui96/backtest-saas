@@ -44,7 +44,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Qu'est-ce que la simulation de challenge prop firm ?",
-    a: "À partir des trades de ton backtest, Backtest Lab estime ta probabilité de réussir un challenge de prop firm (objectif de gain, perte maximale du jour et totale) selon ton risque par trade, et la compare à celle d'un trader qui jouerait au hasard.",
+    a: "À partir des trades de ton backtest, Backtest Lab estime ta probabilité de réussir un challenge de prop firm (objectif de gain, perte maximale du jour et totale) selon ton risque par trade, et la compare à celle d'un trader qui jouerait au hasard. Les challenges de FTMO, FundedNext et The5ers sont rejoués avec leurs règles officielles, avec le nombre d'essais et les frais à prévoir.",
   },
   {
     q: "Que deviennent mes stratégies ?",
