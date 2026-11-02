@@ -191,8 +191,8 @@ describe("metrics and prop firm", () => {
     const m = computeMetrics(run, 50);
     expect(m.trades).toBeGreaterThan(10);
     expect(m.maxDrawdownPercent).toBeGreaterThanOrEqual(0);
-    const prop = simulatePropFirm(run.trades, PROP_PRESETS[0], 1, 200);
-    for (const summary of [prop.historical, prop.monteCarlo, prop.noEdge]) {
+    const prop = simulatePropFirm(run.trades, PROP_PRESETS[0], 1, { iterations: 200 });
+    for (const summary of [prop.historical, prop.monteCarlo, prop.noEdge!]) {
       expect(summary.passRate).toBeGreaterThanOrEqual(0);
       expect(summary.passRate).toBeLessThanOrEqual(100);
     }
