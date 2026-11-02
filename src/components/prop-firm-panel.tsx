@@ -281,7 +281,7 @@ function FirmCard({
           <span className="text-down">Réussite trop rare : il faudrait plus de 20 essais en moyenne pour être financé.</span>
         ) : (
           <>
-            Environ <strong>{num(attempts, attempts < 10 ? 1 : 0)} essai{attempts >= 2 ? "s" : ""}</strong> pour être financé, soit{" "}
+            Environ <strong>{num(attempts, attempts < 10 ? 1 : 0)} essai{Math.round(attempts * 10) >= 20 ? "s" : ""}</strong> pour être financé, soit{" "}
             <strong>{money(attempts * offer.priceValue, offer.currency)}</strong> de frais
             {refunded ? " avancés (le dernier est remboursé)" : ""}.
             {mc.medianDaysToPass !== null && ` Durée médiane d'un essai réussi : ${num(mc.medianDaysToPass, 0)} jours.`}
