@@ -1,5 +1,6 @@
 import { INTERVAL_MS, type Interval } from "../types";
 import type { ExitReason, Trade } from "./backtest";
+import { CALENDAR_FROM, CALENDAR_TO, EVENT_KINDS, eventsBetween, type EventKind } from "./calendar";
 import { avg, percentile } from "./metrics";
 import { rng } from "./robustness";
 import { localTime } from "./time";
@@ -81,9 +82,29 @@ export interface Breakdowns {
   byWeekday: Bucket[] | null;
   bySide: Bucket[] | null;
   byExit: Bucket[];
+  /** null when no trade falls within the calendar's years. */
+  events: EventDays | null;
   /** At most two groups, the one that weighs most first. */
   findings: Finding[];
 }
+
+/** Trades in position on the day of a Fed or ECB decision, or of US inflation or jobs figures. */
+export interface EventDays {
+  /** Announcement days, then the other days. */
+  split: Bucket[];
+  /** One row per kind of announcement: a trade open through several counts in each. */
+  kinds: Bucket[];
+  /** Trades outside the calendar's years, left out. */
+  outside: number;
+}
+
+/** The announcements made while the trade was open, one per kind, in the calendar's order. */
+export function tradeEvents(t: Trade): EventKind[] {
+  const kinds = new Set(eventsBetween(t.entryTime, t.exitTime).map((e) => e.kind));
+  return EVENT_KINDS.filter((k) => kinds.has(k.kind)).map((k) => k.kind);
+}
+
+const inCalendar = (t: Trade) => t.entryTime >= CALENDAR_FROM && t.exitTime < CALENDAR_TO;
 
 interface Trait {
   key: string;
@@ -93,6 +114,17 @@ interface Trait {
   feminine?: boolean;
 }
 
+const bucket = (trait: Trait, xs: number[]): Bucket => ({
+  key: trait.key,
+  label: trait.label,
+  subject: trait.subject,
+  feminine: trait.feminine ?? false,
+  trades: xs.length,
+  winRate: (xs.filter((x) => x > 0).length / xs.length) * 100,
+  avg: avg(xs),
+  total: xs.reduce((s, x) => s + x, 0),
+});
+
 function group(trades: Trade[], unit: Unit, traitOf: (t: Trade) => Trait): Bucket[] {
   const map = new Map<string, { trait: Trait; xs: number[] }>();
   for (const t of trades) {
@@ -101,18 +133,21 @@ function group(trades: Trade[], unit: Unit, traitOf: (t: Trade) => Trait): Bucke
     row.xs.push(value(t, unit));
     map.set(trait.key, row);
   }
-  return [...map.values()]
-    .sort((a, b) => a.trait.order - b.trait.order)
-    .map(({ trait, xs }) => ({
-      key: trait.key,
-      label: trait.label,
-      subject: trait.subject,
-      feminine: trait.feminine ?? false,
-      trades: xs.length,
-      winRate: (xs.filter((x) => x > 0).length / xs.length) * 100,
-      avg: avg(xs),
-      total: xs.reduce((s, x) => s + x, 0),
-    }));
+  return [...map.values()].sort((a, b) => a.trait.order - b.trait.order).map(({ trait, xs }) => bucket(trait, xs));
+}
+
+const EVENT_DAY: Trait = { key: "event", order: 0, label: "Jours d'annonce", subject: "Les trades en position un jour d'annonce" };
+const QUIET_DAY: Trait = { key: "quiet", order: 1, label: "Autres jours", subject: "Les trades des jours sans annonce" };
+
+function eventDays(trades: Trade[], unit: Unit, kindsOf: Map<Trade, EventKind[]>): EventDays | null {
+  const covered = trades.filter(inCalendar);
+  if (!covered.length) return null;
+  const split = group(covered, unit, (t) => (kindsOf.get(t)!.length ? EVENT_DAY : QUIET_DAY));
+  const kinds = EVENT_KINDS.flatMap(({ kind, label }, order) => {
+    const xs = covered.filter((t) => kindsOf.get(t)!.includes(kind)).map((t) => value(t, unit));
+    return xs.length ? [bucket({ key: kind, order, label, subject: label }, xs)] : [];
+  });
+  return { split, kinds, outside: trades.length - covered.length };
 }
 
 /**
@@ -156,6 +191,10 @@ export function breakdowns(trades: Trade[], timezone: string, interval: Interval
   const hourRows = keep(byHour, (t) => `h${at.get(t)!.hour}`, intraday);
   const weekdayRows = keep(byWeekday, (t) => `d${at.get(t)!.weekday}`, true);
   const sideRows = keep(bySide, (t) => t.side, true);
+  const kindsOf = new Map(trades.map((t) => [t, inCalendar(t) ? tradeEvents(t) : []]));
+  const events = eventDays(trades, unit, kindsOf);
+  // Announcement days or not, like any other trait; trades outside the calendar belong to neither.
+  if (events) keep(events.split, (t) => (!inCalendar(t) ? "outside" : kindsOf.get(t)!.length ? EVENT_DAY.key : QUIET_DAY.key), true);
 
   const n = trades.length;
   const all = trades.map((t) => value(t, unit));
@@ -187,7 +226,7 @@ export function breakdowns(trades: Trade[], timezone: string, interval: Interval
   }
   candidates.sort((a, b) => sign * (b.bucket.total - a.bucket.total));
 
-  return { unit, avg: avgAll, byHour: hourRows, byWeekday: weekdayRows, bySide: sideRows, byExit, findings: candidates.slice(0, 2) };
+  return { unit, avg: avgAll, byHour: hourRows, byWeekday: weekdayRows, bySide: sideRows, byExit, events, findings: candidates.slice(0, 2) };
 }
 
 // ---------------------------------------------------------------------------
