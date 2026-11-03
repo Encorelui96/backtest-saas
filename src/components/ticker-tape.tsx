@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { pct, price, tone } from "@/lib/client/format";
 import type { CandleRow } from "@/lib/types";

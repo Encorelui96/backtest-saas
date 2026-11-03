@@ -11,16 +11,18 @@ export class ApiError extends Error {
 }
 
 export async function api<T>(url: string, init?: RequestInit & { json?: unknown }): Promise<T> {
+  // The server answers in the page's language (its error messages, the AI's explanations).
+  const lang = typeof document !== "undefined" && document.documentElement.lang === "en" ? "en" : "fr";
   const res = await fetch(url, {
     ...init,
     method: init?.method ?? (init?.json !== undefined ? "POST" : "GET"),
-    headers: init?.json !== undefined ? { "content-type": "application/json" } : init?.headers,
+    headers: { ...(init?.json !== undefined ? { "content-type": "application/json" } : {}), ...(init?.headers as Record<string, string> | undefined), "x-lang": lang },
     body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
   });
   const data = await res.json().catch(() => ({}));
   if (res.status === 401 && typeof window !== "undefined" && !window.location.pathname.startsWith("/connexion")) {
     // Session missing or expired: sign in, then come back here.
-    window.location.href = `/connexion?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+    window.location.href = `${lang === "en" ? "/en" : ""}/connexion?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
   }
   if (!res.ok) {
     const body = data as { error?: string; recharge?: string | null };

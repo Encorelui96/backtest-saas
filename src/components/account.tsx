@@ -1,8 +1,7 @@
 "use client";
 
+import { Link, useLang, useRouter } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { Alert, Button, Card, Field } from "./ui";
@@ -40,6 +39,7 @@ function Meter({ label, used, max }: { label: string; used: number; max: number 
 
 export function Account() {
   const router = useRouter();
+  const lang = useLang();
   const [me, setMe] = useState<Me | null>(null);
 
   useEffect(() => {
@@ -105,7 +105,7 @@ export function Account() {
         variant="ghost"
         onClick={async () => {
           await authClient.signOut();
-          window.location.assign("/");
+          window.location.assign(lang === "en" ? "/en" : "/");
         }}
       >
         Se déconnecter
@@ -116,6 +116,7 @@ export function Account() {
 
 /** Personal data rights: a copy of everything stored, and deleting the account for good. */
 function DataCard({ hasPassword }: { hasPassword: boolean }) {
+  const lang = useLang();
   const [open, setOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [word, setWord] = useState("");
@@ -138,7 +139,7 @@ function DataCard({ hasPassword }: { hasPassword: boolean }) {
         );
       }
       // A full reload: the cached session would otherwise show the dashboard, whose calls bounce to the sign-in page.
-      window.location.assign("/");
+      window.location.assign(lang === "en" ? "/en" : "/");
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);

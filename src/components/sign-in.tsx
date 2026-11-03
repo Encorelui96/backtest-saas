@@ -1,8 +1,8 @@
 "use client";
 
+import { Link, useRouter } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
 import { EDITOR } from "@/lib/legal";

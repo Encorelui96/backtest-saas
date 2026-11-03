@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useRouter } from "@/lib/client/i18n";
 import { authClient } from "@/lib/client/auth-client";
 
 /** Sends visitors to the sign-in page, then back here. The API refuses them anyway; this only spares a broken page. */

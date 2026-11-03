@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { date, money, num, pct, price, r, tone } from "@/lib/client/format";
 import type { BacktestReport } from "@/lib/engine/report";

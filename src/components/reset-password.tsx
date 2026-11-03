@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/client/auth-client";
 import { Alert, Button, Card, Field } from "./ui";

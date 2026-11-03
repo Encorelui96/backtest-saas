@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { USES, glossary } from "@/lib/learn/glossary";
 
 /**

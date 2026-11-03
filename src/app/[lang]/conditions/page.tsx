@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { LegalPage, Section } from "@/components/legal-page";
 
 export const metadata: Metadata = { title: "Conditions d'utilisation · Backtest Lab" };

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { Pricing } from "@/components/pricing";
 import { PLANS, euros } from "@/lib/plans";
 

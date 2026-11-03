@@ -1,8 +1,7 @@
 "use client";
 
+import { Link, useRouter } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { welcomeDone } from "@/lib/client/preferences";
 import { date, num, pct, r, tone } from "@/lib/client/format";

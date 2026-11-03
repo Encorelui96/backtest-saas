@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { CandleHero } from "./candle-hero";

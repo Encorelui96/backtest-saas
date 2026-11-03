@@ -5,7 +5,7 @@ import { pct } from "@/lib/client/format";
 import { sharedSummary } from "@/lib/server/shares";
 
 /** A shared report: its title and figures become the preview in Discord, X or a message. */
-export async function generateMetadata({ params }: PageProps<"/r/[id]">): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps<"/[lang]/r/[id]">): Promise<Metadata> {
   const s = await sharedSummary((await params).id);
   if (!s) return { title: "Rapport introuvable · Backtest Lab", robots: { index: false } };
   const title = `${s.name} · ${s.symbol} ${s.interval} : ${pct(s.summary.totalReturnPercent)}`;
@@ -20,12 +20,12 @@ export async function generateMetadata({ params }: PageProps<"/r/[id]">): Promis
   };
 }
 
-async function Shared({ params }: { params: PageProps<"/r/[id]">["params"] }) {
+async function Shared({ params }: { params: PageProps<"/[lang]/r/[id]">["params"] }) {
   const { id } = await params;
   return <BacktestResults id={id} shared />;
 }
 
-export default function SharedReportPage({ params }: PageProps<"/r/[id]">) {
+export default function SharedReportPage({ params }: PageProps<"/[lang]/r/[id]">) {
   return (
     <Suspense fallback={<p className="text-muted">Chargement…</p>}>
       <Shared params={params} />

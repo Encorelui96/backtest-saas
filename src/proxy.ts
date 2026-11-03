@@ -26,7 +26,7 @@ function siteHosts(req: NextRequest) {
  * can't use the visitor's session. Browsers send Origin on these requests; a script without a browser
  * sends none and has no session cookie to borrow. better-auth checks its own routes.
  */
-export function proxy(req: NextRequest) {
+function checkOrigin(req: NextRequest) {
   if (SAFE.has(req.method) || req.nextUrl.pathname.startsWith("/api/auth/")) return NextResponse.next();
   const origin = req.headers.get("origin");
   if (origin === null) return NextResponse.next();
@@ -35,4 +35,37 @@ export function proxy(req: NextRequest) {
   return NextResponse.json({ error: "Requête refusée : elle ne vient pas de Backtest Lab." }, { status: 403 });
 }
 
-export const config = { matcher: "/api/:path*" };
+/**
+ * Pages live under app/[lang]. The French site keeps its addresses (/tarifs is served from /fr/tarifs);
+ * the English one is under /en. /fr/… redirects to the address without it, so each page has one URL.
+ */
+function routeLanguage(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
+  if (pathname === "/en" || pathname.startsWith("/en/")) return NextResponse.next();
+  if (pathname === "/fr" || pathname.startsWith("/fr/")) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.slice(3) || "/";
+    return NextResponse.redirect(url, 308);
+  }
+  // A French address for someone who chose English, or a first visit from an English-speaking browser: the English page.
+  const chosen = req.cookies.get("lang")?.value;
+  const prefersEnglish = !chosen && pathname === "/" && /^en\b/i.test(req.headers.get("accept-language") ?? "");
+  if (req.method === "GET" && (chosen === "en" || prefersEnglish)) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname === "/" ? "/en" : `/en${pathname}`;
+    return NextResponse.redirect(url, 307);
+  }
+  const url = req.nextUrl.clone();
+  url.pathname = `/fr${pathname === "/" ? "" : pathname}`;
+  url.search = search;
+  return NextResponse.rewrite(url);
+}
+
+export function proxy(req: NextRequest) {
+  return req.nextUrl.pathname.startsWith("/api/") ? checkOrigin(req) : routeLanguage(req);
+}
+
+export const config = {
+  // Everything but Next.js's own files and the site's static files (icons, manifest, robots, sitemap).
+  matcher: ["/api/:path*", "/((?!_next/|favicon\\.ico|icon-|apple-icon|manifest\\.webmanifest|robots\\.txt|sitemap\\.xml|opengraph-image|.*\\.(?:png|svg|jpg|ico|webmanifest|txt|xml)$).*)"],
+};

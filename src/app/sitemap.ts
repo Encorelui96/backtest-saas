@@ -13,6 +13,13 @@ const PAGES: { path: string; priority: number; changeFrequency: "weekly" | "mont
   { path: "/conditions", priority: 0.2, changeFrequency: "yearly" },
 ];
 
+/** Each page in French (its usual address) and in English (/en), each pointing to the other. */
 export default function sitemap(): MetadataRoute.Sitemap {
-  return PAGES.map((p) => ({ url: `${SITE_URL}${p.path}`, priority: p.priority, changeFrequency: p.changeFrequency }));
+  return PAGES.flatMap((p) => {
+    const languages = { fr: `${SITE_URL}${p.path}`, en: `${SITE_URL}/en${p.path}` };
+    return [
+      { url: languages.fr, priority: p.priority, changeFrequency: p.changeFrequency, alternates: { languages } },
+      { url: languages.en, priority: p.priority, changeFrequency: p.changeFrequency, alternates: { languages } },
+    ];
+  });
 }

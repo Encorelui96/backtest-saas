@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
 import { PACKS, PLANS, euros, type Billing, type PackId, type Plan, type PlanId } from "@/lib/plans";

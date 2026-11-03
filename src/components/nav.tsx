@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { LanguageSwitch, Link, useBarePath, useT } from "@/lib/client/i18n";
 import { authClient } from "@/lib/client/auth-client";
 import { LevelToggle } from "./learn";
 
@@ -22,7 +21,8 @@ function active(path: string, href: string) {
 
 /** Top bar on desktop; on phones a slim top bar and a bottom tab bar within thumb reach. */
 export function Nav() {
-  const path = usePathname();
+  const path = useBarePath();
+  const t = useT();
   const { data: session, isPending } = authClient.useSession();
   // Visitors only see the sign-in link: the app's pages need an account.
   if (!isPending && !session) {
@@ -32,16 +32,17 @@ export function Nav() {
           <Link href="/" className="font-semibold text-fg">
             Backtest<span className="text-accent">Lab</span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4">
             <Link href="/apprendre" className={path.startsWith("/apprendre") ? "text-fg" : "text-muted hover:text-fg"}>
-              Apprendre
+              {t("Apprendre")}
             </Link>
             <Link href="/tarifs" className={path.startsWith("/tarifs") ? "text-fg" : "text-muted hover:text-fg"}>
-              Tarifs
+              {t("Tarifs")}
             </Link>
+            <LanguageSwitch />
             {!path.startsWith("/connexion") && (
               <Link href="/connexion" className="rounded-md bg-accent px-3 py-1.5 font-medium text-white">
-                Connexion
+                {t("Connexion")}
               </Link>
             )}
           </div>
@@ -58,11 +59,14 @@ export function Nav() {
           </Link>
           {LINKS.map((l) => (
             <Link key={l.href} href={l.href} className={`hidden md:block ${active(path, l.href) ? "text-fg" : "text-muted hover:text-fg"}`}>
-              {l.label}
+              {t(l.label)}
             </Link>
           ))}
-          {/* Only where the level changes the page: the dashboard, the editor and the results. */}
-          {(path === "/" || path.startsWith("/strategies") || path.startsWith("/backtests")) && <LevelToggle className="ml-auto" />}
+          <span className="ml-auto flex items-center gap-3">
+            {/* Only where the level changes the page: the dashboard, the editor and the results. */}
+            {(path === "/" || path.startsWith("/strategies") || path.startsWith("/backtests")) && <LevelToggle />}
+            <LanguageSwitch />
+          </span>
         </nav>
       </header>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
@@ -72,7 +76,7 @@ export function Nav() {
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d={l.icon} />
               </svg>
-              {l.short}
+              {t(l.short)}
             </Link>
           ))}
         </div>

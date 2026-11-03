@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { setPreferredMarket, setWelcomeDone } from "@/lib/client/preferences";
 import { setLevel, type Level } from "./learn";
 import { Card } from "./ui";

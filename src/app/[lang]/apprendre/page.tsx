@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { GLOSSARY, GLOSSARY_CATEGORIES } from "@/lib/learn/glossary";
 import { LevelToggle } from "@/components/learn";
 import { Card } from "@/components/ui";

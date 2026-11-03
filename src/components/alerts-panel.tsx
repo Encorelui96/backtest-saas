@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { date } from "@/lib/client/format";
 import { Alert, Button, Card } from "./ui";

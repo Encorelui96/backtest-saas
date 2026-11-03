@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import { Link, useRouter } from "@/lib/client/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { date, num, pct, price, r, tone } from "@/lib/client/format";
 import type { Trade } from "@/lib/engine/backtest";

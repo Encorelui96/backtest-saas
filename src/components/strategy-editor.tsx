@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { Link, useRouter } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Link } from "@/lib/client/i18n";
 import { Fill, LegalPage, Section } from "@/components/legal-page";
 import { EDITOR, HOST } from "@/lib/legal";
 
