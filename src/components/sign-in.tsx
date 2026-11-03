@@ -4,6 +4,7 @@ import { localePath, tr } from "@/lib/i18n";
 import { Link, useLang, useRouter, useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { PLANS } from "@/lib/plans";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
 import { EDITOR } from "@/lib/legal";
@@ -127,7 +128,7 @@ export function SignIn() {
     <div className="mx-auto flex w-full max-w-sm flex-col gap-4 pt-4 sm:pt-8">
       <div className="text-center">
         <h1 className="text-xl font-semibold">{mode === "signin" ? tl("Connexion") : tl("Créer un compte")}</h1>
-        <p className="mt-1 text-sm text-muted">{mode === "signin" ? tl("Content de te revoir.") : tl("Gratuit, sans carte bancaire : 5 backtests par mois offerts.")}</p>
+        <p className="mt-1 text-sm text-muted">{mode === "signin" ? tl("Content de te revoir.") : tl("Gratuit, sans carte bancaire : {0} backtests par mois offerts.", [PLANS.free.backtestsPerMonth])}</p>
       </div>
       <Card>
         <div className="mb-4 grid grid-cols-2 rounded-lg border border-line p-0.5 text-sm" role="tablist">

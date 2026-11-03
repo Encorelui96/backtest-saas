@@ -56,9 +56,9 @@ describe("quotaPressure", () => {
   it("counts users near and at their monthly limit", () => {
     expect(
       quotaPressure([
-        { plan: "free", backtests: 4, ai: 0 },
-        { plan: "free", backtests: 5, ai: 0 },
-        { plan: "free", backtests: 1, ai: 3 },
+        { plan: "free", backtests: 24, ai: 0 },
+        { plan: "free", backtests: 30, ai: 0 },
+        { plan: "free", backtests: 1, ai: 5 },
         { plan: "trader", backtests: 10, ai: 5 },
       ]),
     ).toEqual({ near: 1, at: 2 });

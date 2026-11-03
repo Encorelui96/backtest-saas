@@ -37,6 +37,7 @@ export async function POST(req: Request) {
     const { strategy } = normalizeStrategy(body.strategy);
     // Following a strategy live is a backtest on the latest bars: the plan's smallest unit applies. Plain charts stay open to all.
     const plan = await planOf(user);
+    if (!plan.live) throw new QuotaError("Le suivi en direct des stratégies est réservé aux offres Trader et Pro.");
     const ms = INTERVAL_MS[strategy.interval];
     if (ms < INTERVAL_MS[plan.minInterval]) {
       throw new QuotaError("L'offre {0:t} suit les stratégies à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [plan.label, plan.minInterval, strategy.interval]);

@@ -40,7 +40,7 @@ const FAQ_FR: { q: string; a: string }[] = [
   },
   {
     q: "Combien ça coûte ?",
-    a: `L'offre Découverte est gratuite, sans carte bancaire : ${PLANS.free.backtestsPerMonth} backtests et ${PLANS.free.aiPerMonth} traductions par l'IA par mois. Les offres Trader (${euros(PLANS.trader.monthly)} par mois) et Pro (${euros(PLANS.pro.monthly)} par mois) donnent plus de tests et toutes les unités de temps, avec 2 mois offerts à l'année. Le paiement en ligne n'est pas encore ouvert.`,
+    a: `L'offre Découverte est gratuite, sans carte bancaire : ${PLANS.free.backtestsPerMonth} backtests et ${PLANS.free.aiPerMonth} traductions par l'IA par mois, à partir de l'unité 15 minutes, sur les 12 derniers mois. Les offres Trader (${euros(PLANS.trader.monthly)} par mois) et Pro (${euros(PLANS.pro.monthly)} par mois) donnent plus de tests, toutes les unités de temps, tout l'historique, le détail de la robustesse, le comparatif des prop firms et le suivi Live, avec 2 mois offerts à l'année. Le paiement en ligne n'est pas encore ouvert.`,
   },
   {
     q: "Backtest Lab passe-t-il des ordres pour moi ?",
@@ -106,7 +106,7 @@ const FAQ_EN: { q: string; a: string }[] = [
   },
   {
     q: "How much does it cost?",
-    a: `The Starter plan is free, no credit card: ${PLANS.free.backtestsPerMonth} backtests and ${PLANS.free.aiPerMonth} AI translations a month. The Trader (${euros(PLANS.trader.monthly, "en")} a month) and Pro (${euros(PLANS.pro.monthly, "en")} a month) plans give more tests and every timeframe, with 2 months free when paid yearly. Online payment isn't open yet.`,
+    a: `The Starter plan is free, no credit card: ${PLANS.free.backtestsPerMonth} backtests and ${PLANS.free.aiPerMonth} AI translations a month, from the 15-minute timeframe, on the last 12 months. The Trader (${euros(PLANS.trader.monthly, "en")} a month) and Pro (${euros(PLANS.pro.monthly, "en")} a month) plans give more tests, every timeframe, the full history, the robustness detail, the prop firm comparison and Live tracking, with 2 months free when paid yearly. Online payment isn't open yet.`,
   },
   {
     q: "Does Backtest Lab place orders for me?",

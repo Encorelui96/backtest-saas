@@ -21,6 +21,23 @@ export function setPreferredMarket(symbol: string) {
   } catch {}
 }
 
+/** Pages of the report opened at least once: they tick the first steps on the dashboard. */
+export type SeenStep = "verdict" | "challenge";
+
+export function stepSeen(step: SeenStep): boolean {
+  try {
+    return localStorage.getItem(`backtest-lab:seen-${step}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function setStepSeen(step: SeenStep) {
+  try {
+    localStorage.setItem(`backtest-lab:seen-${step}`, "1");
+  } catch {}
+}
+
 export function welcomeDone(): boolean {
   try {
     return localStorage.getItem(WELCOME_KEY) === "1";

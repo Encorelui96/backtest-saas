@@ -19,11 +19,11 @@ export async function POST(req: Request) {
   return handle(async () => {
     const user = await requireUser(req.headers);
     const body = BacktestPayload.extend({ strategyId: BacktestPayload.shape.strategyId.optional() }).parse(await req.json());
-    const { strategy } = validateBacktest(body.strategy, body.config);
+    const { strategy, start } = validateBacktest(body.strategy, body.config);
     // Only link the result to a strategy the user owns.
     const strategyId = body.strategyId && (await getStrategy(user.id, body.strategyId)) ? body.strategyId : null;
     const job = await withUserLock(user, async (run, client) => {
-      const { useCredit } = await checkBacktestAllowed(user, strategy.interval, run);
+      const { useCredit } = await checkBacktestAllowed(user, strategy.interval, run, start);
       const queued = await enqueue(user.id, "backtest", { strategy: body.strategy, config: body.config, strategyId }, client);
       // Past the monthly quota, the backtest uses a recharge credit; a failure gives it back (failJob).
       if (useCredit) await spendCredit(run, user.id, "backtest", `job:${queued.id}`);

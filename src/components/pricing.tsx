@@ -5,19 +5,21 @@ import { useEffect, useState } from "react";
 import { Link, useT } from "@/lib/client/i18n";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
-import { PACKS, PLANS, euros, type Billing, type PackId, type Plan, type PlanId } from "@/lib/plans";
+import { PACKS, PLANS, euros, historyMonths, type Billing, type PackId, type Plan, type PlanId } from "@/lib/plans";
 import { Alert } from "./ui";
 import { num } from "@/lib/client/format";
 
-const INTERVAL_LABELS: Record<string, string> = { "1m": "1 minute", "1h": "1 heure" };
+const INTERVAL_LABELS: Record<string, string> = { "1m": "1 minute", "15m": "15 minutes", "1h": "1 heure" };
 
 function features(p: Plan) {
   return [
     tr("{0} backtests par mois", [num(p.backtestsPerMonth, 0)]),
     tr("{0} traductions par l'IA par mois", [p.aiPerMonth]),
     p.minInterval === "1m" ? tr("Toutes les unités de temps, dès 1 minute (scalp)") : tr("Unités de temps à partir de {0}", [tr(INTERVAL_LABELS[p.minInterval] ?? p.minInterval)]),
+    p.historyDays === null ? tr("Tout l'historique") : tr("Historique : les {0} derniers mois", [historyMonths(p)]),
     tr("Crypto, forex, or et Nasdaq"),
-    tr("Robustesse et challenge prop firm"),
+    p.advanced ? tr("Robustesse détaillée et comparatif des prop firms") : tr("Verdict de robustesse et challenge prop firm"),
+    ...(p.live ? [tr("Suivi Live des stratégies")] : []),
     p.concurrentJobs > 1 ? tr("{0} backtests en parallèle", [p.concurrentJobs]) : tr("1 backtest à la fois"),
     ...(p.alerts ? [tr("{0} alertes Telegram", [p.alerts])] : []),
   ];

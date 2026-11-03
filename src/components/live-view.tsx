@@ -4,12 +4,14 @@ import { Link, useRouter, useT } from "@/lib/client/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/client/api";
+import { usePlan } from "@/lib/client/plan";
 import { date, num, pct, price, r, tone } from "@/lib/client/format";
 import type { Trade } from "@/lib/engine/backtest";
 import type { Strategy } from "@/lib/strategy/schema";
 import { INTERVALS, INTERVAL_MS, type CandleRow, type Interval } from "@/lib/types";
 import { isCrypto } from "@/lib/markets";
 import { MarketPicker } from "./market-picker";
+import { PlanLock } from "./plan-lock";
 import { PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
 import { Alert, Card, Field } from "./ui";
 
@@ -51,6 +53,7 @@ export function LiveView() {
   const [plain, setPlain] = useState<CandleRow[]>([]);
   const [last, setLast] = useState<CandleRow | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const plan = usePlan();
   const [connected, setConnected] = useState(false);
   const chart = useRef<PriceChartHandle>(null);
 
@@ -179,6 +182,7 @@ export function LiveView() {
         </Card>
       )}
       {error && <Alert tone="error">{error}</Alert>}
+      {plan && !plan.live && <PlanLock>{tl("Les graphiques restent ouverts à tous. Le suivi de tes stratégies est réservé aux offres Trader et Pro.")}</PlanLock>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card>

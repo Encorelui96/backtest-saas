@@ -1,7 +1,7 @@
 import "server-only";
 import { INTERVAL_MS, type Interval } from "../types";
 import type { PoolClient } from "pg";
-import { PACK_BY_ID, PLANS, type CreditKind, type PackId, type Plan, type PlanId } from "../plans";
+import { PACK_BY_ID, PLANS, earliestStart, historyMonths, type CreditKind, type PackId, type Plan, type PlanId } from "../plans";
 import { query, queryOne, transaction } from "./db";
 import type { SessionUser } from "./auth";
 import { UserError } from "./errors";
@@ -108,10 +108,14 @@ function quotaSpent(text: string, count: number, u: Usage, pack: PackId) {
  * allowed. Past the monthly quota, a recharge credit pays for it: `useCredit`
  * then tells the caller to record it with spendCredit once the job exists.
  */
-export async function checkBacktestAllowed(user: SessionUser, interval: Interval, run: Runner = query): Promise<{ useCredit: boolean }> {
+export async function checkBacktestAllowed(user: SessionUser, interval: Interval, run: Runner = query, start?: number): Promise<{ useCredit: boolean }> {
   const u = await usageOf(user, run);
   if (INTERVAL_MS[interval] < INTERVAL_MS[u.plan.minInterval]) {
     throw new QuotaError("L'offre {0:t} teste à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [u.plan.label, u.plan.minInterval, interval]);
+  }
+  const earliest = earliestStart(u.plan);
+  if (start !== undefined && earliest !== null && start < earliest) {
+    throw new QuotaError("L'offre {0:t} teste les {1} derniers mois. Passe à l'offre Trader pour tout l'historique.", [u.plan.label, historyMonths(u.plan)]);
   }
   if (u.activeJobs >= u.plan.concurrentJobs) {
     throw new QuotaError(u.activeJobs > 1 ? "{0} backtests sont déjà en cours : attends qu'ils se terminent." : "1 backtest est déjà en cours : attends qu'il se termine.", [u.activeJobs]);
