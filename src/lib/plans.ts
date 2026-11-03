@@ -51,7 +51,6 @@ export const PLANS: Record<PlanId, Plan> = {
     concurrentJobs: 2,
     alerts: 3,
   },
-  // "Without a fixed quota" for customers, with a ceiling that protects the AI bill.
   pro: {
     id: "pro",
     label: "Pro",
@@ -59,7 +58,8 @@ export const PLANS: Record<PlanId, Plan> = {
     monthly: 39,
     yearly: 390,
     backtestsPerMonth: 1000,
-    aiPerMonth: 400,
+    // About 15 € of AI at most on a 39 € plan; recharges cover the heavy months.
+    aiPerMonth: 200,
     minInterval: "1m",
     concurrentJobs: 3,
     alerts: 20,
@@ -67,6 +67,29 @@ export const PLANS: Record<PlanId, Plan> = {
 };
 
 export const PAID_PLANS = [PLANS.trader, PLANS.pro];
+
+export type CreditKind = "ai" | "backtest";
+export type PackId = "ai50" | "bt100" | "combo";
+
+/**
+ * One-off recharges, for when the month's quota runs out before the month
+ * does. Credits never expire and are only used once the monthly quota is spent.
+ * Priced above their cost: an AI translation costs about 5 to 10 cents.
+ */
+export interface Pack {
+  id: PackId;
+  label: string;
+  price: number;
+  credits: Partial<Record<CreditKind, number>>;
+}
+
+export const PACKS: Pack[] = [
+  { id: "ai50", label: "+50 traductions par l'IA", price: 9, credits: { ai: 50 } },
+  { id: "bt100", label: "+100 backtests", price: 5, credits: { backtest: 100 } },
+  { id: "combo", label: "+50 traductions et +100 backtests", price: 12, credits: { ai: 50, backtest: 100 } },
+];
+
+export const PACK_BY_ID = Object.fromEntries(PACKS.map((p) => [p.id, p])) as Record<PackId, Pack>;
 
 /** "12,50 €": French price formatting, without decimals when the price is whole. */
 export function euros(n: number) {

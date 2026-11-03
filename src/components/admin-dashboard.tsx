@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AdminMetrics, Ratio } from "@/lib/admin-metrics";
-import { PLANS } from "@/lib/plans";
+import { PACKS, PACK_BY_ID, PLANS, type PackId, type PlanId } from "@/lib/plans";
 import { api } from "@/lib/client/api";
 import { Alert, Card, Stat } from "./ui";
 
@@ -145,7 +145,9 @@ export function AdminDashboard() {
             {m.interest.map((i) => (
               <li key={`${i.plan}-${i.billing}`} className="flex justify-between py-1.5">
                 <span>
-                  {PLANS[i.plan]?.label ?? i.plan} · {i.billing === "year" ? "à l'année" : "au mois"}
+                  {i.plan.startsWith("pack:")
+                    ? `Recharge ${PACK_BY_ID[i.plan.slice(5) as PackId]?.label ?? i.plan}`
+                    : `${PLANS[i.plan as PlanId]?.label ?? i.plan} · ${i.billing === "year" ? "à l'année" : "au mois"}`}
                 </span>
                 <span className="num font-semibold">{i.n}</span>
               </li>
@@ -154,6 +156,49 @@ export function AdminDashboard() {
         )}
         <p className="mt-2 text-xs text-muted">Un clic ne vaut pas un paiement, mais c&apos;est le signal qui dit quand ouvrir le paiement en ligne.</p>
       </Card>
+
+      <GrantCredits />
     </div>
+  );
+}
+
+/** Adds a recharge to an account by hand, until online payment is open. */
+function GrantCredits() {
+  const [account, setAccount] = useState("");
+  const [pack, setPack] = useState<PackId>("combo");
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const grant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setResult(null);
+    try {
+      const r = await api<{ email: string; label: string }>("/api/admin/credits", { json: { account, pack } });
+      setResult({ ok: true, text: `${r.label} ajoutés au compte ${r.email}.` });
+      setAccount("");
+    } catch (err) {
+      setResult({ ok: false, text: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title="Créditer une recharge">
+      <form onSubmit={grant} className="flex flex-col gap-2 text-sm">
+        <input value={account} onChange={(e) => setAccount(e.target.value)} placeholder="E-mail ou identifiant du compte" required />
+        <select value={pack} onChange={(e) => setPack(e.target.value as PackId)}>
+          {PACKS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.label} ({p.price} €)
+            </option>
+          ))}
+        </select>
+        <button disabled={busy} className="self-start rounded-md bg-accent px-3 py-1.5 font-medium text-white disabled:opacity-50">
+          Ajouter
+        </button>
+        {result && <p className={result.ok ? "text-up" : "text-down"}>{result.text}</p>}
+      </form>
+      <p className="mt-2 text-xs text-muted">En attendant le paiement en ligne : après un paiement par virement ou pour dépanner un client.</p>
+    </Card>
   );
 }

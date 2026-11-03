@@ -3,6 +3,7 @@ import { z } from "zod";
 import { BacktestConfigSchema, StrategySchema } from "../strategy/schema";
 import type { PoolClient } from "pg";
 import { newId, query, queryOne } from "./db";
+import { refundBacktestCredit } from "./quotas";
 
 /**
  * Work queue in Postgres. The web server only inserts; the worker claims jobs
@@ -83,11 +84,13 @@ export async function getJob(userId: string, id: string): Promise<(Job & { ahead
 
 /** Takes the oldest waiting job. Jobs left running by a crashed worker for 15 minutes are retried once. */
 export async function claimNext(): Promise<Job | null> {
-  await query(
+  const stale = await query<{ id: string; status: string }>(
     `UPDATE jobs SET status = CASE WHEN attempts >= 2 THEN 'failed' ELSE 'queued' END,
        error = CASE WHEN attempts >= 2 THEN 'Le calcul a été interrompu deux fois.' ELSE error END
-     WHERE status = 'running' AND started_at < now() - interval '15 minutes'`,
+     WHERE status = 'running' AND started_at < now() - interval '15 minutes'
+     RETURNING id, status`,
   );
+  for (const j of stale) if (j.status === "failed") await refundBacktestCredit(j.id);
   const r = await queryOne<Row>(
     `UPDATE jobs SET status = 'running', started_at = now(), attempts = attempts + 1, message = 'Démarrage'
      WHERE id = (SELECT id FROM jobs WHERE status = 'queued' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1)
@@ -106,4 +109,6 @@ export async function finishJob(id: string, resultId: string) {
 
 export async function failJob(id: string, error: string) {
   await query("UPDATE jobs SET status = 'failed', error = $2, finished_at = now() WHERE id = $1", [id, error]);
+  // A failed backtest doesn't count against the month; neither does it cost a recharge credit.
+  await refundBacktestCredit(id);
 }

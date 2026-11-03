@@ -72,9 +72,11 @@ Définis dans `src/lib/plans.ts` :
 |---|---|---|---|---|---|
 | Découverte | gratuit | 5 | 3 | 1h | 1 |
 | Trader | 15 € / mois | 100 | 50 | 1m | 2 |
-| Pro | 39 € / mois | 1 000 | 400 | 1m | 3 |
+| Pro | 39 € / mois | 1 000 | 200 | 1m | 3 |
 
 L'unité minimale s'applique aussi au suivi d'une stratégie sur la page Live. L'IA est aussi limitée à 5 traductions par minute et par compte, et à `AI_DAILY_CAP` par jour pour tout le site. Le paiement (Stripe) n'est pas encore branché : pour changer l'offre d'un compte, mets la ligne `plans` à jour en base. La page `/tarifs` compte les intérêts pour chaque offre.
+
+**Recharges** (`PACKS` dans `src/lib/plans.ts`) : +50 traductions IA pour 9 €, +100 backtests pour 5 €, les deux pour 12 €. Les crédits n'expirent pas et ne servent qu'une fois le quota du mois épuisé ; un backtest qui échoue rend son crédit. Ils sont tenus dans `credit_ledger`. Tant que le paiement en ligne n'est pas ouvert, la page Tarifs enregistre l'intérêt et l'administrateur crédite un compte depuis `/admin` (« Créditer une recharge »).
 
 ## Sécurité
 

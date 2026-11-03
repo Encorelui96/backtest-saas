@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { api } from "@/lib/client/api";
+import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
 import type { Template } from "@/lib/strategy/templates";
@@ -72,6 +73,12 @@ export function StrategyEditor({ id }: { id?: string }) {
   const [busy, setBusy] = useState<"ai" | "save" | "run" | null>(null);
   const [job, setJob] = useState<JobState | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Set when the error is a spent quota that a recharge would lift.
+  const [recharge, setRecharge] = useState<string | null>(null);
+  const fail = (e: unknown) => {
+    setError((e as Error).message);
+    setRecharge(e instanceof ApiError ? e.recharge : null);
+  };
   const [notice, setNotice] = useState<string | null>(null);
   // Beginners see a summary of the rules and no idea box until they ask for them.
   const [editRules, setEditRules] = useState(false);
@@ -132,7 +139,7 @@ export function StrategyEditor({ id }: { id?: string }) {
       setStrategy(res.strategy);
       setConfig((c) => withDefaultPeriod(c, res.strategy));
     } catch (e) {
-      setError((e as Error).message);
+      fail(e);
     } finally {
       setBusy(null);
     }
@@ -153,7 +160,7 @@ export function StrategyEditor({ id }: { id?: string }) {
       setNotice("Stratégie enregistrée.");
       setTimeout(() => setNotice(null), 2500);
     } catch (e) {
-      setError((e as Error).message);
+      fail(e);
     } finally {
       setBusy(null);
     }
@@ -177,7 +184,7 @@ export function StrategyEditor({ id }: { id?: string }) {
         await new Promise((r) => setTimeout(r, 700));
       }
     } catch (e) {
-      setError((e as Error).message);
+      fail(e);
       setBusy(null);
       setJob(null);
     }
@@ -545,7 +552,16 @@ export function StrategyEditor({ id }: { id?: string }) {
                 </Field>
               </div>
             )}
-            {error && <Alert tone="error">{error}</Alert>}
+            {error && (
+              <Alert tone="error">
+                {error}
+                {recharge && (
+                  <Link href="/tarifs#recharges" className="mt-1 block font-semibold underline">
+                    Voir les recharges →
+                  </Link>
+                )}
+              </Alert>
+            )}
             {notice && <Alert tone="info">{notice}</Alert>}
             <div className="hidden flex-col gap-2 md:flex">
               {job && <ProgressBar job={job} />}
@@ -567,7 +583,16 @@ export function StrategyEditor({ id }: { id?: string }) {
 
       {/* Phones: the run button stays within reach above the tab bar. */}
       <div className="fixed inset-x-0 bottom-[calc(58px+env(safe-area-inset-bottom))] z-20 border-t border-line bg-panel/95 px-3 py-2 backdrop-blur md:hidden">
-        {error && <p className="mb-1.5 line-clamp-2 text-xs text-down">{error}</p>}
+        {error && (
+          <p className="mb-1.5 line-clamp-3 text-xs text-down">
+            {error}
+            {recharge && (
+              <Link href="/tarifs#recharges" className="ml-1 font-semibold underline">
+                Recharger
+              </Link>
+            )}
+          </p>
+        )}
         {job && <ProgressBar job={job} />}
         <Button onClick={run} disabled={busy !== null} className="w-full py-2.5">
           {busy === "run" ? runLabel : `Lancer le backtest · ${strategy.symbol} ${strategy.interval} · ${Math.round(years)} an${Math.round(years) > 1 ? "s" : ""}`}

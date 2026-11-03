@@ -126,5 +126,6 @@ export interface AdminMetrics {
     answers: { very: number; somewhat: number; not: number };
     comments: { answer: string; comment: string; createdAt: number }[];
   };
-  interest: { plan: PlanId; billing: string; n: number }[];
+  /** A plan id, or "pack:<id>" for a recharge. */
+  interest: { plan: string; billing: string; n: number }[];
 }

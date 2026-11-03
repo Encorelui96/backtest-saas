@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
-import { PLANS, euros, type Billing, type Plan, type PlanId } from "@/lib/plans";
+import { PACKS, PLANS, euros, type Billing, type PackId, type Plan, type PlanId } from "@/lib/plans";
 import { Alert } from "./ui";
 
 const INTERVAL_LABELS: Record<string, string> = { "1m": "1 minute", "1h": "1 heure" };
@@ -44,6 +44,16 @@ export function Pricing() {
     try {
       await api("/api/interest", { json: { plan, billing } });
       setWanted((w) => [...new Set([...w, plan])]);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const wantPack = async (pack: PackId) => {
+    setError(null);
+    try {
+      await api("/api/interest", { json: { pack } });
+      setWanted((w) => [...new Set([...w, `pack:${pack}`])]);
     } catch (e) {
       setError((e as Error).message);
     }
@@ -131,6 +141,38 @@ export function Pricing() {
           );
         })}
       </div>
+
+      <section id="recharges" className="mt-4 scroll-mt-20 rounded-xl border border-line bg-panel p-4 sm:p-5">
+        <h2 className="text-lg font-semibold">Recharges</h2>
+        <p className="mt-1 text-sm text-muted">
+          Ton quota du mois est épuisé avant la fin du mois ? Ajoute des crédits à l&apos;unité, sans changer d&apos;offre. Ils servent une fois le quota mensuel
+          utilisé, et ils n&apos;expirent pas. Un backtest qui échoue te rend son crédit.
+        </p>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          {PACKS.map((p) => {
+            const id = `pack:${p.id}`;
+            return (
+              <div key={p.id} className={`flex flex-col rounded-lg border p-3 ${p.id === "combo" ? "border-accent" : "border-line"}`}>
+                <div className="font-medium">{p.label}</div>
+                <div className="num mt-1 text-2xl font-semibold">{euros(p.price)}</div>
+                <p className="text-xs text-muted">{p.id === "combo" ? `au lieu de ${euros(PACKS[0].price + PACKS[1].price)}` : "paiement unique"}</p>
+                <div className="mt-3 flex-1" />
+                {wanted.includes(id) ? (
+                  <p className="text-sm text-up">C&apos;est noté ✓</p>
+                ) : session ? (
+                  <button onClick={() => wantPack(p.id)} className="rounded-md border border-line px-3 py-1.5 text-sm font-medium hover:border-accent">
+                    Je veux cette recharge
+                  </button>
+                ) : (
+                  <Link href="/connexion?mode=signup&next=/tarifs" className="rounded-md border border-line px-3 py-1.5 text-center text-sm font-medium hover:border-accent">
+                    Je veux cette recharge
+                  </Link>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

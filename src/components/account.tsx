@@ -17,6 +17,7 @@ interface Me {
     backtests: number;
     ai: number;
     resetsAt: string;
+    credits: { ai: number; backtest: number };
   } | null;
 }
 
@@ -67,13 +68,28 @@ export function Account() {
           <p className="text-xs text-muted">
             Unité de temps minimale : {u.plan.minInterval} · alertes : {u.plan.alerts} · compteurs remis à zéro le {new Date(u.resetsAt).toLocaleDateString("fr-FR")}.
           </p>
-          {u.plan.id === "free" && (
+          {(u.credits.ai > 0 || u.credits.backtest > 0) && (
+            <p className="text-sm">
+              Crédits de recharge : <span className="num font-semibold">{u.credits.backtest}</span> backtest{u.credits.backtest > 1 ? "s" : ""} et{" "}
+              <span className="num font-semibold">{u.credits.ai}</span> traduction{u.credits.ai > 1 ? "s" : ""}, utilisés une fois le quota du mois épuisé.
+            </p>
+          )}
+          {u.plan.id === "free" ? (
             <p className="text-sm">
               Plus de tests, le scalp dès 1 minute :{" "}
               <Link href="/tarifs" className="text-accent hover:underline">
                 voir les offres Trader et Pro →
               </Link>
             </p>
+          ) : (
+            (u.backtests >= u.plan.backtestsPerMonth * 0.8 || u.ai >= u.plan.aiPerMonth * 0.8) && (
+              <p className="text-sm">
+                Bientôt au bout de ton quota ?{" "}
+                <Link href="/tarifs#recharges" className="text-accent hover:underline">
+                  Ajouter une recharge →
+                </Link>
+              </p>
+            )
           )}
         </div>
       </Card>

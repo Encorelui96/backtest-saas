@@ -3,9 +3,13 @@ import { requireUser } from "@/lib/server/auth";
 import { query } from "@/lib/server/db";
 import { handle } from "@/lib/server/http";
 
-const Body = z.object({ plan: z.enum(["trader", "pro"]), billing: z.enum(["month", "year"]) });
+const Body = z.union([
+  z.object({ plan: z.enum(["trader", "pro"]), billing: z.enum(["month", "year"]) }),
+  // Recharges are bought once: stored as "pack:<id>".
+  z.object({ pack: z.enum(["ai50", "bt100", "combo"]) }).transform(({ pack }) => ({ plan: `pack:${pack}`, billing: "once" })),
+]);
 
-/** "I want this offer": records the interest while online payment isn't open. */
+/** "I want this offer" or "I want this recharge": records the interest while online payment isn't open. */
 export async function POST(req: Request) {
   return handle(async () => {
     const user = await requireUser(req.headers);

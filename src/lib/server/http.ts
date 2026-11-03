@@ -30,7 +30,7 @@ async function settle(fn: () => Promise<Response>): Promise<Response> {
     // Next.js signals (e.g. "this route is dynamic" during prerendering) must pass through.
     unstable_rethrow(e);
     if (e instanceof AuthError) return Response.json({ error: e.message, auth: true }, { status: 401 });
-    if (e instanceof QuotaError) return Response.json({ error: e.message, quota: true }, { status: 429 });
+    if (e instanceof QuotaError) return Response.json({ error: e.message, quota: true, recharge: e.recharge ?? null }, { status: 429 });
     if (e instanceof UserError) return Response.json({ error: e.message }, { status: 400 });
     if (e instanceof TelegramError) {
       console.error(e.message);

@@ -2,7 +2,7 @@ import { connection, type NextRequest } from "next/server";
 import { listBacktests, validateBacktest } from "@/lib/server/backtests";
 import { BacktestPayload, enqueue } from "@/lib/server/jobs";
 import { getStrategy } from "@/lib/server/strategies";
-import { checkBacktestAllowed, withUserLock } from "@/lib/server/quotas";
+import { checkBacktestAllowed, spendCredit, withUserLock } from "@/lib/server/quotas";
 import { requireUser } from "@/lib/server/auth";
 import { handle } from "@/lib/server/http";
 
@@ -23,8 +23,11 @@ export async function POST(req: Request) {
     // Only link the result to a strategy the user owns.
     const strategyId = body.strategyId && (await getStrategy(user.id, body.strategyId)) ? body.strategyId : null;
     const job = await withUserLock(user, async (run, client) => {
-      await checkBacktestAllowed(user, strategy.interval, run);
-      return enqueue(user.id, "backtest", { strategy: body.strategy, config: body.config, strategyId }, client);
+      const { useCredit } = await checkBacktestAllowed(user, strategy.interval, run);
+      const queued = await enqueue(user.id, "backtest", { strategy: body.strategy, config: body.config, strategyId }, client);
+      // Past the monthly quota, the backtest uses a recharge credit; a failure gives it back (failJob).
+      if (useCredit) await spendCredit(run, user.id, "backtest", `job:${queued.id}`);
+      return queued;
     });
     return Response.json({ jobId: job.id });
   });

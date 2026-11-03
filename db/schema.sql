@@ -134,3 +134,17 @@ CREATE TABLE IF NOT EXISTS alerts (
   UNIQUE (user_id, strategy_id)
 );
 CREATE INDEX IF NOT EXISTS alerts_enabled ON alerts (enabled);
+
+-- Recharges: credits bought (positive), used once the monthly quota is spent (negative), refunded when a backtest fails.
+-- The balance is the sum; credits never expire.
+CREATE TABLE IF NOT EXISTS credit_ledger (
+  id bigserial PRIMARY KEY,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  kind text NOT NULL, -- ai | backtest
+  delta integer NOT NULL,
+  -- pack:<id> for a purchase, admin:<by> for a manual grant, job:<id> or ai:<event id> for a use, refund:<job id>.
+  reason text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS credits_by_user ON credit_ledger (user_id, kind);
+CREATE UNIQUE INDEX IF NOT EXISTS credits_one_refund ON credit_ledger (reason) WHERE reason LIKE 'refund:%';

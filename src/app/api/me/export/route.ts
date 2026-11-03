@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   await connection();
   return handle(async () => {
     const user = await requireUser(req.headers);
-    const [account, plan, strategies, backtests, usage, sessions, feedback, interest, telegram, alerts] = await Promise.all([
+    const [account, plan, strategies, backtests, usage, sessions, feedback, interest, telegram, alerts, credits] = await Promise.all([
       query(`SELECT email, name, "createdAt" AS created_at FROM "user" WHERE id = $1`, [user.id]),
       query("SELECT plan, updated_at FROM plans WHERE user_id = $1", [user.id]),
       query("SELECT name, json AS rules, source_text AS description, created_at, updated_at FROM strategies WHERE user_id = $1 ORDER BY created_at", [user.id]),
@@ -24,6 +24,7 @@ export async function GET(req: Request) {
          WHERE a.user_id = $1 ORDER BY a.created_at`,
         [user.id],
       ),
+      query("SELECT kind, delta, reason, created_at FROM credit_ledger WHERE user_id = $1 ORDER BY created_at", [user.id]),
     ]);
     const data = {
       exportedAt: new Date().toISOString(),
@@ -37,6 +38,7 @@ export async function GET(req: Request) {
       planInterest: interest,
       telegram: telegram[0] ?? null,
       alerts,
+      credits,
     };
     return new Response(JSON.stringify(data, null, 2), {
       headers: {
