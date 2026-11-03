@@ -1,3 +1,4 @@
+import { tr } from "@/lib/i18n";
 import { INTERVAL_MS, type Interval } from "../types";
 import type { ExitReason, Trade } from "./backtest";
 import { CALENDAR_FROM, CALENDAR_TO, EVENT_KINDS, eventsBetween, type EventKind } from "./calendar";
@@ -161,22 +162,22 @@ export function breakdowns(trades: Trade[], timezone: string, interval: Interval
 
   const byHour = group(trades, unit, (t) => {
     const h = at.get(t)!.hour;
-    return { key: `h${h}`, order: h, label: `${h} h – ${h + 1} h`, subject: `Les trades ouverts entre ${h} h et ${h + 1} h` };
+    return { key: `h${h}`, order: h, label: `${h} h – ${h + 1} h`, subject: tr("Les trades ouverts entre {0} h et {1} h", [h, h + 1]) };
   });
   const byWeekday = group(trades, unit, (t) => {
     const d = at.get(t)!.weekday;
     const name = WEEKDAYS[d - 1];
-    return { key: `d${d}`, order: d, label: name[0].toUpperCase() + name.slice(1), subject: `Les trades ouverts le ${name}` };
+    return { key: `d${d}`, order: d, label: name[0].toUpperCase() + name.slice(1), subject: tr("Les trades ouverts le {0}", [tr(name)]) };
   });
   const bySide = group(trades, unit, (t) =>
-    t.side === "long" ? { key: "long", order: 0, label: "Achats", subject: "Les achats" } : { key: "short", order: 1, label: "Ventes", subject: "Les ventes", feminine: true },
+    t.side === "long" ? { key: "long", order: 0, label: tr("Achats"), subject: tr("Les achats") } : { key: "short", order: 1, label: tr("Ventes"), subject: tr("Les ventes"), feminine: true },
   );
   const exits = Object.keys(EXIT_LABELS) as ExitReason[];
   const byExit = group(trades, unit, (t) => ({
     key: t.exitReason,
     order: exits.indexOf(t.exitReason),
     label: EXIT_LABELS[t.exitReason],
-    subject: `Les sorties « ${EXIT_LABELS[t.exitReason]} »`,
+    subject: tr("Les sorties « {0} »", [tr(EXIT_LABELS[t.exitReason])]),
     feminine: true,
   }));
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link } from "@/lib/client/i18n";
+import { Link, useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { CandleHero } from "./candle-hero";
@@ -16,6 +16,7 @@ const POINTS = [
 
 /** Visitors see a real report before signing up, when the admin has picked one as the example. */
 function ExampleLink() {
+  const tl = useT();
   const [id, setId] = useState<string | null>(null);
   useEffect(() => {
     api<{ id: string | null }>("/api/example")
@@ -25,15 +26,15 @@ function ExampleLink() {
   if (!id) return null;
   return (
     <Link href={`/r/${id}`} className="text-sm text-accent hover:underline">
-      Voir un exemple de rapport, sans créer de compte →
-    </Link>
+      {tl("Voir un exemple de rapport, sans créer de compte →")}</Link>
   );
 }
 
 /** The dashboard for signed-in users, a short presentation for visitors. */
 export function Home() {
+  const tl = useT();
   const { data: session, isPending } = authClient.useSession();
-  if (isPending) return <p className="text-muted">Chargement…</p>;
+  if (isPending) return <p className="text-muted">{tl("Chargement…")}</p>;
   if (session) return <Dashboard />;
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-6 sm:gap-10 sm:pb-12">
@@ -45,23 +46,18 @@ export function Home() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent" />
         <div className="relative flex h-full flex-col items-center justify-center px-5 text-center">
           <h1 className="text-3xl font-semibold leading-tight drop-shadow sm:text-5xl">
-            Teste ta stratégie de trading
-            <br />
-            <span className="text-accent">avant d&apos;y mettre ton argent</span>
+            {tl("Teste ta stratégie de trading")}<br />
+            <span className="text-accent">{tl("avant d'y mettre ton argent")}</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-fg/80 sm:text-base">
-            Scalp, day trading ou swing, sur les cryptos, le forex, l&apos;or et le Nasdaq : écris tes règles en français, Backtest Lab les teste sur des années de cours et te dit si le
-            résultat tient la route.
-          </p>
+            {tl("Scalp, day trading ou swing, sur les cryptos, le forex, l'or et le Nasdaq : écris tes règles en français, Backtest Lab les teste sur des années de cours et te dit si le résultat tient la route.")}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
             <Link href="/connexion?mode=signup" className="rounded-md bg-accent px-5 py-2.5 font-medium text-white shadow-lg shadow-accent/30 hover:brightness-110">
-              Commencer gratuitement
-            </Link>
+              {tl("Commencer gratuitement")}</Link>
             <Link href="/apprendre" className="rounded-md border border-line bg-panel/70 px-5 py-2.5 font-medium text-fg backdrop-blur hover:border-accent">
-              Apprendre les bases
-            </Link>
+              {tl("Apprendre les bases")}</Link>
           </div>
-          <p className="mt-3 text-xs text-muted">5 backtests par mois offerts, sans carte bancaire.</p>
+          <p className="mt-3 text-xs text-muted">{tl("5 backtests par mois offerts, sans carte bancaire.")}</p>
           <div className="mt-3">
             <ExampleLink />
           </div>
@@ -70,20 +66,18 @@ export function Home() {
       <div className="grid gap-3 sm:grid-cols-2">
         {POINTS.map((p) => (
           <div key={p.title} className="rounded-lg border border-line bg-panel p-4">
-            <h2 className="font-semibold">{p.title}</h2>
-            <p className="mt-1 text-sm text-muted">{p.text}</p>
+            <h2 className="font-semibold">{tl(p.title)}</h2>
+            <p className="mt-1 text-sm text-muted">{tl(p.text)}</p>
           </div>
         ))}
       </div>
       <p className="text-center text-sm text-muted">
-        Des questions ?{" "}
+        {tl("Des questions ?")}{" "}
         <Link href="/questions" className="text-accent hover:underline">
-          Ce que fait Backtest Lab, pour qui, à quel prix
-        </Link>{" "}
+          {tl("Ce que fait Backtest Lab, pour qui, à quel prix")}</Link>{" "}
         ·{" "}
         <Link href="/tarifs" className="text-accent hover:underline">
-          Tarifs
-        </Link>
+          {tl("Tarifs")}</Link>
       </p>
     </div>
   );

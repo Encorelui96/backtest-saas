@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Link } from "@/lib/client/i18n";
+import { Link, useT } from "@/lib/client/i18n";
 import { USES, glossary } from "@/lib/learn/glossary";
 
 /**
@@ -52,9 +52,10 @@ export function useBeginner() {
 }
 
 export function LevelToggle({ className = "" }: { className?: string }) {
+  const tl = useT();
   const level = useLevel();
   return (
-    <div className={`inline-flex rounded-md border border-line p-0.5 text-xs ${className}`} role="group" aria-label="Niveau d'affichage">
+    <div className={`inline-flex rounded-md border border-line p-0.5 text-xs ${className}`} role="group" aria-label={tl("Niveau d'affichage")}>
       {(["beginner", "expert"] as const).map((l) => (
         <button
           key={l}
@@ -62,7 +63,7 @@ export function LevelToggle({ className = "" }: { className?: string }) {
           aria-pressed={level === l}
           className={`rounded px-2.5 py-1 ${level === l ? "bg-accent text-white" : "text-muted hover:text-fg"}`}
         >
-          {l === "beginner" ? "Débutant" : "Expert"}
+          {l === "beginner" ? tl("Débutant") : tl("Expert")}
         </button>
       ))}
     </div>
@@ -102,6 +103,7 @@ export function FieldHelp({ children }: { children: ReactNode }) {
  * larger screens, as a bubble under the trigger. A click elsewhere closes it.
  */
 function Definition({ id, trigger, triggerClass, label }: { id: string; trigger: ReactNode; triggerClass: string; label: string }) {
+  const tl = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
   const entry = glossary(id);
@@ -153,13 +155,12 @@ function Definition({ id, trigger, triggerClass, label }: { id: string; trigger:
           <span className="block">{entry.short}</span>
           {use && (
             <span className="mt-1.5 block">
-              <span className="font-semibold">À quoi ça sert : </span>
+              <span className="font-semibold">{tl("À quoi ça sert : ")}</span>
               {use}
             </span>
           )}
           <Link href={`/apprendre#${entry.id}`} className="mt-1.5 inline-block text-accent underline decoration-dotted underline-offset-2">
-            En savoir plus
-          </Link>
+            {tl("En savoir plus")}</Link>
         </span>
       )}
     </span>
@@ -168,12 +169,13 @@ function Definition({ id, trigger, triggerClass, label }: { id: string; trigger:
 
 /** A round "?" that explains a field: blue in beginner mode, grey and quieter in expert mode. */
 export function Help({ id }: { id: string }) {
+  const tl = useT();
   const beginner = useBeginner();
   const tone = beginner ? "border-accent/60 text-accent hover:bg-accent hover:text-white" : "border-line text-muted hover:border-accent hover:text-accent";
   return (
     <Definition
       id={id}
-      label="Explication"
+      label={tl("Explication")}
       trigger="?"
       triggerClass={`ml-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border align-middle text-[11px] font-bold leading-none md:h-4 md:w-4 md:text-[10px] ${tone}`}
     />
@@ -182,11 +184,12 @@ export function Help({ id }: { id: string }) {
 
 /** A word with its definition one tap away in beginner mode; plain text in expert mode. */
 export function Term({ id, children }: { id: string; children?: ReactNode }) {
+  const tl = useT();
   const beginner = useBeginner();
   const entry = glossary(id);
   const label = children ?? entry?.term ?? id;
   if (!beginner || !entry) return <>{label}</>;
   return (
-    <Definition id={id} label={`Définition : ${entry.term}`} trigger={label} triggerClass="cursor-help text-left underline decoration-accent/70 decoration-dotted underline-offset-2" />
+    <Definition id={id} label={tl("Définition : {0}", [entry.term])} trigger={label} triggerClass="cursor-help text-left underline decoration-accent/70 decoration-dotted underline-offset-2" />
   );
 }

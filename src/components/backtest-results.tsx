@@ -1,7 +1,8 @@
 "use client";
 
+import { tr } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "@/lib/client/i18n";
+import { Link, rich, useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { date, money, num, pct, price, r, tone } from "@/lib/client/format";
 import type { BacktestReport } from "@/lib/engine/report";
@@ -40,6 +41,7 @@ function spanLabel(ms: number) {
 
 /** `shared`: `id` is a public link id, the report is read-only and anyone can open it. */
 export function BacktestResults({ id, shared = false }: { id: string; shared?: boolean }) {
+  const tl = useT();
   const [data, setData] = useState<Stored | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
@@ -51,7 +53,7 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
   }, [id, shared]);
 
   if (error) return <Alert tone="error">{error}</Alert>;
-  if (!data) return <p className="text-muted">Chargement…</p>;
+  if (!data) return <p className="text-muted">{tl("Chargement…")}</p>;
   const { report, strategy, config } = data;
   const m = report.metrics;
   const hasR = m.avgR !== null;
@@ -61,30 +63,28 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
       {shared && (
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
           <span>
-            Rapport partagé : stratégie testée sur {spanLabel(report.period.to - report.period.from)} de cours réels avec <span className="font-semibold">Backtest Lab</span>.
+            {tl("Rapport partagé : stratégie testée sur ")}{spanLabel(report.period.to - report.period.from)} {tl(" de cours réels avec ")}<span className="font-semibold">{tl("Backtest Lab")}</span>.
           </span>
           <Link href="/connexion?mode=signup" className="rounded-md bg-accent px-3 py-1.5 font-medium text-white hover:brightness-110">
-            Teste ta propre idée gratuitement
-          </Link>
+            {tl("Teste ta propre idée gratuitement")}</Link>
         </div>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">{strategy.name}</h1>
           <p className="text-sm text-muted">
-            {strategy.symbol} · {strategy.interval} · {date(report.period.from, false)} → {date(report.period.to, false)} · capital {money(config.initialCapital)} · frais {config.feePercent} % / côté
-          </p>
+            {strategy.symbol} · {strategy.interval} · {date(report.period.from, false)} → {date(report.period.to, false)} {tl(" · capital {0} · frais {1} % / côté", [money(config.initialCapital), config.feePercent])}</p>
         </div>
         {!shared && (
           <div className="flex flex-wrap gap-2">
             {data.strategyId && (
               <Link href={`/strategies/${data.strategyId}`}>
-                <Button variant="ghost">Modifier et relancer</Button>
+                <Button variant="ghost">{tl("Modifier et relancer")}</Button>
               </Link>
             )}
             {data.strategyId && (
               <Link href={`/live?strategy=${data.strategyId}`}>
-                <Button variant="ghost">Suivre en direct</Button>
+                <Button variant="ghost">{tl("Suivre en direct")}</Button>
               </Link>
             )}
             <SharePanel backtestId={id} initial={data.share ?? null} />
@@ -99,21 +99,21 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
       {beginner ? (
         // Beginners: the four numbers that matter most, each with its "?", then the guided reading.
         <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:grid-cols-4">
-          <Stat label="Rendement total" term="rendement" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={`Acheter et garder : ${pct(m.buyAndHoldPercent)}`} />
-          <Stat label="Baisse max" term="drawdown" value={pct(-m.maxDrawdownPercent)} className="text-down" hint={`≈ ${money((data.config.initialCapital * m.maxDrawdownPercent) / 100)} au pire moment`} />
-          <Stat label="Trades" term="trades" value={m.trades} hint={m.trades < 30 ? "trop peu pour conclure" : `${num(m.tradesPerMonth, 1)} par mois`} />
-          <Stat label="Profit factor" term="profit-factor" value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} hint={`${pct(m.winRate, 0, false)} de gagnants`} />
+          <Stat label={tl("Rendement total")} term="rendement" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={tl("Acheter et garder : {0}", [pct(m.buyAndHoldPercent)])} />
+          <Stat label={tl("Baisse max")} term="drawdown" value={pct(-m.maxDrawdownPercent)} className="text-down" hint={tl("≈ {0} au pire moment", [money((data.config.initialCapital * m.maxDrawdownPercent) / 100)])} />
+          <Stat label={tl("Trades")} term="trades" value={m.trades} hint={m.trades < 30 ? tl("trop peu pour conclure") : tl("{0} par mois", [num(m.tradesPerMonth, 1)])} />
+          <Stat label={tl("Profit factor")} term="profit-factor" value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} hint={tl("{0} de gagnants", [pct(m.winRate, 0, false)])} />
         </div>
       ) : (
         <div className="grid grid-cols-3 gap-1.5 sm:gap-2 md:grid-cols-4 lg:grid-cols-8">
-          <Stat label="Rendement total" term="rendement" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={`B&H ${pct(m.buyAndHoldPercent)}`} />
+          <Stat label={tl("Rendement total")} term="rendement" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={`B&H ${pct(m.buyAndHoldPercent)}`} />
           <Stat label="CAGR" term="rendement-annuel" value={pct(m.cagrPercent)} className={tone(m.cagrPercent)} />
-          <Stat label="Max DD" term="drawdown" value={pct(-m.maxDrawdownPercent)} className="text-down" />
-          <Stat label="Trades" term="trades" value={m.trades} hint={`${num(m.tradesPerMonth, 1)} / mois`} />
-          <Stat label="Win rate" term="gagnants" value={pct(m.winRate, 0, false)} />
-          <Stat label="Profit factor" term="profit-factor" value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} />
-          <Stat label="Espérance" term="gain-moyen" value={hasR ? r(m.avgR) : pct(m.avgTradePercent, 2)} className={tone(hasR ? m.avgR : m.avgTradePercent)} />
-          <Stat label="Sharpe" term="sharpe" value={num(m.sharpe)} hint={`Sortino ${num(m.sortino)}`} />
+          <Stat label={tl("Max DD")} term="drawdown" value={pct(-m.maxDrawdownPercent)} className="text-down" />
+          <Stat label={tl("Trades")} term="trades" value={m.trades} hint={`${num(m.tradesPerMonth, 1)} / mois`} />
+          <Stat label={tl("Win rate")} term="gagnants" value={pct(m.winRate, 0, false)} />
+          <Stat label={tl("Profit factor")} term="profit-factor" value={num(m.profitFactor)} className={m.profitFactor !== null ? (m.profitFactor >= 1 ? "text-up" : "text-down") : ""} />
+          <Stat label={tl("Espérance")} term="gain-moyen" value={hasR ? r(m.avgR) : pct(m.avgTradePercent, 2)} className={tone(hasR ? m.avgR : m.avgTradePercent)} />
+          <Stat label={tl("Sharpe")} term="sharpe" value={num(m.sharpe)} hint={tl("Sortino {0}", [num(m.sortino)])} />
         </div>
       )}
 
@@ -156,18 +156,19 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
  * are already in the four cards above; the details are one tap away.
  */
 function GuidedReading({ data, onOpenRobustness }: { data: Stored; onOpenRobustness: () => void }) {
+  const tl = useT();
   const beginner = useBeginner();
   if (!beginner) return null;
   const m = data.report.metrics;
   const solid = robustnessVerdict(data.report).tone === "info";
   const [tone, title, advice]: ["good" | "meh" | "bad", string, string] =
     m.trades < 30
-      ? ["meh", "Pas assez de trades pour juger.", "Allonge la période (bouton « 5 ans ») ou choisis une unité de temps plus courte."]
+      ? ["meh", tl("Pas assez de trades pour juger."), tl("Allonge la période (bouton « 5 ans ») ou choisis une unité de temps plus courte.")]
       : m.totalReturnPercent <= 0
-        ? ["bad", "Cette stratégie perd de l'argent.", "Essaie un autre modèle ou un autre marché."]
+        ? ["bad", tl("Cette stratégie perd de l'argent."), tl("Essaie un autre modèle ou un autre marché.")]
         : solid
-          ? ["good", "Résultat encourageant.", "Suis-la en direct quelques semaines avant d'y mettre de l'argent."]
-          : ["meh", "Gagnante, mais fragile.", "Le gain vient peut-être en partie du hasard : regarde pourquoi avant d'aller plus loin."];
+          ? ["good", tl("Résultat encourageant."), tl("Suis-la en direct quelques semaines avant d'y mettre de l'argent.")]
+          : ["meh", tl("Gagnante, mais fragile."), tl("Le gain vient peut-être en partie du hasard : regarde pourquoi avant d'aller plus loin.")];
   const style = { good: "border-up/40 bg-up/10 text-up", meh: "border-warn/40 bg-warn/10 text-warn", bad: "border-down/40 bg-down/10 text-down" }[tone];
   return (
     <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-3 ${style}`}>
@@ -176,7 +177,7 @@ function GuidedReading({ data, onOpenRobustness }: { data: Stored; onOpenRobustn
         <div className="text-sm text-fg/80">{advice}</div>
       </div>
       <button onClick={onOpenRobustness} className="shrink-0 text-sm text-accent hover:underline">
-        Pourquoi ? →
+        {tl("Pourquoi ? →")}
       </button>
     </div>
   );
@@ -184,6 +185,7 @@ function GuidedReading({ data, onOpenRobustness }: { data: Stored; onOpenRobustn
 
 /** `shared`: no price chart, the market data providers' licences only cover the account holders' own use. */
 function Overview({ data, selected, onSelect, shared }: { data: Stored; selected: number | null; onSelect: (i: number | null) => void; shared: boolean }) {
+  const tl = useT();
   const { report, strategy } = data;
   const m = report.metrics;
   const [candles, setCandles] = useState<CandleRow[]>([]);
@@ -226,9 +228,9 @@ function Overview({ data, selected, onSelect, shared }: { data: Stored; selected
     () =>
       sel
         ? [
-            { price: sel.entryPrice, color: "#8a97ab", title: "Entrée" },
-            ...(sel.stopPrice ? [{ price: sel.stopPrice, color: "#ef4444", title: "Stop" }] : []),
-            ...(sel.targetPrice ? [{ price: sel.targetPrice, color: "#22c55e", title: "Objectif" }] : []),
+            { price: sel.entryPrice, color: "#8a97ab", title: tl("Entrée") },
+            ...(sel.stopPrice ? [{ price: sel.stopPrice, color: "#ef4444", title: tl("Stop") }] : []),
+            ...(sel.targetPrice ? [{ price: sel.targetPrice, color: "#22c55e", title: tl("Objectif") }] : []),
           ]
         : [],
     [sel],
@@ -240,8 +242,7 @@ function Overview({ data, selected, onSelect, shared }: { data: Stored; selected
         <Card
           title={
             <span className="flex items-center">
-              Courbe du capital
-              <Help id="courbe-capital" />
+              {tl("Courbe du capital")}<Help id="courbe-capital" />
             </span>
           }
         >
@@ -249,27 +250,24 @@ function Overview({ data, selected, onSelect, shared }: { data: Stored; selected
         </Card>
         {!shared && (
           <Card
-            title={sel ? `Trade du ${date(sel.entryTime)} · ${sel.side === "long" ? "achat" : "vente"} · ${sel.r !== null ? r(sel.r) : pct(sel.pnlPercent)}` : "Graphique des trades"}
+            title={sel ? tl("Trade du {0} · {1} · {2}", [date(sel.entryTime), sel.side === "long" ? "achat" : "vente", sel.r !== null ? r(sel.r) : pct(sel.pnlPercent)]) : tl("Graphique des trades")}
             actions={
               <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs">
-                {loading && <span className="text-muted">chargement…</span>}
+                {loading && <span className="text-muted">{tl("chargement…")}</span>}
                 {selected !== null && (
                   <>
                     <button disabled={selected === 0} onClick={() => onSelect(selected - 1)} className="text-muted hover:text-fg disabled:opacity-30">
-                      ← précédent
-                    </button>
+                      {tl("← précédent")}</button>
                     <button disabled={selected >= report.trades.length - 1} onClick={() => onSelect(selected + 1)} className="text-muted hover:text-fg disabled:opacity-30">
-                      suivant →
+                      {tl("suivant →")}
                     </button>
                     <button onClick={() => onSelect(null)} className="text-muted hover:text-fg">
-                      fin du test
-                    </button>
+                      {tl("fin du test")}</button>
                   </>
                 )}
                 {selected === null && report.trades.length > 0 && (
                   <button onClick={() => onSelect(0)} className="text-accent hover:underline">
-                    voir le premier trade
-                  </button>
+                    {tl("voir le premier trade")}</button>
                 )}
               </div>
             }
@@ -278,39 +276,39 @@ function Overview({ data, selected, onSelect, shared }: { data: Stored; selected
           </Card>
         )}
         {!beginner && (
-          <Card title="Rendement par mois (%)">
+          <Card title={tl("Rendement par mois (%)")}>
             <MonthlyGrid rows={report.byMonth} />
           </Card>
         )}
       </div>
       <div className="flex flex-col gap-4">
-        <Card title="Détails">
+        <Card title={tl("Détails")}>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-sm">
-            <Dt>Capital final</Dt>
+            <Dt>{tl("Capital final")}</Dt>
             <Dd>{money(data.config.initialCapital * (1 + m.totalReturnPercent / 100))}</Dd>
-            <Dt>Gain moyen gagnant</Dt>
+            <Dt>{tl("Gain moyen gagnant")}</Dt>
             <Dd className="text-up">{m.avgWinR !== null ? r(m.avgWinR) : pct(m.avgWinPercent, 2)}</Dd>
-            <Dt>Perte moyenne</Dt>
+            <Dt>{tl("Perte moyenne")}</Dt>
             <Dd className="text-down">{m.avgLossR !== null ? r(m.avgLossR) : pct(m.avgLossPercent, 2)}</Dd>
-            <Dt>Meilleur trade</Dt>
+            <Dt>{tl("Meilleur trade")}</Dt>
             <Dd>{pct(m.bestTradePercent, 2)}</Dd>
-            <Dt>Pire trade</Dt>
+            <Dt>{tl("Pire trade")}</Dt>
             <Dd>{pct(m.worstTradePercent, 2)}</Dd>
-            <Dt term="pertes-affilee">Pertes d&apos;affilée max</Dt>
+            <Dt term="pertes-affilee">{tl("Pertes d'affilée max")}</Dt>
             <Dd>{m.longestLosingStreak}</Dd>
-            <Dt>Durée moyenne</Dt>
-            <Dd>{num(m.avgBars, 1)} bougies</Dd>
-            <Dt term="exposition">Temps en position</Dt>
+            <Dt>{tl("Durée moyenne")}</Dt>
+            <Dd>{tl("{0} bougies", [num(m.avgBars, 1)])}</Dd>
+            <Dt term="exposition">{tl("Temps en position")}</Dt>
             <Dd>{pct(m.exposurePercent, 0, false)}</Dd>
-            <Dt term="frais">Frais payés</Dt>
+            <Dt term="frais">{tl("Frais payés")}</Dt>
             <Dd>{money(m.totalCosts)}</Dd>
-            <Dt term="stop">Stop</Dt>
+            <Dt term="stop">{tl("Stop")}</Dt>
             <Dd>{stopLabel(strategy)}</Dd>
-            <Dt term="objectif">Objectif</Dt>
+            <Dt term="objectif">{tl("Objectif")}</Dt>
             <Dd>{targetLabel(strategy)}</Dd>
           </dl>
         </Card>
-        <Card title="Par année">
+        <Card title={tl("Par année")}>
           <PeriodTable rows={report.byYear} hasR={m.avgR !== null} />
         </Card>
       </div>
@@ -330,7 +328,8 @@ const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
 
 /** Expert view: one row per year, one cell per month, coloured by return. */
 function MonthlyGrid({ rows }: { rows: BacktestReport["byMonth"] }) {
-  if (!rows.length) return <p className="text-sm text-muted">Aucun trade.</p>;
+  const tl = useT();
+  if (!rows.length) return <p className="text-sm text-muted">{tl("Aucun trade.")}</p>;
   const byKey = new Map(rows.map((r) => [r.key, r]));
   const years = [...new Set(rows.map((r) => r.key.slice(0, 4)))];
   const max = Math.max(...rows.map((r) => Math.abs(r.pnlPercent)), 0.01);
@@ -372,14 +371,15 @@ function MonthlyGrid({ rows }: { rows: BacktestReport["byMonth"] }) {
 }
 
 function PeriodTable({ rows, hasR }: { rows: BacktestReport["byYear"]; hasR: boolean }) {
-  if (!rows.length) return <p className="text-sm text-muted">Aucun trade.</p>;
+  const tl = useT();
+  if (!rows.length) return <p className="text-sm text-muted">{tl("Aucun trade.")}</p>;
   return (
     <table className="num w-full text-sm">
       <thead className="text-xs text-muted">
         <tr>
-          <th className="text-left font-normal">Période</th>
-          <th className="text-right font-normal">Trades</th>
-          <th className="text-right font-normal">Rendement</th>
+          <th className="text-left font-normal">{tl("Période")}</th>
+          <th className="text-right font-normal">{tl("Trades")}</th>
+          <th className="text-right font-normal">{tl("Rendement")}</th>
           {hasR && <th className="text-right font-normal">R</th>}
         </tr>
       </thead>
@@ -411,6 +411,7 @@ function EventTags({ kinds }: { kinds: EventKind[] }) {
 }
 
 function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolean; onSelect: (i: number) => void }) {
+  const tl = useT();
   const [page, setPage] = useState(0);
   const size = 50;
   const rows = trades.slice(page * size, page * size + size);
@@ -439,11 +440,10 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
   };
   return (
     <Card
-      title="Liste des trades"
+      title={tl("Liste des trades")}
       actions={
         <Button variant="ghost" onClick={exportCsv}>
-          Exporter en CSV
-        </Button>
+          {tl("Exporter en CSV")}</Button>
       }
     >
       {/* Phones: one compact row per trade. */}
@@ -457,7 +457,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
                 <span className="num w-7 text-xs text-muted">{i + 1}</span>
                 <div className="min-w-0 flex-1">
                   <div className="text-sm">
-                    <span className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? "Achat" : "Vente"}</span> · {date(t.entryTime)}
+                    <span className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? tl("Achat") : tl("Vente")}</span> · {date(t.entryTime)}
                     {kinds.length > 0 && (
                       <span className="text-xs">
                         {" "}
@@ -466,7 +466,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
                     )}
                   </div>
                   <div className="num text-[11px] text-muted">
-                    {price(t.entryPrice)} → {price(t.exitPrice)} · {EXIT_LABELS[t.exitReason]} · {t.bars} bougies
+                    {price(t.entryPrice)} → {price(t.exitPrice)} · {tl(EXIT_LABELS[t.exitReason])} · {tl("{0} bougies", [t.bars])}
                   </div>
                 </div>
                 <span className={`num text-sm font-semibold ${tone(t.pnl)}`}>{hasR ? r(t.r) : pct(t.pnlPercent, 2)}</span>
@@ -480,19 +480,18 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
           <thead className="text-xs text-muted">
             <tr className="text-left">
               <th className="font-normal">#</th>
-              <th className="font-normal">Entrée</th>
-              <th className="font-normal">Sens</th>
-              <th className="text-right font-normal">Prix d&apos;entrée</th>
-              <th className="text-right font-normal">Prix de sortie</th>
-              <th className="font-normal">Sortie</th>
-              <th className="text-right font-normal">Durée</th>
+              <th className="font-normal">{tl("Entrée")}</th>
+              <th className="font-normal">{tl("Sens")}</th>
+              <th className="text-right font-normal">{tl("Prix d'entrée")}</th>
+              <th className="text-right font-normal">{tl("Prix de sortie")}</th>
+              <th className="font-normal">{tl("Sortie")}</th>
+              <th className="text-right font-normal">{tl("Durée")}</th>
               <th className="font-normal">
                 <span className="inline-flex items-center">
-                  Annonces
-                  <Help id="annonces-economiques" />
+                  {tl("Annonces")}<Help id="annonces-economiques" />
                 </span>
               </th>
-              <th className="text-right font-normal">Résultat</th>
+              <th className="text-right font-normal">{tl("Résultat")}</th>
               {hasR && <th className="text-right font-normal">R</th>}
             </tr>
           </thead>
@@ -503,7 +502,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
                 <tr key={i} onClick={() => onSelect(i)} className="cursor-pointer border-t border-line/50 hover:bg-panel-2">
                   <td className="text-muted">{i + 1}</td>
                   <td>{date(t.entryTime)}</td>
-                  <td className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? "Achat" : "Vente"}</td>
+                  <td className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? tl("Achat") : tl("Vente")}</td>
                   <td className="text-right">{price(t.entryPrice)}</td>
                   <td className="text-right">{price(t.exitPrice)}</td>
                   <td className="text-muted">{EXIT_LABELS[t.exitReason]}</td>
@@ -522,14 +521,12 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
       {trades.length > size && (
         <div className="mt-3 flex items-center gap-3 text-sm">
           <Button variant="ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            Précédents
-          </Button>
+            {tl("Précédents")}</Button>
           <span className="text-muted">
             {page + 1} / {Math.ceil(trades.length / size)}
           </span>
           <Button variant="ghost" disabled={(page + 1) * size >= trades.length} onClick={() => setPage(page + 1)}>
-            Suivants
-          </Button>
+            {tl("Suivants")}</Button>
         </div>
       )}
     </Card>
@@ -537,6 +534,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
 }
 
 function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean }) {
+  const tl = useT();
   const { monteCarlo: mc, edge, split, sensitivity, doubleCosts } = report.robustness;
   const fmtAvg = (avgR: number | null, avgPct: number) => (hasR && avgR !== null ? r(avgR) : pct(avgPct, 2));
   const verdict = robustnessVerdict(report);
@@ -546,35 +544,35 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
         <strong>{verdict.title}</strong> {verdict.text}
       </Alert>
       <Tip>
-        4 contrôles pour vérifier que le gain ne vient pas du <Term id="surajustement">hasard</Term>.
+        {rich(tl("4 contrôles pour vérifier que le gain ne vient pas du {0}."), [<Term key="h" id="surajustement">{tl("hasard")}</Term>])}
       </Tip>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card title="L'avantage est-il réel ?">
+        <Card title={tl("L'avantage est-il réel ?")}>
           {edge ? (
             <div className="flex flex-col gap-2 text-sm">
               <p>
-                Gain moyen par trade : <strong className={tone(edge.mean)}>{edge.unit === "R" ? r(edge.mean) : pct(edge.mean, 2)}</strong>, intervalle à 90 % :{" "}
-                {edge.unit === "R" ? `${r(edge.ci90[0])} à ${r(edge.ci90[1])}` : `${pct(edge.ci90[0], 2)} à ${pct(edge.ci90[1], 2)}`}.
+                {tl("Gain moyen par trade : ")}<strong className={tone(edge.mean)}>{edge.unit === "R" ? r(edge.mean) : pct(edge.mean, 2)}</strong>{tl(", intervalle à 90 % :")}{" "}
+                {edge.unit === "R" ? tl("{0} à {1}", [r(edge.ci90[0]), r(edge.ci90[1])]) : tl("{0} à {1}", [pct(edge.ci90[0], 2), pct(edge.ci90[1], 2)])}.
               </p>
               <p>
-                Probabilité que le vrai gain moyen soit nul ou négatif : <strong className={edge.probabilityNoEdge < 10 ? "text-up" : edge.probabilityNoEdge < 30 ? "text-warn" : "text-down"}>{pct(edge.probabilityNoEdge, 0, false)}</strong>
+                {tl("Probabilité que le vrai gain moyen soit nul ou négatif : ")}<strong className={edge.probabilityNoEdge < 10 ? "text-up" : edge.probabilityNoEdge < 30 ? "text-warn" : "text-down"}>{pct(edge.probabilityNoEdge, 0, false)}</strong>
               </p>
-              <p className="text-xs text-muted">Calculé en retirant au hasard les trades 5 000 fois. Sous 10 %, l&apos;avantage a peu de chances d&apos;être du hasard.</p>
+              <p className="text-xs text-muted">{tl("Calculé en retirant au hasard les trades 5 000 fois. Sous 10 %, l'avantage a peu de chances d'être du hasard.")}</p>
             </div>
           ) : (
-            <p className="text-sm text-muted">Il faut au moins 10 trades.</p>
+            <p className="text-sm text-muted">{tl("Il faut au moins 10 trades.")}</p>
           )}
         </Card>
-        <Card title="Étude puis validation sur la suite">
+        <Card title={tl("Étude puis validation sur la suite")}>
           <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
           <table className="num w-full min-w-[440px] text-sm">
             <thead className="text-xs text-muted">
               <tr>
-                <th className="text-left font-normal">Période</th>
-                <th className="text-right font-normal">Trades</th>
-                <th className="text-right font-normal">Gagnants</th>
-                <th className="text-right font-normal">Moyenne</th>
-                <th className="text-right font-normal">Rendement</th>
+                <th className="text-left font-normal">{tl("Période")}</th>
+                <th className="text-right font-normal">{tl("Trades")}</th>
+                <th className="text-right font-normal">{tl("Gagnants")}</th>
+                <th className="text-right font-normal">{tl("Moyenne")}</th>
+                <th className="text-right font-normal">{tl("Rendement")}</th>
               </tr>
             </thead>
             <tbody>
@@ -595,29 +593,29 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
             </tbody>
           </table>
           </div>
-          <p className="mt-2 text-xs text-muted">Si la stratégie a été réglée en regardant tout l&apos;historique, cette coupe ne remplace pas un vrai test sur des données jamais vues.</p>
+          <p className="mt-2 text-xs text-muted">{tl("Si la stratégie a été réglée en regardant tout l'historique, cette coupe ne remplace pas un vrai test sur des données jamais vues.")}</p>
         </Card>
-        <Card title="Monte Carlo : 2 000 ordres de trades différents">
+        <Card title={tl("Monte Carlo : 2 000 ordres de trades différents")}>
           {mc ? (
             <div className="flex flex-col gap-2 text-sm">
               <table className="num w-full">
                 <thead className="text-xs text-muted">
                   <tr>
                     <th className="text-left font-normal"></th>
-                    <th className="text-right font-normal">Pessimiste (5 %)</th>
-                    <th className="text-right font-normal">Médian</th>
-                    <th className="text-right font-normal">Optimiste (95 %)</th>
+                    <th className="text-right font-normal">{tl("Pessimiste (5 %)")}</th>
+                    <th className="text-right font-normal">{tl("Médian")}</th>
+                    <th className="text-right font-normal">{tl("Optimiste (95 %)")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr className="border-t border-line/50">
-                    <td>Rendement</td>
+                    <td>{tl("Rendement")}</td>
                     <td className={`text-right ${tone(mc.finalReturn.p5)}`}>{pct(mc.finalReturn.p5)}</td>
                     <td className={`text-right ${tone(mc.finalReturn.p50)}`}>{pct(mc.finalReturn.p50)}</td>
                     <td className={`text-right ${tone(mc.finalReturn.p95)}`}>{pct(mc.finalReturn.p95)}</td>
                   </tr>
                   <tr className="border-t border-line/50">
-                    <td>Baisse max</td>
+                    <td>{tl("Baisse max")}</td>
                     <td className="text-right text-down">{pct(-mc.maxDrawdown.p95)}</td>
                     <td className="text-right text-down">{pct(-mc.maxDrawdown.p50)}</td>
                     <td className="text-right text-down">{pct(-mc.maxDrawdown.p5)}</td>
@@ -625,32 +623,34 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
                 </tbody>
               </table>
               <p>
-                Chance de finir en perte : <strong>{pct(mc.probabilityOfLoss, 0, false)}</strong> · baisse de plus de 20 % : <strong>{pct(mc.probabilityDrawdownOver["20"], 0, false)}</strong> · plus de 30 % :{" "}
+                {tl("Chance de finir en perte : ")}<strong>{pct(mc.probabilityOfLoss, 0, false)}</strong> {tl(" · baisse de plus de 20 % : ")}<strong>{pct(mc.probabilityDrawdownOver["20"], 0, false)}</strong> {tl(" · plus de 30 % :")}{" "}
                 <strong>{pct(mc.probabilityDrawdownOver["30"], 0, false)}</strong>
               </p>
             </div>
           ) : (
-            <p className="text-sm text-muted">Il faut au moins 5 trades.</p>
+            <p className="text-sm text-muted">{tl("Il faut au moins 5 trades.")}</p>
           )}
         </Card>
-        <Card title="Frais doublés">
+        <Card title={tl("Frais doublés")}>
           <p className="text-sm">
-            Avec des frais, un spread, un glissement et un financement deux fois plus élevés : rendement <strong className={tone(doubleCosts.returnPercent)}>{pct(doubleCosts.returnPercent)}</strong>, gain moyen{" "}
-            <strong className={tone(doubleCosts.avgR ?? doubleCosts.avgTradePercent)}>{fmtAvg(doubleCosts.avgR, doubleCosts.avgTradePercent)}</strong>, profit factor {num(doubleCosts.profitFactor)}.
+            {rich(tl("Avec des frais, un spread, un glissement et un financement deux fois plus élevés : rendement {0}, gain moyen {1}, profit factor {2}."), [
+              <strong key="r" className={tone(doubleCosts.returnPercent)}>{pct(doubleCosts.returnPercent)}</strong>,
+              <strong key="a" className={tone(doubleCosts.avgR ?? doubleCosts.avgTradePercent)}>{fmtAvg(doubleCosts.avgR, doubleCosts.avgTradePercent)}</strong>,
+              num(doubleCosts.profitFactor),
+            ])}
           </p>
-          <p className="mt-2 text-xs text-muted">En scalp, c&apos;est souvent ici que la stratégie casse : les frais pèsent lourd sur de petits mouvements.</p>
+          <p className="mt-2 text-xs text-muted">{tl("En scalp, c'est souvent ici que la stratégie casse : les frais pèsent lourd sur de petits mouvements.")}</p>
         </Card>
       </div>
-      <Card title={`Réglages voisins : ${pct(sensitivity.profitableShare, 0, false)} des variantes restent gagnantes`}>
+      <Card title={tl("Réglages voisins : {0} des variantes restent gagnantes", [pct(sensitivity.profitableShare, 0, false)])}>
         {sensitivity.rows.length ? (
           <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
             <table className="num w-full min-w-[520px] whitespace-nowrap text-sm">
               <thead className="text-xs text-muted">
                 <tr>
-                  <th className="text-left font-normal">Réglage</th>
+                  <th className="text-left font-normal">{tl("Réglage")}</th>
                   <th className="text-left font-normal" colSpan={5}>
-                    Rendement total selon la valeur (la valeur testée est en gras)
-                  </th>
+                    {tl("Rendement total selon la valeur (la valeur testée est en gras)")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -669,9 +669,9 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
             </table>
           </div>
         ) : (
-          <p className="text-sm text-muted">Aucun réglage numérique à faire varier.</p>
+          <p className="text-sm text-muted">{tl("Aucun réglage numérique à faire varier.")}</p>
         )}
-        <p className="mt-2 text-xs text-muted">Chaque réglage est décalé de −40 % à +40 %, les autres restant fixes. Si seul le réglage choisi gagne, le résultat tient probablement de la chance.</p>
+        <p className="mt-2 text-xs text-muted">{tl("Chaque réglage est décalé de −40 % à +40 %, les autres restant fixes. Si seul le réglage choisi gagne, le résultat tient probablement de la chance.")}</p>
       </Card>
     </div>
   );
@@ -683,8 +683,8 @@ function robustnessVerdict(report: BacktestReport): { tone: "warn" | "error" | "
   const valid = report.robustness.split[1];
   const share = report.robustness.sensitivity.profitableShare;
   const hasKnobs = report.robustness.sensitivity.rows.length > 0;
-  if (m.trades < 30) return { tone: "warn", title: "Pas assez de trades.", text: "Moins de 30 trades ne permettent pas de conclure, dans un sens comme dans l'autre." };
-  if (m.totalReturnPercent <= 0) return { tone: "error", title: "Stratégie perdante sur la période.", text: "Les frais compris, elle ne gagne pas d'argent." };
+  if (m.trades < 30) return { tone: "warn", title: tr("Pas assez de trades."), text: tr("Moins de 30 trades ne permettent pas de conclure, dans un sens comme dans l'autre.") };
+  if (m.totalReturnPercent <= 0) return { tone: "error", title: tr("Stratégie perdante sur la période."), text: tr("Les frais compris, elle ne gagne pas d'argent.") };
   const checks = [
     edge !== null && edge.probabilityNoEdge < 10,
     valid.trades >= 10 && (valid.avgR ?? valid.avgTradePercent) > 0,
@@ -692,7 +692,7 @@ function robustnessVerdict(report: BacktestReport): { tone: "warn" | "error" | "
     report.robustness.doubleCosts.returnPercent > 0,
   ];
   const passed = checks.filter(Boolean).length;
-  if (passed === 4) return { tone: "info", title: "Résultat solide sur les 4 contrôles.", text: "L'avantage semble réel, tient sur la suite de l'historique, sur les réglages voisins et avec des frais doublés. Ça reste un test sur le passé." };
-  if (passed >= 2) return { tone: "warn", title: `Résultat fragile : ${passed} contrôles sur 4.`, text: "Regarde ci-dessous lesquels échouent avant d'y mettre de l'argent." };
-  return { tone: "error", title: `Résultat peu fiable : ${passed} contrôle${passed > 1 ? "s" : ""} sur 4.`, text: "Le gain vient probablement du hasard ou d'un réglage trop ajusté au passé." };
+  if (passed === 4) return { tone: "info", title: tr("Résultat solide sur les 4 contrôles."), text: tr("L'avantage semble réel, tient sur la suite de l'historique, sur les réglages voisins et avec des frais doublés. Ça reste un test sur le passé.") };
+  if (passed >= 2) return { tone: "warn", title: tr("Résultat fragile : {0} contrôles sur 4.", [passed]), text: tr("Regarde ci-dessous lesquels échouent avant d'y mettre de l'argent.") };
+  return { tone: "error", title: tr("Résultat peu fiable : {0} contrôle{1} sur 4.", [passed, passed > 1 ? "s" : ""]), text: tr("Le gain vient probablement du hasard ou d'un réglage trop ajusté au passé.") };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Link } from "@/lib/client/i18n";
+import { Link, useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { date } from "@/lib/client/format";
 import { Alert, Button, Card } from "./ui";
@@ -27,6 +27,7 @@ interface State {
 
 /** Telegram link and signal alerts, on the account page. */
 export function AlertsPanel() {
+  const tl = useT();
   const [state, setState] = useState<State | null>(null);
   const [strategies, setStrategies] = useState<{ id: string; name: string; strategy: { symbol: string; interval: string } }[]>([]);
   const [choice, setChoice] = useState("");
@@ -65,39 +66,35 @@ export function AlertsPanel() {
   const available = strategies.filter((s) => !used.has(s.id));
 
   return (
-    <Card title="Alertes Telegram">
+    <Card title={tl("Alertes Telegram")}>
       <div className="flex flex-col gap-3 text-sm">
         {!t.enabled ? (
-          <p className="text-muted">Les alertes ne sont pas encore activées sur le site.</p>
+          <p className="text-muted">{tl("Les alertes ne sont pas encore activées sur le site.")}</p>
         ) : t.linked ? (
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span>
-              ✅ Telegram relié{t.username ? ` (@${t.username})` : ""}
+              {tl("✅ Telegram relié")}{t.username ? ` (@${t.username})` : ""}
             </span>
             <button disabled={busy} onClick={() => act(() => api("/api/telegram/link", { method: "DELETE" }))} className="text-xs text-muted hover:text-down">
-              Délier
-            </button>
+              {tl("Délier")}</button>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
             <p className="text-muted">
-              Reçois un message dès qu&apos;une de tes stratégies donne un signal, à la clôture de la bougie. Ouvre le lien puis appuie sur <b>Démarrer</b> dans Telegram.
-            </p>
+              {tl("Reçois un message dès qu'une de tes stratégies donne un signal, à la clôture de la bougie. Ouvre le lien puis appuie sur ")}<b>{tl("Démarrer")}</b> {tl(" dans Telegram.")}</p>
             <Button onClick={link} disabled={busy} className="self-start">
-              Relier Telegram{t.bot ? ` (@${t.bot})` : ""}
+              {tl("Relier Telegram")}{t.bot ? ` (@${t.bot})` : ""}
             </Button>
             <button onClick={() => load()} className="self-start text-xs text-accent hover:underline">
-              C&apos;est fait, actualiser
-            </button>
+              {tl("C'est fait, actualiser")}</button>
           </div>
         )}
 
         {state.limit === 0 ? (
           <p>
-            L&apos;offre {state.plan} n&apos;inclut pas d&apos;alertes.{" "}
+            {tl("L'offre {0} n'inclut pas d'alertes.", [state.plan])}{" "}
             <Link href="/tarifs" className="text-accent hover:underline">
-              Voir les offres Trader et Pro →
-            </Link>
+              {tl("Voir les offres Trader et Pro →")}</Link>
           </p>
         ) : (
           <>
@@ -108,18 +105,18 @@ export function AlertsPanel() {
                     <div className="min-w-0 flex-1">
                       <div className="truncate">{a.name}</div>
                       <div className="text-[11px] text-muted">
-                        {a.symbol} · {a.interval} · {a.lastSignalAt ? `dernier signal le ${date(a.lastSignalAt)}` : "aucun signal pour l'instant"}
+                        {a.symbol} · {a.interval} · {a.lastSignalAt ? tl("dernier signal le {0}", [date(a.lastSignalAt)]) : tl("aucun signal pour l'instant")}
                       </div>
-                      {a.lastError && <div className="text-[11px] text-warn">Dernière vérification en erreur : {a.lastError}</div>}
+                      {a.lastError && <div className="text-[11px] text-warn">{tl("Dernière vérification en erreur : ")}{a.lastError}</div>}
                     </div>
                     <button
                       disabled={busy}
                       onClick={() => act(() => api(`/api/alerts/${a.id}`, { method: "PATCH", json: { enabled: !a.enabled } }))}
                       className={`rounded px-2 py-0.5 text-xs ${a.enabled ? "bg-accent text-white" : "border border-line text-muted"}`}
                     >
-                      {a.enabled ? "Active" : "En pause"}
+                      {a.enabled ? tl("Active") : tl("En pause")}
                     </button>
-                    <button disabled={busy} onClick={() => act(() => api(`/api/alerts/${a.id}`, { method: "DELETE" }))} className="text-xs text-muted hover:text-down" title="Supprimer">
+                    <button disabled={busy} onClick={() => act(() => api(`/api/alerts/${a.id}`, { method: "DELETE" }))} className="text-xs text-muted hover:text-down" title={tl("Supprimer")}>
                       ✕
                     </button>
                   </li>
@@ -130,7 +127,7 @@ export function AlertsPanel() {
               (available.length ? (
                 <div className="flex flex-wrap gap-2">
                   <select value={choice} onChange={(e) => setChoice(e.target.value)} className="min-w-0 flex-1">
-                    <option value="">Choisir une stratégie…</option>
+                    <option value="">{tl("Choisir une stratégie…")}</option>
                     {available.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name} · {s.strategy.symbol} {s.strategy.interval}
@@ -138,16 +135,13 @@ export function AlertsPanel() {
                     ))}
                   </select>
                   <Button disabled={!choice || busy} onClick={() => act(() => api("/api/alerts", { json: { strategyId: choice } }).then(() => setChoice("")))}>
-                    Ajouter l&apos;alerte
-                  </Button>
+                    {tl("Ajouter l'alerte")}</Button>
                 </div>
               ) : (
-                <p className="text-muted">Enregistre une stratégie pour pouvoir créer une alerte.</p>
+                <p className="text-muted">{tl("Enregistre une stratégie pour pouvoir créer une alerte.")}</p>
               ))}
             <p className="text-[11px] text-muted">
-              {state.alerts.length} / {state.limit} alerte{state.limit > 1 ? "s" : ""} · unité minimale {state.minInterval}. Les signaux sont des simulations calculées par tes règles, pas des
-              conseils en investissement.
-              {t.enabled && !t.linked && state.alerts.length > 0 && " Relie Telegram pour les recevoir."}
+              {tl("{0} / {1} alerte{2}", [state.alerts.length, state.limit, state.limit > 1 ? "s" : ""])}{tl(" · unité minimale ")}{state.minInterval}{tl(". Les signaux sont des simulations calculées par tes règles, pas des conseils en investissement.")}{t.enabled && !t.linked && state.alerts.length > 0 && tl(" Relie Telegram pour les recevoir.")}
             </p>
           </>
         )}

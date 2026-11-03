@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { MARKETS, market } from "@/lib/markets";
@@ -49,6 +50,7 @@ function pretty(symbol: string) {
 }
 
 export function MarketPicker({ value, onChange }: { value: string; onChange: (symbol: string) => void }) {
+  const tl = useT();
   const [family, setFamily] = useState<Family>(() => familyOf(value));
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<string[]>([]);
@@ -75,7 +77,7 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="inline-flex rounded-lg border border-line p-0.5" role="tablist" aria-label="Famille de marchés">
+        <div className="inline-flex rounded-lg border border-line p-0.5" role="tablist" aria-label={tl("Famille de marchés")}>
           {FAMILIES.map((f) => (
             <button
               key={f.id}
@@ -84,12 +86,12 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
               onClick={() => setFamily(f.id)}
               className={`rounded-md px-3 py-1.5 text-sm ${family === f.id ? "bg-accent text-white" : "text-muted hover:text-fg"}`}
             >
-              {f.label}
+              {tl(f.label)}
             </button>
           ))}
         </div>
         <span className="hidden truncate text-xs text-muted sm:block">
-          Choisi : <strong className="text-fg">{pretty(value)}</strong>
+          {tl("Choisi : ")}<strong className="text-fg">{pretty(value)}</strong>
           {current ? ` · ${current}` : ""}
         </span>
       </div>
@@ -108,7 +110,7 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
               }`}
             >
               <div className="num text-sm font-semibold">{pretty(c.symbol)}</div>
-              <div className="truncate text-[11px] text-muted">{c.label}</div>
+              <div className="truncate text-[11px] text-muted">{tl(c.label)}</div>
             </button>
           );
         })}
@@ -119,9 +121,9 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Autre crypto : tape son nom (PEPE, SUI…)"
+            placeholder={tl("Autre crypto : tape son nom (PEPE, SUI…)")}
             className="w-full"
-            aria-label="Chercher une autre crypto"
+            aria-label={tl("Chercher une autre crypto")}
           />
           {query.length >= 2 && hits.length > 0 && (
             <div className="absolute inset-x-0 top-full z-30 mt-1 flex flex-col overflow-hidden rounded-md border border-line bg-panel-2 shadow-xl">
@@ -144,10 +146,9 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
       )}
       {family === "index" && (
         <p className="text-[11px] text-muted">
-          NAS100 : le future Nasdaq (vers 28 000), presque 24h/24 en semaine. QQQ : le fonds qui suit le Nasdaq, coté seulement de 15h30 à 22h à Paris.
-        </p>
+          {tl("NAS100 : le future Nasdaq (vers 28 000), presque 24h/24 en semaine. QQQ : le fonds qui suit le Nasdaq, coté seulement de 15h30 à 22h à Paris.")}</p>
       )}
-      {family !== "crypto" && family !== "index" && <p className="text-[11px] text-muted">Fermé du vendredi soir au dimanche soir.</p>}
+      {family !== "crypto" && family !== "index" && <p className="text-[11px] text-muted">{tl("Fermé du vendredi soir au dimanche soir.")}</p>}
     </div>
   );
 }

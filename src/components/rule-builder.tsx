@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/client/i18n";
 import { useState } from "react";
 import { COMPARATORS, SOURCES, num, operand, type Comparator, type Condition, type Group, type IndicatorName, type Operand } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, DEFAULT_PERIODS, FIELD_HINTS, INDICATOR_FIELDS, INDICATOR_LABELS } from "@/lib/strategy/describe";
@@ -36,6 +37,7 @@ const GROUPS: { label: string; items: IndicatorName[] }[] = [
 const FIELD_LABELS = { period: "Période", period2: "Période 2", period3: "Période 3", multiplier: "Écart-type", value: "Valeur" } as const;
 
 function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Operand) => void }) {
+  const tl = useT();
   const fields = INDICATOR_FIELDS[value.indicator];
   const [advanced, setAdvanced] = useState(value.timeframe !== null || value.offset > 0);
   const setIndicator = (indicator: IndicatorName) => onChange({ ...operand(indicator, DEFAULT_PERIODS[indicator] ?? {}), offset: value.offset, timeframe: value.timeframe });
@@ -43,10 +45,10 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
     <div className="flex flex-wrap items-center gap-1.5">
       <select value={value.indicator} onChange={(e) => setIndicator(e.target.value as IndicatorName)} className="max-w-48">
         {GROUPS.map((g) => (
-          <optgroup key={g.label} label={g.label}>
+          <optgroup key={g.label} label={tl(g.label)}>
             {g.items.map((i) => (
               <option key={i} value={i}>
-                {INDICATOR_LABELS[i]}
+                {tl(INDICATOR_LABELS[i])}
               </option>
             ))}
           </optgroup>
@@ -56,8 +58,8 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
       {fields.map((f) => {
         if (f === "source")
           return (
-            <select key={f} title="Source" value={value.source ?? ""} onChange={(e) => onChange({ ...value, source: (e.target.value || null) as Operand["source"] })}>
-              <option value="">{value.indicator === "highest" ? "haut" : value.indicator === "lowest" ? "bas" : "clôture"}</option>
+            <select key={f} title={tl("Source")} value={value.source ?? ""} onChange={(e) => onChange({ ...value, source: (e.target.value || null) as Operand["source"] })}>
+              <option value="">{value.indicator === "highest" ? tl("haut") : value.indicator === "lowest" ? tl("bas") : tl("clôture")}</option>
               {SOURCES.map((s) => (
                 <option key={s} value={s}>
                   {s}
@@ -68,14 +70,13 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
         if (f === "window") {
           const w = value.window ?? { start: "00:00", end: "08:00" };
           return (
-            <span key={f} className="flex items-center gap-1 text-xs text-muted" title="Plage horaire (heure du fuseau de la stratégie)">
-              de
-              <input type="time" className="w-24" value={w.start} onChange={(e) => onChange({ ...value, window: { ...w, start: e.target.value } })} />à
-              <input type="time" className="w-24" value={w.end} onChange={(e) => onChange({ ...value, window: { ...w, end: e.target.value } })} />
+            <span key={f} className="flex items-center gap-1 text-xs text-muted" title={tl("Plage horaire (heure du fuseau de la stratégie)")}>
+              {tl("de")}
+              <input type="time" className="w-24" value={w.start} onChange={(e) => onChange({ ...value, window: { ...w, start: e.target.value } })} />{tl("à")}<input type="time" className="w-24" value={w.end} onChange={(e) => onChange({ ...value, window: { ...w, end: e.target.value } })} />
             </span>
           );
         }
-        const label = FIELD_HINTS[value.indicator]?.[f] ?? FIELD_LABELS[f];
+        const label = tl(FIELD_HINTS[value.indicator]?.[f] ?? FIELD_LABELS[f]);
         return (
           <input
             key={f}
@@ -90,23 +91,22 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
         );
       })}
       {value.indicator !== "number" && !advanced && (
-        <button onClick={() => setAdvanced(true)} className="px-1 text-xs text-muted hover:text-fg" title="Autre unité de temps (filtre de tendance), bougie précédente (décalage)">
+        <button onClick={() => setAdvanced(true)} className="px-1 text-xs text-muted hover:text-fg" title={tl("Autre unité de temps (filtre de tendance), bougie précédente (décalage)")}>
           ⋯
         </button>
       )}
       {value.indicator !== "number" && advanced && (
         <>
-          <select title="Unité de temps" value={value.timeframe ?? ""} onChange={(e) => onChange({ ...value, timeframe: (e.target.value || null) as Operand["timeframe"] })}>
-            <option value="">UT stratégie</option>
+          <select title={tl("Unité de temps")} value={value.timeframe ?? ""} onChange={(e) => onChange({ ...value, timeframe: (e.target.value || null) as Operand["timeframe"] })}>
+            <option value="">{tl("UT stratégie")}</option>
             {INTERVALS.map((i) => (
               <option key={i} value={i}>
                 UT {i}
               </option>
             ))}
           </select>
-          <label className="flex items-center gap-1 text-xs text-muted" title="Lire la valeur N bougies en arrière">
-            décalage
-            <input type="number" min={0} className="w-14" value={value.offset} onChange={(e) => onChange({ ...value, offset: Math.max(0, Number(e.target.value) || 0) })} />
+          <label className="flex items-center gap-1 text-xs text-muted" title={tl("Lire la valeur N bougies en arrière")}>
+            {tl("décalage")}<input type="number" min={0} className="w-14" value={value.offset} onChange={(e) => onChange({ ...value, offset: Math.max(0, Number(e.target.value) || 0) })} />
           </label>
         </>
       )}
@@ -115,19 +115,20 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
 }
 
 function ConditionEditor({ value, onChange, onRemove }: { value: Condition; onChange: (c: Condition) => void; onRemove: () => void }) {
+  const tl = useT();
   return (
     <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-panel-2/60 p-2">
       <OperandEditor value={value.left} onChange={(left) => onChange({ ...value, left })} />
       <select value={value.op} onChange={(e) => onChange({ ...value, op: e.target.value as Comparator })} className="font-medium">
         {COMPARATORS.map((c) => (
           <option key={c} value={c}>
-            {COMPARATOR_LABELS[c]}
+            {tl(COMPARATOR_LABELS[c])}
           </option>
         ))}
       </select>
       <Why id={value.op.startsWith("crosses") ? "croise" : undefined} />
       <OperandEditor value={value.right} onChange={(right) => onChange({ ...value, right })} />
-      <button onClick={onRemove} className="ml-auto text-xs text-muted hover:text-down" title="Supprimer la condition">
+      <button onClick={onRemove} className="ml-auto text-xs text-muted hover:text-down" title={tl("Supprimer la condition")}>
         ✕
       </button>
     </div>
@@ -135,6 +136,7 @@ function ConditionEditor({ value, onChange, onRemove }: { value: Condition; onCh
 }
 
 export function GroupsEditor({ value, onChange, emptyHint }: { value: Group[]; onChange: (g: Group[]) => void; emptyHint: string }) {
+  const tl = useT();
   const newCondition = (): Condition => ({ left: operand("rsi", { period: 14 }), op: "<", right: num(30) });
   const update = (gi: number, g: Group) => onChange(value.map((x, i) => (i === gi ? g : x)));
   return (
@@ -142,11 +144,11 @@ export function GroupsEditor({ value, onChange, emptyHint }: { value: Group[]; o
       {value.length === 0 && <p className="text-xs text-muted">{emptyHint}</p>}
       {value.map((g, gi) => (
         <div key={gi} className="flex flex-col gap-2">
-          {gi > 0 && <div className="text-center text-xs font-semibold text-accent">OU</div>}
+          {gi > 0 && <div className="text-center text-xs font-semibold text-accent">{tl("OU")}</div>}
           <div className="flex flex-col gap-1.5 rounded-md border border-dashed border-line p-2">
             {g.conditions.map((c, ci) => (
               <div key={ci} className="flex flex-col gap-1.5">
-                {ci > 0 && <div className="pl-2 text-[11px] font-semibold text-muted">ET</div>}
+                {ci > 0 && <div className="pl-2 text-[11px] font-semibold text-muted">{tl("ET")}</div>}
                 <ConditionEditor
                   value={c}
                   onChange={(nc) => update(gi, { conditions: g.conditions.map((x, i) => (i === ci ? nc : x)) })}
@@ -158,14 +160,12 @@ export function GroupsEditor({ value, onChange, emptyHint }: { value: Group[]; o
               </div>
             ))}
             <button onClick={() => update(gi, { conditions: [...g.conditions, newCondition()] })} className="self-start text-xs text-accent hover:underline">
-              + condition (ET)
-            </button>
+              {tl("+ condition (ET)")}</button>
           </div>
         </div>
       ))}
       <button onClick={() => onChange([...value, { conditions: [newCondition()] }])} className="self-start text-xs text-accent hover:underline">
-        + groupe de conditions (OU)
-      </button>
+        {tl("+ groupe de conditions (OU)")}</button>
     </div>
   );
 }

@@ -1,6 +1,9 @@
 /** The page's locale for numbers and dates, set by LangProvider. French unless the page is English. */
 let LOCALE = "fr-FR";
 
+/** "fr-FR" or "en-US": the page language, for the formatting done outside these helpers. */
+export const formatLocale = () => LOCALE;
+
 export function setFormatLocale(locale: string) {
   LOCALE = locale;
 }

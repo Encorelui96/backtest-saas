@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Link } from "@/lib/client/i18n";
+import { Link, useT } from "@/lib/client/i18n";
 import { setPreferredMarket, setWelcomeDone } from "@/lib/client/preferences";
 import { setLevel, type Level } from "./learn";
 import { Card } from "./ui";
@@ -33,6 +33,7 @@ function Choice({ active, label, hint, onClick }: { active: boolean; label: stri
 
 /** Two questions for a new account: they set the display level and the market the first strategy starts on. */
 export function Welcome({ onDone }: { onDone: () => void }) {
+  const tl = useT();
   const [level, setChosenLevel] = useState<Level | null>(null);
   const [market, setMarket] = useState<string | null>(null);
 
@@ -44,21 +45,21 @@ export function Welcome({ onDone }: { onDone: () => void }) {
   };
 
   return (
-    <Card title="Bienvenue ! Deux questions pour adapter Backtest Lab">
+    <Card title={tl("Bienvenue ! Deux questions pour adapter Backtest Lab")}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <p className="text-sm">1. Tu as déjà fait du trading ?</p>
+          <p className="text-sm">{tl("1. Tu as déjà fait du trading ?")}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {LEVELS.map((l) => (
-              <Choice key={l.id} active={level === l.id} label={l.label} hint={l.hint} onClick={() => setChosenLevel(l.id)} />
+              <Choice key={l.id} active={level === l.id} label={tl(l.label)} hint={tl(l.hint)} onClick={() => setChosenLevel(l.id)} />
             ))}
           </div>
         </div>
         <div className="flex flex-col gap-2">
-          <p className="text-sm">2. Quel marché t&apos;intéresse le plus ?</p>
+          <p className="text-sm">{tl("2. Quel marché t'intéresse le plus ?")}</p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {MARKETS.map((m) => (
-              <Choice key={m.symbol} active={market === m.symbol} label={m.label} hint={m.hint} onClick={() => setMarket(m.symbol)} />
+              <Choice key={m.symbol} active={market === m.symbol} label={tl(m.label)} hint={tl(m.hint)} onClick={() => setMarket(m.symbol)} />
             ))}
           </div>
         </div>
@@ -69,13 +70,11 @@ export function Welcome({ onDone }: { onDone: () => void }) {
             aria-disabled={!level || !market}
             className={`rounded-md bg-accent px-4 py-2 text-sm font-medium text-white ${level && market ? "hover:brightness-110" : "pointer-events-none opacity-50"}`}
           >
-            Lancer mon premier test
-          </Link>
+            {tl("Lancer mon premier test")}</Link>
           <button type="button" onClick={finish} className="text-xs text-muted hover:text-fg">
-            Passer
-          </button>
+            {tl("Passer")}</button>
         </div>
-        <p className="text-[11px] text-muted">Tu pourras changer d&apos;avis à tout moment : bouton Débutant / Expert en haut, et choix du marché dans chaque stratégie.</p>
+        <p className="text-[11px] text-muted">{tl("Tu pourras changer d'avis à tout moment : bouton Débutant / Expert en haut, et choix du marché dans chaque stratégie.")}</p>
       </div>
     </Card>
   );

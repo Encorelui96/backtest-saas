@@ -1,3 +1,4 @@
+import { tr, type T } from "@/lib/i18n";
 import type { Comparator, IndicatorName, Operand, Strategy } from "./schema";
 
 export const INDICATOR_LABELS: Record<IndicatorName, string> = {
@@ -269,7 +270,7 @@ const SHORT: Partial<Record<IndicatorName, string>> = {
   weekday: "Jour",
 };
 
-export function operandLabel(o: Operand): string {
+export function operandLabel(o: Operand, t: T = tr): string {
   if (o.indicator === "number") return String(o.value ?? 0);
   const fields = INDICATOR_FIELDS[o.indicator];
   const args: string[] = [];
@@ -279,27 +280,27 @@ export function operandLabel(o: Operand): string {
   if (fields.includes("multiplier") && o.multiplier !== null) args.push(String(o.multiplier));
   if (fields.includes("source") && o.source && o.source !== "close" && !(o.indicator === "highest" && o.source === "high") && !(o.indicator === "lowest" && o.source === "low")) args.push(o.source);
   if (fields.includes("window") && o.window) args.push(`${o.window.start}–${o.window.end}`);
-  let s = (SHORT[o.indicator] ?? o.indicator) + (args.length ? `(${args.join(", ")})` : "");
+  let s = t(SHORT[o.indicator] ?? o.indicator) + (args.length ? `(${args.join(", ")})` : "");
   if (o.timeframe) s += ` [${o.timeframe}]`;
-  if (o.offset > 0) s += ` il y a ${o.offset} bougie${o.offset > 1 ? "s" : ""}`;
+  if (o.offset > 0) s += t(" il y a {0} bougie{1}", [o.offset, o.offset > 1 ? "s" : ""]);
   return s;
 }
 
-export function stopLabel(s: Strategy): string {
+export function stopLabel(s: Strategy, t: T = tr): string {
   const st = s.stop;
   switch (st.type) {
     case "percent":
-      return `${st.value} % sous l'entrée`;
+      return t("{0} % sous l'entrée", [st.value]);
     case "atr":
       return `${st.value} × ATR(${st.atrPeriod ?? 14})`;
     case "swing":
-      return `Au-delà du plus bas/haut des ${st.value} dernières bougies`;
+      return t("Au-delà du plus bas/haut des {0} dernières bougies", [st.value]);
     default:
-      return "Aucun";
+      return t("Aucun");
   }
 }
 
-export function targetLabel(s: Strategy): string {
+export function targetLabel(s: Strategy, t: T = tr): string {
   const tp = s.takeProfit;
   switch (tp.type) {
     case "percent":
@@ -309,6 +310,6 @@ export function targetLabel(s: Strategy): string {
     case "r_multiple":
       return `${tp.value} R`;
     default:
-      return "Aucun";
+      return t("Aucun");
   }
 }

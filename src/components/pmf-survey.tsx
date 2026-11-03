@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/client/i18n";
 import { useState } from "react";
 import { api } from "@/lib/client/api";
 import { Button, Card } from "./ui";
@@ -23,6 +24,7 @@ function snoozed() {
 
 /** One question, asked once the user has run a few backtests: the share of "very disappointed" measures product-market fit. */
 export function PmfSurvey() {
+  const tl = useT();
   const [hidden, setHidden] = useState(snoozed);
   const [answer, setAnswer] = useState<(typeof OPTIONS)[number]["id"] | null>(null);
   const [comment, setComment] = useState("");
@@ -33,7 +35,7 @@ export function PmfSurvey() {
   if (sent) {
     return (
       <Card>
-        <p className="text-sm">Merci ! Ta réponse aide à décider quoi améliorer en premier.</p>
+        <p className="text-sm">{tl("Merci ! Ta réponse aide à décider quoi améliorer en premier.")}</p>
       </Card>
     );
   }
@@ -57,9 +59,9 @@ export function PmfSurvey() {
   };
 
   return (
-    <Card title="Une question rapide">
+    <Card title={tl("Une question rapide")}>
       <div className="flex flex-col gap-3">
-        <p className="text-sm">Comment te sentirais-tu si tu ne pouvais plus utiliser Backtest Lab ?</p>
+        <p className="text-sm">{tl("Comment te sentirais-tu si tu ne pouvais plus utiliser Backtest Lab ?")}</p>
         <div className="flex flex-wrap gap-2">
           {OPTIONS.map((o) => (
             <button
@@ -68,23 +70,21 @@ export function PmfSurvey() {
               onClick={() => setAnswer(o.id)}
               className={`rounded-full border px-3 py-1.5 text-sm ${answer === o.id ? "border-accent bg-accent/15 text-fg" : "border-line text-muted hover:text-fg"}`}
             >
-              {o.label}
+              {tl(o.label)}
             </button>
           ))}
         </div>
         {answer && (
           <label className="flex flex-col gap-1 text-xs text-muted">
-            {answer === "not" ? "Qu'est-ce qui manque pour que ça te serve vraiment ? (facultatif)" : "Qu'est-ce qui te manquerait le plus ? (facultatif)"}
+            {answer === "not" ? tl("Qu'est-ce qui manque pour que ça te serve vraiment ? (facultatif)") : tl("Qu'est-ce qui te manquerait le plus ? (facultatif)")}
             <textarea rows={2} maxLength={1000} value={comment} onChange={(e) => setComment(e.target.value)} />
           </label>
         )}
         <div className="flex gap-2">
           <Button onClick={send} disabled={!answer || busy}>
-            Envoyer
-          </Button>
+            {tl("Envoyer")}</Button>
           <Button variant="ghost" onClick={later}>
-            Plus tard
-          </Button>
+            {tl("Plus tard")}</Button>
         </div>
       </div>
     </Card>

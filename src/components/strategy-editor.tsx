@@ -1,6 +1,7 @@
 "use client";
 
-import { Link, useRouter } from "@/lib/client/i18n";
+import { tr } from "@/lib/i18n";
+import { Link, rich, useRouter, useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
@@ -8,6 +9,7 @@ import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } fr
 import type { Template } from "@/lib/strategy/templates";
 import { INTERVALS, MAX_HISTORY_DAYS } from "@/lib/types";
 import { isCrypto } from "@/lib/markets";
+import { date } from "@/lib/client/format";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { Help, useBeginner } from "./learn";
 import { MarketPicker } from "./market-picker";
@@ -56,6 +58,7 @@ function styleFor(interval: Strategy["interval"]): Strategy["style"] {
 }
 
 export function StrategyEditor({ id }: { id?: string }) {
+  const tl = useT();
   const router = useRouter();
   const beginner = useBeginner();
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -156,7 +159,7 @@ export function StrategyEditor({ id }: { id?: string }) {
     setError(null);
     try {
       await save();
-      setNotice("Stratégie enregistrée.");
+      setNotice(tl("Stratégie enregistrée."));
       setTimeout(() => setNotice(null), 2500);
     } catch (e) {
       fail(e);
@@ -179,7 +182,7 @@ export function StrategyEditor({ id }: { id?: string }) {
           router.push(`/backtests/${state.resultId}`);
           return;
         }
-        if (state.status === "failed") throw new Error(state.error ?? "Le calcul a échoué.");
+        if (state.status === "failed") throw new Error(state.error ?? tl("Le calcul a échoué."));
         await new Promise((r) => setTimeout(r, 700));
       }
     } catch (e) {
@@ -189,7 +192,7 @@ export function StrategyEditor({ id }: { id?: string }) {
     }
   };
 
-  const runLabel = job ? jobLabel(job) : "Backtest en cours…";
+  const runLabel = job ? jobLabel(job) : tl("Backtest en cours…");
 
   const applyTemplate = (t: Template) => {
     // With a market chosen in the welcome questions, a template brings its rules but keeps that market.
@@ -207,11 +210,11 @@ export function StrategyEditor({ id }: { id?: string }) {
       <div className="flex flex-col gap-4">
         {beginner && (
           <p className="text-sm text-muted">
-            Choisis un modèle, un marché, puis lance le test. Un <span className="font-bold text-accent">?</span> explique chaque case.
+            {rich(tl("Choisis un modèle, un marché, puis lance le test. Un {0} explique chaque case."), [<span key="q" className="font-bold text-accent">?</span>])}
           </p>
         )}
 
-        <Card title={beginner ? "1. Choisis un modèle" : "1. Stratégie"}>
+        <Card title={beginner ? tl("1. Choisis un modèle") : tl("1. Stratégie")}>
           <div className="flex flex-col gap-3">
             {meta && (
               <Templates
@@ -223,22 +226,21 @@ export function StrategyEditor({ id }: { id?: string }) {
             )}
             {beginner && !showIdea ? (
               <button onClick={() => setShowIdea(true)} className="self-start text-sm text-accent hover:underline">
-                Ou décris ta propre idée en français →
-              </button>
+                {tl("Ou décris ta propre idée en français →")}</button>
             ) : (
             <div className="flex flex-col gap-2">
               <textarea
                 rows={beginner ? 3 : 4}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder="Ex. : En 4 heures sur ETHUSDT, j'achète quand la MME 20 croise au-dessus de la MME 50. Stop à 2 ATR, objectif 3R."
+                placeholder={tl("Ex. : En 4 heures sur ETHUSDT, j'achète quand la MME 20 croise au-dessus de la MME 50. Stop à 2 ATR, objectif 3R.")}
                 className="w-full"
               />
               <div className="flex flex-wrap items-center gap-2">
                 <Button onClick={translate} disabled={!meta?.aiEnabled || busy !== null || text.trim().length < 5}>
-                  {busy === "ai" ? "Traduction en cours…" : ai ? "Modifier avec l'IA" : "Traduire en règles avec l'IA"}
+                  {busy === "ai" ? tl("Traduction en cours…") : ai ? tl("Modifier avec l'IA") : tl("Traduire en règles avec l'IA")}
                 </Button>
-                {meta && !meta.aiEnabled && <span className="text-xs text-muted">IA indisponible : le constructeur ci-dessous marche sans.</span>}
+                {meta && !meta.aiEnabled && <span className="text-xs text-muted">{tl("IA indisponible : le constructeur ci-dessous marche sans.")}</span>}
               </div>
             </div>
             )}
@@ -246,20 +248,18 @@ export function StrategyEditor({ id }: { id?: string }) {
           </div>
         </Card>
 
-        <Card title={beginner ? "2. Choisis le marché" : "2. Marché"}>
+        <Card title={beginner ? tl("2. Choisis le marché") : tl("2. Marché")}>
           <div className="flex flex-col gap-4">
             <div>
               <div className="mb-1.5 flex items-center text-xs text-muted">
-                Marché
-                <Help id="symbole" />
+                {tl("Marché")}<Help id="symbole" />
               </div>
               <MarketPicker value={strategy.symbol} onChange={chooseMarket} />
             </div>
 
             <div>
               <div className="mb-1.5 flex items-center text-xs text-muted">
-                Unité de temps
-                <Help id="unite-de-temps" />
+                {tl("Unité de temps")}<Help id="unite-de-temps" />
               </div>
               <div className="no-scrollbar -mx-3 flex gap-1.5 overflow-x-auto px-3 sm:mx-0 sm:flex-wrap sm:px-0">
                 {INTERVALS.map((i) => (
@@ -269,8 +269,8 @@ export function StrategyEditor({ id }: { id?: string }) {
                     aria-pressed={strategy.interval === i}
                     className={`shrink-0 rounded-md border px-3 py-1.5 text-sm ${strategy.interval === i ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                   >
-                    {beginner ? INTERVAL_LABELS[i] : i}
-                    {beginner && RECOMMENDED.has(i) && <span className="ml-1 text-[10px] text-up">conseillé</span>}
+                    {beginner ? tl(INTERVAL_LABELS[i]) : i}
+                    {beginner && RECOMMENDED.has(i) && <span className="ml-1 text-[10px] text-up">{tl("conseillé")}</span>}
                   </button>
                 ))}
               </div>
@@ -278,24 +278,24 @@ export function StrategyEditor({ id }: { id?: string }) {
 
             {!beginner && (
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Field label="Sens" term="sens">
+              <Field label={tl("Sens")} term="sens">
                 <select value={strategy.direction} onChange={(e) => set("direction", e.target.value as Strategy["direction"])}>
-                  <option value="long">Achat seulement</option>
-                  <option value="short">Vente à découvert seulement</option>
-                  <option value="both">Les deux</option>
+                  <option value="long">{tl("Achat seulement")}</option>
+                  <option value="short">{tl("Vente à découvert seulement")}</option>
+                  <option value="both">{tl("Les deux")}</option>
                 </select>
               </Field>
-              <Field label="Nom">
+              <Field label={tl("Nom")}>
                 <input value={strategy.name} onChange={(e) => set("name", e.target.value)} />
               </Field>
-                  <Field label="Style" term="style">
+                  <Field label={tl("Style")} term="style">
                     <select value={strategy.style} onChange={(e) => set("style", e.target.value as Strategy["style"])}>
-                      <option value="scalp">Scalp</option>
-                      <option value="day">Day trading</option>
-                      <option value="swing">Swing</option>
+                      <option value="scalp">{tl("Scalp")}</option>
+                      <option value="day">{tl("Day trading")}</option>
+                      <option value="swing">{tl("Swing")}</option>
                     </select>
                   </Field>
-                  <Field label="Fuseau horaire" term="fuseau">
+                  <Field label={tl("Fuseau horaire")} term="fuseau">
                     <select value={strategy.timezone} onChange={(e) => set("timezone", e.target.value)}>
                       {timezones(strategy.timezone).map((tz) => (
                         <option key={tz} value={tz}>
@@ -309,82 +309,79 @@ export function StrategyEditor({ id }: { id?: string }) {
           </div>
         </Card>
 
-        <Card title={beginner ? "3. Les règles" : "3. Règles d'entrée et de sortie"}>
+        <Card title={beginner ? tl("3. Les règles") : tl("3. Règles d'entrée et de sortie")}>
           {beginner && !editRules ? (
             <div className="flex flex-col gap-2">
               <RulesSummary strategy={strategy} />
               <button onClick={() => setEditRules(true)} className="self-start text-sm text-accent hover:underline">
-                Modifier les règles →
-              </button>
+                {tl("Modifier les règles →")}</button>
             </div>
           ) : (
           <div className="flex flex-col gap-5">
             {strategy.direction !== "short" && (
-              <RuleSection title="Quand acheter" color="text-up">
-                <GroupsEditor value={strategy.entryLong} onChange={(v) => set("entryLong", v)} emptyHint="Aucune règle d'achat." />
+              <RuleSection title={tl("Quand acheter")} color="text-up">
+                <GroupsEditor value={strategy.entryLong} onChange={(v) => set("entryLong", v)} emptyHint={tl("Aucune règle d'achat.")} />
               </RuleSection>
             )}
             {strategy.direction !== "long" && (
-              <RuleSection title="Quand vendre à découvert" color="text-down">
-                <GroupsEditor value={strategy.entryShort} onChange={(v) => set("entryShort", v)} emptyHint="Aucune règle de vente." />
+              <RuleSection title={tl("Quand vendre à découvert")} color="text-down">
+                <GroupsEditor value={strategy.entryShort} onChange={(v) => set("entryShort", v)} emptyHint={tl("Aucune règle de vente.")} />
               </RuleSection>
             )}
             {strategy.direction !== "short" && (
-              <RuleSection title="Sortie d'un achat (optionnel)">
-                <GroupsEditor value={strategy.exitLong} onChange={(v) => set("exitLong", v)} emptyHint="Sortie seulement par le stop, l'objectif ou le temps." />
+              <RuleSection title={tl("Sortie d'un achat (optionnel)")}>
+                <GroupsEditor value={strategy.exitLong} onChange={(v) => set("exitLong", v)} emptyHint={tl("Sortie seulement par le stop, l'objectif ou le temps.")} />
               </RuleSection>
             )}
             {strategy.direction !== "long" && (
-              <RuleSection title="Sortie d'une vente (optionnel)">
-                <GroupsEditor value={strategy.exitShort} onChange={(v) => set("exitShort", v)} emptyHint="Sortie seulement par le stop, l'objectif ou le temps." />
+              <RuleSection title={tl("Sortie d'une vente (optionnel)")}>
+                <GroupsEditor value={strategy.exitShort} onChange={(v) => set("exitShort", v)} emptyHint={tl("Sortie seulement par le stop, l'objectif ou le temps.")} />
               </RuleSection>
             )}
             {!beginner && (
               <p className="text-xs text-muted">
-                Règles évaluées à la clôture de chaque bougie, ordre à l&apos;ouverture suivante. Stop et objectif surveillés dans la bougie ; si les deux sont touchés, le stop compte en
-                premier.
-              </p>
+                {tl("Règles évaluées à la clôture de chaque bougie, ordre à l'ouverture suivante. Stop et objectif surveillés dans la bougie ; si les deux sont touchés, le stop compte en premier.")}</p>
             )}
           </div>
           )}
         </Card>
 
-        <Card title={beginner ? "4. Limiter les pertes" : "4. Risque, sorties et horaires"}>
+        <Card title={beginner ? tl("4. Limiter les pertes") : tl("4. Risque, sorties et horaires")}>
           <div className="flex flex-col gap-3">
             <div className={`grid gap-3 ${beginner ? "grid-cols-2" : "grid-cols-2 md:grid-cols-4"}`}>
-              <Field label="Stop" term="stop">
+              <Field label={tl("Stop")} term="stop">
                 <select
                   value={strategy.stop.type}
                   onChange={(e) => set("stop", { ...strategy.stop, type: e.target.value as Strategy["stop"]["type"], value: strategy.stop.value ?? 2, atrPeriod: strategy.stop.atrPeriod ?? 14 })}
                 >
-                  <option value="none">Aucun</option>
-                  <option value="percent">En %</option>
-                  <option value="atr">En ATR</option>
-                  <option value="swing">Plus bas / haut récent</option>
+                  <option value="none">{tl("Aucun")}</option>
+                  <option value="percent">{tl("En %")}</option>
+                  <option value="atr">{tl("En ATR")}</option>
+                  <option value="swing">{tl("Plus bas / haut récent")}</option>
                 </select>
               </Field>
               {strategy.stop.type !== "none" ? (
-                <Field label={strategy.stop.type === "percent" ? "Distance (%)" : strategy.stop.type === "atr" ? "Multiple d'ATR" : "Nombre de bougies"} term={strategy.stop.type === "atr" ? "atr" : undefined}>
+                <Field label={strategy.stop.type === "percent" ? "Distance (%)" : strategy.stop.type === "atr" ? tl("Multiple d'ATR") : tl("Nombre de bougies")} term={strategy.stop.type === "atr" ? "atr" : undefined}>
                   <input type="number" step="any" inputMode="decimal" value={strategy.stop.value ?? ""} onChange={(e) => set("stop", { ...strategy.stop, value: numOrNull(e.target.value) })} />
                 </Field>
               ) : (
-                beginner && <p className="self-end text-[11px] text-warn">Sans stop, une seule perte peut être énorme.</p>
+                beginner && <p className="self-end text-[11px] text-warn">{tl("Sans stop, une seule perte peut être énorme.")}</p>
               )}
-              <Field label="Objectif" term="objectif">
+              <Field label={tl("Objectif")} term="objectif">
                 <select
                   value={strategy.takeProfit.type}
                   onChange={(e) =>
                     set("takeProfit", { ...strategy.takeProfit, type: e.target.value as Strategy["takeProfit"]["type"], value: strategy.takeProfit.value ?? 2, atrPeriod: strategy.takeProfit.atrPeriod ?? 14 })
                   }
                 >
-                  <option value="none">Aucun</option>
-                  <option value="r_multiple">En R (× le stop)</option>
-                  <option value="percent">En %</option>
-                  <option value="atr">En ATR</option>
+                  <option value="none">{tl("Aucun")}</option>
+                  <option value="r_multiple">{tl("En R (× le stop)")}</option>
+                  <option value="percent">{tl("En %")}</option>
+                  <option value="atr">{tl("En ATR")}</option>
                 </select>
               </Field>
               {strategy.takeProfit.type !== "none" && (
-                <Field label={strategy.takeProfit.type === "r_multiple" ? "Objectif en R" : "Valeur de l'objectif"} term={strategy.takeProfit.type === "r_multiple" ? "r" : undefined}>
+                <Field label={strategy.takeProfit.type === "r_multiple" ? tl("Objectif en R") : tl("Valeur de l'objectif")} term={strategy.takeProfit.type === "r_multiple" ? "r" : undefined}>
                   <input
                     type="number"
                     step="any"
@@ -394,49 +391,49 @@ export function StrategyEditor({ id }: { id?: string }) {
                   />
                 </Field>
               )}
-              <Field label="Risque par trade (%)" term="risque-par-trade">
+              <Field label={tl("Risque par trade (%)")} term="risque-par-trade">
                 <input type="number" step="any" inputMode="decimal" value={strategy.riskPerTradePercent} onChange={(e) => set("riskPerTradePercent", Number(e.target.value))} />
               </Field>
               {!beginner && (
                 <>
-                  <Field label="Stop suiveur" term="stop-suiveur">
+                  <Field label={tl("Stop suiveur")} term="stop-suiveur">
                     <select
                       value={strategy.trailingStop.type}
                       onChange={(e) =>
                         set("trailingStop", { ...strategy.trailingStop, type: e.target.value as Strategy["trailingStop"]["type"], value: strategy.trailingStop.value ?? 2, atrPeriod: strategy.trailingStop.atrPeriod ?? 14 })
                       }
                     >
-                      <option value="none">Aucun</option>
-                      <option value="percent">En %</option>
-                      <option value="atr">En ATR</option>
+                      <option value="none">{tl("Aucun")}</option>
+                      <option value="percent">{tl("En %")}</option>
+                      <option value="atr">{tl("En ATR")}</option>
                     </select>
                   </Field>
                   {strategy.trailingStop.type !== "none" && (
-                    <Field label="Distance du stop suiveur" term="stop-suiveur">
+                    <Field label={tl("Distance du stop suiveur")} term="stop-suiveur">
                       <input type="number" step="any" value={strategy.trailingStop.value ?? ""} onChange={(e) => set("trailingStop", { ...strategy.trailingStop, value: numOrNull(e.target.value) })} />
                     </Field>
                   )}
-                  <Field label="Point mort à (R)" hint="vide = jamais" term="point-mort">
+                  <Field label={tl("Point mort à (R)")} hint={tl("vide = jamais")} term="point-mort">
                     <input type="number" step="any" value={strategy.breakEvenAtR ?? ""} onChange={(e) => set("breakEvenAtR", numOrNull(e.target.value))} />
                   </Field>
-                  <Field label="Durée max (bougies)" hint="vide = illimitée" term="duree-max">
+                  <Field label={tl("Durée max (bougies)")} hint={tl("vide = illimitée")} term="duree-max">
                     <input type="number" value={strategy.maxBarsInTrade ?? ""} onChange={(e) => set("maxBarsInTrade", numOrNull(e.target.value))} />
                   </Field>
-                  <Field label="Taille sans stop (%)" term="taille">
+                  <Field label={tl("Taille sans stop (%)")} term="taille">
                     <input type="number" step="any" value={strategy.positionSizePercent} onChange={(e) => set("positionSizePercent", Number(e.target.value))} />
                   </Field>
-                  <Field label="Levier max" term="levier">
+                  <Field label={tl("Levier max")} term="levier">
                     <input type="number" step="any" value={strategy.maxLeverage} onChange={(e) => set("maxLeverage", Number(e.target.value))} />
                   </Field>
                   <div className="col-span-2">
-                    <Field label="Entrées entre" hint="heure locale, vide = toute la journée" term="horaires">
+                    <Field label={tl("Entrées entre")} hint={tl("heure locale, vide = toute la journée")} term="horaires">
                       <div className="flex items-center gap-1">
                         <input
                           type="time"
                           value={strategy.tradingWindow?.start ?? ""}
                           onChange={(e) => set("tradingWindow", e.target.value ? { start: e.target.value, end: strategy.tradingWindow?.end ?? "23:59" } : null)}
                         />
-                        <span>et</span>
+                        <span>{tl("et")}</span>
                         <input
                           type="time"
                           value={strategy.tradingWindow?.end ?? ""}
@@ -445,10 +442,10 @@ export function StrategyEditor({ id }: { id?: string }) {
                       </div>
                     </Field>
                   </div>
-                  <Field label="Tout fermer à" hint="vide = jamais" term="fermer-a">
+                  <Field label={tl("Tout fermer à")} hint={tl("vide = jamais")} term="fermer-a">
                     <input type="time" value={strategy.exitAtTime ?? ""} onChange={(e) => set("exitAtTime", e.target.value || null)} />
                   </Field>
-                  <Field label="Jours d'entrée" term="jours">
+                  <Field label={tl("Jours d'entrée")} term="jours">
                     <div className="flex flex-wrap gap-1">
                       {DAYS.map((d, i) => {
                         const day = i + 1;
@@ -459,7 +456,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                             onClick={() => set("tradingDays", on ? strategy.tradingDays.filter((x) => x !== day) : [...strategy.tradingDays, day].sort())}
                             className={`rounded px-1.5 py-0.5 text-xs ${on ? "bg-accent text-white" : "border border-line text-muted"}`}
                           >
-                            {d}
+                            {tl(d)}
                           </button>
                         );
                       })}
@@ -473,12 +470,11 @@ export function StrategyEditor({ id }: { id?: string }) {
       </div>
 
       <div className="flex flex-col gap-4 lg:sticky lg:top-20 lg:self-start">
-        <Card title={beginner ? "5. Lance le test" : "5. Paramètres du test"}>
+        <Card title={beginner ? tl("5. Lance le test") : tl("5. Paramètres du test")}>
           <div className="flex flex-col gap-3">
             <div>
               <div className="mb-1.5 flex items-center text-xs text-muted">
-                Période
-                <Help id="periode-test" />
+                {tl("Période")}<Help id="periode-test" />
               </div>
               <div className="flex gap-1.5">
                 {PERIODS.map((p) => {
@@ -490,7 +486,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                       onClick={() => choosePeriod(p.days)}
                       className={`flex-1 rounded-md border px-2 py-1.5 text-xs ${on ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                     >
-                      {p.label}
+                      {tl(p.label)}
                     </button>
                   );
                 })}
@@ -498,38 +494,37 @@ export function StrategyEditor({ id }: { id?: string }) {
             </div>
             {beginner ? (
               <p className="text-[11px] text-muted">
-                Du {new Date(config.startDate).toLocaleDateString("fr-FR")} au {new Date(config.endDate).toLocaleDateString("fr-FR")}
+                {tl("Du {0} au {1}", [date(new Date(config.startDate).getTime(), false), date(new Date(config.endDate).getTime(), false)])}
               </p>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-2">
-                  <Field label="Du">
+                  <Field label={tl("Du")}>
                     <input type="date" value={config.startDate} onChange={(e) => setConfig({ ...config, startDate: e.target.value })} />
                   </Field>
-                  <Field label="Au">
+                  <Field label={tl("Au")}>
                     <input type="date" value={config.endDate} onChange={(e) => setConfig({ ...config, endDate: e.target.value })} />
                   </Field>
                 </div>
-                <p className="text-[11px] text-muted">Max {MAX_HISTORY_DAYS[strategy.interval]} jours en {strategy.interval}.</p>
+                <p className="text-[11px] text-muted">{tl("Max ")}{MAX_HISTORY_DAYS[strategy.interval]} {tl(" jours en ")}{strategy.interval}.</p>
               </>
             )}
-            <Field label="Capital de départ (USD)" term="capital">
+            <Field label={tl("Capital de départ (USD)")} term="capital">
               <input type="number" inputMode="numeric" value={config.initialCapital} onChange={(e) => setConfig({ ...config, initialCapital: Number(e.target.value) })} />
             </Field>
             {beginner ? (
               <div className="flex items-center text-xs text-muted">
-                Frais : <span className="ml-1 text-fg">{fees !== null ? FEE_PRESETS[fees].short : "personnalisés"}</span>
+                {tl("Frais : ")}<span className="ml-1 text-fg">{fees !== null ? tl(FEE_PRESETS[fees].short) : tl("personnalisés")}</span>
                 <Help id="frais" />
               </div>
             ) : (
-              <Field label="Frais" term="frais">
+              <Field label={tl("Frais")} term="frais">
                 <select value={fees ?? ""} onChange={(e) => e.target.value !== "" && applyFees(Number(e.target.value))}>
                   <option value="" disabled>
-                    Personnalisés
-                  </option>
+                    {tl("Personnalisés")}</option>
                   {FEE_PRESETS.map((p, i) => (
                     <option key={p.label} value={i}>
-                      {p.label}
+                      {tl(p.label)}
                     </option>
                   ))}
                 </select>
@@ -537,16 +532,16 @@ export function StrategyEditor({ id }: { id?: string }) {
             )}
             {!beginner && (
               <div className="grid grid-cols-2 gap-2">
-                <Field label="Frais / côté (%)" term="frais">
+                <Field label={tl("Frais / côté (%)")} term="frais">
                   <input type="number" step="any" value={config.feePercent} onChange={(e) => setCost("feePercent", e.target.value)} />
                 </Field>
-                <Field label="Spread (%)" term="spread">
+                <Field label={tl("Spread (%)")} term="spread">
                   <input type="number" step="any" value={config.spreadPercent} onChange={(e) => setCost("spreadPercent", e.target.value)} />
                 </Field>
-                <Field label="Glissement (%)" term="glissement">
+                <Field label={tl("Glissement (%)")} term="glissement">
                   <input type="number" step="any" value={config.slippagePercent} onChange={(e) => setCost("slippagePercent", e.target.value)} />
                 </Field>
-                <Field label="Financement / 8h (%)" term="financement">
+                <Field label={tl("Financement / 8h (%)")} term="financement">
                   <input type="number" step="any" value={config.fundingPercentPer8h} onChange={(e) => setCost("fundingPercentPer8h", e.target.value)} />
                 </Field>
               </div>
@@ -556,8 +551,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {error}
                 {recharge && (
                   <Link href="/tarifs#recharges" className="mt-1 block font-semibold underline">
-                    Voir les recharges →
-                  </Link>
+                    {tl("Voir les recharges →")}</Link>
                 )}
               </Alert>
             )}
@@ -565,16 +559,14 @@ export function StrategyEditor({ id }: { id?: string }) {
             <div className="hidden flex-col gap-2 md:flex">
               {job && <ProgressBar job={job} />}
               <Button onClick={run} disabled={busy !== null} className="py-2">
-                {busy === "run" ? runLabel : "Lancer le backtest"}
+                {busy === "run" ? runLabel : tl("Lancer le backtest")}
               </Button>
             </div>
             <Button variant="ghost" onClick={onSave} disabled={busy !== null}>
-              Enregistrer sans tester
-            </Button>
+              {tl("Enregistrer sans tester")}</Button>
             {savedId && (
               <Button variant="ghost" onClick={() => router.push(`/live?strategy=${savedId}`)} disabled={busy !== null}>
-                Suivre en direct
-              </Button>
+                {tl("Suivre en direct")}</Button>
             )}
           </div>
         </Card>
@@ -587,14 +579,13 @@ export function StrategyEditor({ id }: { id?: string }) {
             {error}
             {recharge && (
               <Link href="/tarifs#recharges" className="ml-1 font-semibold underline">
-                Recharger
-              </Link>
+                {tl("Recharger")}</Link>
             )}
           </p>
         )}
         {job && <ProgressBar job={job} />}
         <Button onClick={run} disabled={busy !== null} className="w-full py-2.5">
-          {busy === "run" ? runLabel : `Lancer le backtest · ${strategy.symbol} ${strategy.interval} · ${Math.round(years)} an${Math.round(years) > 1 ? "s" : ""}`}
+          {busy === "run" ? runLabel : tl("Lancer le backtest · {0} {1} · {2} an{3}", [strategy.symbol, strategy.interval, Math.round(years), Math.round(years) > 1 ? "s" : ""])}
         </Button>
       </div>
     </div>
@@ -603,10 +594,11 @@ export function StrategyEditor({ id }: { id?: string }) {
 
 /** Starting points: cards with a one-line pitch for beginners, compact chips for experts. */
 function Templates({ templates, current, onPick, beginner }: { templates: Template[]; current: string; onPick: (t: Template) => void; beginner: boolean }) {
+  const tl = useT();
   if (!beginner) {
     return (
       <div className="flex flex-wrap gap-1.5">
-        <span className="text-xs text-muted">Modèles :</span>
+        <span className="text-xs text-muted">{tl("Modèles :")}</span>
         {templates.map((t) => (
           <button key={t.id} onClick={() => onPick(t)} className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted hover:border-accent hover:text-fg">
             {t.label}
@@ -638,22 +630,23 @@ function Templates({ templates, current, onPick, beginner }: { templates: Templa
 
 /** The rules in one line per side, for beginners: "Achète quand : RSI 2 < 10 et Clôture > MM 200". */
 function RulesSummary({ strategy }: { strategy: Strategy }) {
+  const tl = useT();
   const phrase = (groups: Strategy["entryLong"]) =>
     groups
       .filter((g) => g.conditions.length)
-      .map((g) => g.conditions.map((c) => `${operandLabel(c.left)} ${COMPARATOR_LABELS[c.op]} ${operandLabel(c.right)}`).join(" et "))
-      .join(", ou ");
+      .map((g) => g.conditions.map((c) => `${operandLabel(c.left)} ${tl(COMPARATOR_LABELS[c.op])} ${operandLabel(c.right)}`).join(tl(" et ")))
+      .join(tl(", ou "));
   const lines = [
-    strategy.direction !== "short" && { label: "Achète quand", text: phrase(strategy.entryLong), tone: "text-up" },
-    strategy.direction !== "long" && { label: "Vend à découvert quand", text: phrase(strategy.entryShort), tone: "text-down" },
-    strategy.direction !== "short" && phrase(strategy.exitLong) && { label: "Sort quand", text: phrase(strategy.exitLong), tone: "text-fg" },
+    strategy.direction !== "short" && { label: tl("Achète quand"), text: phrase(strategy.entryLong), tone: "text-up" },
+    strategy.direction !== "long" && { label: tl("Vend à découvert quand"), text: phrase(strategy.entryShort), tone: "text-down" },
+    strategy.direction !== "short" && phrase(strategy.exitLong) && { label: tl("Sort quand"), text: phrase(strategy.exitLong), tone: "text-fg" },
   ].filter(Boolean) as { label: string; text: string; tone: string }[];
   return (
     <ul className="flex flex-col gap-1 text-sm">
       {lines.map((l) => (
         <li key={l.label}>
           <span className={`font-semibold ${l.tone}`}>{l.label} : </span>
-          {l.text || <span className="text-muted">aucune règle, choisis un modèle</span>}
+          {l.text || <span className="text-muted">{tl("aucune règle, choisis un modèle")}</span>}
         </li>
       ))}
     </ul>
@@ -661,12 +654,13 @@ function RulesSummary({ strategy }: { strategy: Strategy }) {
 }
 
 function AiSummary({ ai }: { ai: AiResult }) {
+  const tl = useT();
   return (
     <div className="flex flex-col gap-2 rounded-md border border-accent/30 bg-accent/5 p-3 text-sm">
       <p>{ai.explanation}</p>
       {ai.assumptions.length > 0 && (
         <div>
-          <div className="text-xs font-semibold text-muted">Choix faits par l&apos;IA (à vérifier)</div>
+          <div className="text-xs font-semibold text-muted">{tl("Choix faits par l'IA (à vérifier)")}</div>
           <ul className="ml-4 list-disc text-xs text-muted">
             {ai.assumptions.map((a, i) => (
               <li key={i}>{a}</li>
@@ -676,13 +670,13 @@ function AiSummary({ ai }: { ai: AiResult }) {
       )}
       {ai.questions.length > 0 && (
         <div>
-          <div className="text-xs font-semibold text-warn">Questions</div>
+          <div className="text-xs font-semibold text-warn">{tl("Questions")}</div>
           <ul className="ml-4 list-disc text-xs">
             {ai.questions.map((q, i) => (
               <li key={i}>{q}</li>
             ))}
           </ul>
-          <p className="mt-1 text-xs text-muted">Réponds dans la zone de texte puis clique sur « Modifier avec l&apos;IA ».</p>
+          <p className="mt-1 text-xs text-muted">{tl("Réponds dans la zone de texte puis clique sur « Modifier avec l'IA ».")}</p>
         </div>
       )}
       {ai.problems.map((p, i) => (
@@ -704,8 +698,8 @@ interface JobState {
 }
 
 function jobLabel(job: JobState) {
-  if (job.status === "queued") return job.ahead > 0 ? `En file d'attente (${job.ahead} avant toi)…` : "Démarrage…";
-  return `${job.message ?? "Calcul"} · ${job.progress} %`;
+  if (job.status === "queued") return job.ahead > 0 ? tr("En file d'attente ({0} avant toi)…", [job.ahead]) : tr("Démarrage…");
+  return `${job.message ?? tr("Calcul")} · ${job.progress} %`;
 }
 
 function ProgressBar({ job }: { job: JobState }) {

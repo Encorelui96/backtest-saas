@@ -25,6 +25,15 @@ export function translate(lang: Lang, fr: string, values?: readonly unknown[]) {
 
 export type T = (fr: string, values?: readonly unknown[]) => string;
 
+/** The language of the page being rendered, set by LangProvider; for helpers outside components. */
+let current: Lang = DEFAULT_LANG;
+export function setCurrentLang(lang: Lang) {
+  current = lang;
+}
+
+/** translate() in the language of the page being rendered, for helper functions called while rendering. */
+export const tr: T = (fr, values) => translate(current, fr, values);
+
 export const translator = (lang: Lang): T => (fr, values) => translate(lang, fr, values);
 
 /** The French site keeps its addresses; the English one lives under /en. */

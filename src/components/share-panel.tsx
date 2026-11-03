@@ -1,5 +1,6 @@
 "use client";
 
+import { useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { Alert, Button } from "./ui";
@@ -14,6 +15,7 @@ interface Share {
  * to copy into Discord, X or a message. Admins can also show it on the home page.
  */
 export function SharePanel({ backtestId, initial }: { backtestId: string; initial: Share | null }) {
+  const tl = useT();
   const [share, setShare] = useState<Share | null>(initial);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -60,7 +62,7 @@ export function SharePanel({ backtestId, initial }: { backtestId: string; initia
   if (!open) {
     return (
       <Button variant="ghost" onClick={start}>
-        {share ? "Partagé ✓" : "Partager"}
+        {share ? tl("Partagé ✓") : tl("Partager")}
       </Button>
     );
   }
@@ -68,29 +70,26 @@ export function SharePanel({ backtestId, initial }: { backtestId: string; initia
   return (
     <div className="flex w-full flex-col gap-2 rounded-lg border border-accent/40 bg-panel p-3 text-sm sm:w-[420px]">
       <div className="flex items-center justify-between">
-        <span className="font-medium">Lien public du rapport</span>
-        <button onClick={() => setOpen(false)} className="text-xs text-muted hover:text-fg" aria-label="Fermer">
+        <span className="font-medium">{tl("Lien public du rapport")}</span>
+        <button onClick={() => setOpen(false)} className="text-xs text-muted hover:text-fg" aria-label={tl("Fermer")}>
           ✕
         </button>
       </div>
-      <p className="text-xs text-muted">Toute personne qui a ce lien voit les règles et les résultats, sans ton nom ni ton e-mail. Tu peux le retirer à tout moment.</p>
+      <p className="text-xs text-muted">{tl("Toute personne qui a ce lien voit les règles et les résultats, sans ton nom ni ton e-mail. Tu peux le retirer à tout moment.")}</p>
       <div className="flex gap-2">
         <input readOnly value={url} onFocus={(e) => e.currentTarget.select()} className="min-w-0 flex-1 text-xs" />
-        <Button onClick={copy}>{copied ? "Copié ✓" : "Copier"}</Button>
+        <Button onClick={copy}>{copied ? tl("Copié ✓") : tl("Copier")}</Button>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <a href={url} target="_blank" rel="noopener" className="text-xs text-accent hover:underline">
-          Voir comme un visiteur →
-        </a>
+          {tl("Voir comme un visiteur →")}</a>
         <button onClick={stop} className="text-xs text-down hover:underline">
-          Ne plus partager
-        </button>
+          {tl("Ne plus partager")}</button>
       </div>
       {admin && share && (
         <label className="flex items-center gap-2 border-t border-line pt-2 text-xs text-muted">
           <input type="checkbox" checked={share.featured} onChange={(e) => feature(e.target.checked)} className="h-auto w-auto" />
-          Montrer ce rapport en exemple sur la page d&apos;accueil
-        </label>
+          {tl("Montrer ce rapport en exemple sur la page d'accueil")}</label>
       )}
       {error && <Alert tone="error">{error}</Alert>}
     </div>

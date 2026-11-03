@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link } from "@/lib/client/i18n";
+import { Link, useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { pct, price, tone } from "@/lib/client/format";
 import type { CandleRow } from "@/lib/types";
@@ -46,6 +46,7 @@ function stream(base: string, symbols: string[], onQuote: (s: string, q: Quote) 
 }
 
 export function TickerTape() {
+  const tl = useT();
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
 
   useEffect(() => {
@@ -102,12 +103,12 @@ export function TickerTape() {
       >
         <div>
           <div className="num text-sm font-semibold">{item.label}</div>
-          <div className="text-[11px] text-muted">{item.name}</div>
+          <div className="text-[11px] text-muted">{tl(item.name)}</div>
         </div>
         <div className="text-right">
           <div className="num text-sm">{q ? price(q.c) : "—"}</div>
           <div className={`num text-[11px] ${tone(q?.p)}`}>
-            {q ? `${pct(q.p, 2)}${q.delayed ? " · différé" : ""}` : "connexion…"}
+            {q ? `${pct(q.p, 2)}${q.delayed ? tl(" · différé") : ""}` : "connexion…"}
           </div>
         </div>
       </Link>

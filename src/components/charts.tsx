@@ -1,5 +1,6 @@
 "use client";
 
+import { formatLocale } from "@/lib/client/format";
 import { useEffect, useImperativeHandle, useRef, type Ref } from "react";
 import {
   AreaSeries,
@@ -39,18 +40,18 @@ function baseChart(el: HTMLElement, height: number): IChartApi {
           case TickMarkType.Year:
             return String(d.getFullYear());
           case TickMarkType.Month:
-            return d.toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+            return d.toLocaleDateString(formatLocale(), { month: "short", year: "2-digit" });
           case TickMarkType.DayOfMonth:
-            return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+            return d.toLocaleDateString(formatLocale(), { day: "numeric", month: "short" });
           default:
-            return d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+            return d.toLocaleTimeString(formatLocale(), { hour: "2-digit", minute: "2-digit" });
         }
       },
     },
     crosshair: { mode: CrosshairMode.Normal },
     localization: {
-      locale: "fr-FR",
-      timeFormatter: (time: Time) => new Date((time as number) * 1000).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }),
+      locale: formatLocale(),
+      timeFormatter: (time: Time) => new Date((time as number) * 1000).toLocaleString(formatLocale(), { dateStyle: "short", timeStyle: "short" }),
     },
   });
 }

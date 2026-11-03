@@ -8,6 +8,7 @@ import { runBacktest } from "@/lib/engine/backtest";
 import { defaultConfig } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { handle } from "@/lib/server/http";
+import { translatorOf } from "@/lib/server/lang";
 import { requireUser } from "@/lib/server/auth";
 import { limitPerMinute } from "@/lib/server/rate-limit";
 import { QuotaError, planOf } from "@/lib/server/quotas";
@@ -70,12 +71,13 @@ export async function POST(req: Request) {
     }
 
     const i = n - 1;
+    const t = translatorOf(req);
     const describeGroups = (groups: typeof strategy.entryLong) =>
       groups
         .filter((g) => g.conditions.length)
         .map((g) => ({
           conditions: g.conditions.map((c) => ({
-            label: `${operandLabel(c.left)} ${COMPARATOR_LABELS[c.op]} ${operandLabel(c.right)}`,
+            label: `${operandLabel(c.left, t)} ${t(COMPARATOR_LABELS[c.op])} ${operandLabel(c.right, t)}`,
             left: ctx.series(c.left)[i],
             right: ctx.series(c.right)[i],
             pass: ctx.conditionSeries(c)[i] === 1,
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
       for (const g of groups)
         for (const c of g.conditions)
           for (const o of [c.left, c.right]) {
-            const label = operandLabel(o);
+            const label = operandLabel(o, t);
             if (!OVERLAY.has(o.indicator) || seen.has(label)) continue;
             seen.add(label);
             const s = ctx.series(o);

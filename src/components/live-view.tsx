@@ -1,6 +1,6 @@
 "use client";
 
-import { Link, useRouter } from "@/lib/client/i18n";
+import { Link, useRouter, useT } from "@/lib/client/i18n";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/client/api";
@@ -40,6 +40,7 @@ interface LiveData {
 }
 
 export function LiveView() {
+  const tl = useT();
   const params = useSearchParams();
   const router = useRouter();
   const strategyId = params.get("strategy");
@@ -120,9 +121,9 @@ export function LiveView() {
     const t = data?.openTrade;
     if (!t) return [];
     return [
-      { price: t.entryPrice, color: "#8a97ab", title: "Entrée" },
-      ...(t.stopPrice ? [{ price: t.stopPrice, color: "#ef4444", title: "Stop" }] : []),
-      ...(t.targetPrice ? [{ price: t.targetPrice, color: "#22c55e", title: "Objectif" }] : []),
+      { price: t.entryPrice, color: "#8a97ab", title: tl("Entrée") },
+      ...(t.stopPrice ? [{ price: t.stopPrice, color: "#ef4444", title: tl("Stop") }] : []),
+      ...(t.targetPrice ? [{ price: t.targetPrice, color: "#22c55e", title: tl("Objectif") }] : []),
     ];
   }, [data]);
 
@@ -135,9 +136,9 @@ export function LiveView() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Stratégie">
+        <Field label={tl("Stratégie")}>
           <select value={strategyId ?? ""} onChange={(e) => router.push(e.target.value ? `/live?strategy=${e.target.value}` : "/live")} className="min-w-56">
-            <option value="">Aucune (graphique seul)</option>
+            <option value="">{tl("Aucune (graphique seul)")}</option>
             {strategies.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name} · {s.strategy.symbol} {s.strategy.interval}
@@ -148,7 +149,7 @@ export function LiveView() {
         {strategy && strategyId && <AlertButton strategyId={strategyId} />}
         {!strategy && (
           <>
-            <Field label="Unité de temps">
+            <Field label={tl("Unité de temps")}>
               <select value={interval} onChange={(e) => setInterval_(e.target.value as Interval)}>
                 {INTERVALS.map((i) => (
                   <option key={i}>{i}</option>
@@ -162,13 +163,13 @@ export function LiveView() {
           <div className="text-xs text-muted">
             {sym} · {ivl} ·{" "}
             {crypto ? (
-              <span className={connected ? "text-up" : "text-down"}>{connected ? "● en direct" : "● déconnecté"}</span>
+              <span className={connected ? "text-up" : "text-down"}>{connected ? tl("● en direct") : tl("● déconnecté")}</span>
             ) : (
-              <span className="text-warn" title="Forex, or et Nasdaq : actualisé toutes les 5 minutes.">
-                ● toutes les 5 min{lastBar ? ` (dernière bougie : ${date(lastBar.t)})` : ""}
+              <span className="text-warn" title={tl("Forex, or et Nasdaq : actualisé toutes les 5 minutes.")}>
+                {tl("● toutes les 5 min")}{lastBar ? tl(" (dernière bougie : {0})", [date(lastBar.t)]) : ""}
               </span>
             )}
-            {change !== null && <span className={`ml-2 ${tone(change)}`}>{pct(change, 2)} sur l&apos;écran</span>}
+            {change !== null && <span className={`ml-2 ${tone(change)}`}>{pct(change, 2)} {tl(" sur l'écran")}</span>}
           </div>
         </div>
       </div>
@@ -186,32 +187,31 @@ export function LiveView() {
         <div className="flex flex-col gap-4">
           {strategy && data ? (
             <>
-              <Card title="Situation">
+              <Card title={tl("Situation")}>
                 {open ? (
                   <div className="flex flex-col gap-1 text-sm">
                     <div className={open.side === "long" ? "text-up" : "text-down"}>
-                      Position {open.side === "long" ? "acheteuse" : "vendeuse"} ouverte depuis le {date(open.entryTime)}
+                      {tl("Position ")}{open.side === "long" ? "acheteuse" : "vendeuse"} {tl(" ouverte depuis le ")}{date(open.entryTime)}
                     </div>
-                    <div>Entrée : {price(open.entryPrice)}</div>
-                    {open.stopPrice && <div>Stop : {price(open.stopPrice)}</div>}
-                    {open.targetPrice && <div>Objectif : {price(open.targetPrice)}</div>}
-                    <div className={`num font-semibold ${tone(unrealized)}`}>Latent : {pct(unrealized, 2)}</div>
+                    <div>{tl("Entrée : ")}{price(open.entryPrice)}</div>
+                    {open.stopPrice && <div>{tl("Stop : ")}{price(open.stopPrice)}</div>}
+                    {open.targetPrice && <div>{tl("Objectif : ")}{price(open.targetPrice)}</div>}
+                    <div className={`num font-semibold ${tone(unrealized)}`}>{tl("Latent : ")}{pct(unrealized, 2)}</div>
                   </div>
                 ) : data.signalNow ? (
                   <div className={`text-sm font-semibold ${data.signalNow === "long" ? "text-up" : "text-down"}`}>
-                    Signal {data.signalNow === "long" ? "d'ACHAT" : "de VENTE"} à la clôture du {date(data.lastClosedTime + INTERVAL_MS[ivl])} : entrée à l&apos;ouverture.
-                  </div>
+                    {tl("Signal ")}{data.signalNow === "long" ? "d'ACHAT" : tl("de VENTE")} {tl(" à la clôture du ")}{date(data.lastClosedTime + INTERVAL_MS[ivl])} {tl(" : entrée à l'ouverture.")}</div>
                 ) : (
-                  <div className="text-sm text-muted">Pas de position, pas de signal sur la dernière bougie close.</div>
+                  <div className="text-sm text-muted">{tl("Pas de position, pas de signal sur la dernière bougie close.")}</div>
                 )}
-                <p className="mt-2 text-[11px] text-muted">Recalculé à chaque clôture de bougie. Ce que la stratégie aurait fait, pas un ordre passé.</p>
+                <p className="mt-2 text-[11px] text-muted">{tl("Recalculé à chaque clôture de bougie. Ce que la stratégie aurait fait, pas un ordre passé.")}</p>
               </Card>
-              <ConditionsCard title="Conditions d'achat" groups={data.entryLong} />
-              <ConditionsCard title="Conditions de vente" groups={data.entryShort} />
-              <ConditionsCard title="Sortie d'un achat" groups={data.exitLong} />
-              <ConditionsCard title="Sortie d'une vente" groups={data.exitShort} />
+              <ConditionsCard title={tl("Conditions d'achat")} groups={data.entryLong} />
+              <ConditionsCard title={tl("Conditions de vente")} groups={data.entryShort} />
+              <ConditionsCard title={tl("Sortie d'un achat")} groups={data.exitLong} />
+              <ConditionsCard title={tl("Sortie d'une vente")} groups={data.exitShort} />
               {data.recentTrades.length > 0 && (
-                <Card title="Derniers trades simulés">
+                <Card title={tl("Derniers trades simulés")}>
                   <table className="num w-full text-xs">
                     <tbody>
                       {data.recentTrades
@@ -220,7 +220,7 @@ export function LiveView() {
                         .map((t, i) => (
                           <tr key={i} className="border-t border-line/50">
                             <td className="py-1">{date(t.entryTime)}</td>
-                            <td className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? "Achat" : "Vente"}</td>
+                            <td className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? tl("Achat") : tl("Vente")}</td>
                             <td className={`text-right ${tone(t.pnl)}`}>{t.r !== null ? r(t.r) : pct(t.pnlPercent, 2)}</td>
                           </tr>
                         ))}
@@ -230,8 +230,8 @@ export function LiveView() {
               )}
             </>
           ) : (
-            <Card title="Suivi d'une stratégie">
-              <p className="text-sm text-muted">Choisis une stratégie enregistrée pour voir ses signaux et l&apos;état de chaque condition, mis à jour à chaque clôture de bougie.</p>
+            <Card title={tl("Suivi d'une stratégie")}>
+              <p className="text-sm text-muted">{tl("Choisis une stratégie enregistrée pour voir ses signaux et l'état de chaque condition, mis à jour à chaque clôture de bougie.")}</p>
             </Card>
           )}
         </div>
@@ -271,6 +271,7 @@ function fmt(x: number) {
 
 /** Turns on the Telegram alert for the strategy followed here; the account page manages the link and the list. */
 function AlertButton({ strategyId }: { strategyId: string }) {
+  const tl = useT();
   const [state, setState] = useState<"idle" | "busy" | "on" | "error">("idle");
   const [message, setMessage] = useState<string | null>(null);
   return (
@@ -290,12 +291,11 @@ function AlertButton({ strategyId }: { strategyId: string }) {
         }}
         className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-accent disabled:opacity-60"
       >
-        {state === "on" ? "🔔 Alerte Telegram activée" : state === "busy" ? "…" : "🔔 Recevoir les signaux sur Telegram"}
+        {state === "on" ? tl("🔔 Alerte Telegram activée") : state === "busy" ? "…" : tl("🔔 Recevoir les signaux sur Telegram")}
       </button>
       {state === "on" && (
         <Link href="/compte" className="text-[11px] text-accent hover:underline">
-          Relier Telegram et gérer mes alertes →
-        </Link>
+          {tl("Relier Telegram et gérer mes alertes →")}</Link>
       )}
       {message && <span className="max-w-72 text-[11px] text-down">{message}</span>}
     </div>

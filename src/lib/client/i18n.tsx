@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ComponentProps } from "react";
+import { Fragment, createContext, useContext, useMemo, type ComponentProps, type ReactNode } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter as useNextRouter } from "next/navigation";
-import { localePath, localeTag, switchPath, translator, type Lang, type T } from "@/lib/i18n";
+import { localePath, localeTag, setCurrentLang, switchPath, translator, type Lang, type T } from "@/lib/i18n";
 import { setFormatLocale } from "./format";
 
 const LangContext = createContext<Lang>("fr");
@@ -11,6 +11,8 @@ const LangContext = createContext<Lang>("fr");
 export function LangProvider({ lang, children }: { lang: Lang; children: React.ReactNode }) {
   // Number and date formatting follows the page's language (read by lib/client/format).
   setFormatLocale(localeTag(lang));
+  // Also read by tr(), for helpers called while rendering. Server code outside pages passes its own translator.
+  setCurrentLang(lang);
   return <LangContext.Provider value={lang}>{children}</LangContext.Provider>;
 }
 
@@ -70,4 +72,9 @@ export function LanguageSwitch({ className = "" }: { className?: string }) {
       ))}
     </span>
   );
+}
+
+/** A translated sentence with React nodes (bold, coloured numbers…) in place of its {0}, {1}… */
+export function rich(text: string, nodes: readonly ReactNode[]): ReactNode {
+  return text.split(/\{(\d+)\}/).map((part, i) => (i % 2 ? <Fragment key={i}>{nodes[Number(part)]}</Fragment> : part));
 }
