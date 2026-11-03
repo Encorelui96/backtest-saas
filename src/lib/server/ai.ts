@@ -3,6 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { StrategySchema, normalizeStrategy, type Strategy } from "../strategy/schema";
 import type { AiUsage } from "./quotas";
+import { UserError } from "./backtests";
+import type { Lang } from "@/lib/i18n";
 
 export function aiEnabled() {
   return Boolean(process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_AUTH_TOKEN);
@@ -82,11 +84,20 @@ export const AI_PRICES: Record<string, [number, number]> = {
   "claude-opus-4-8": [5, 25],
 };
 
+/** The prompt is written for the French site; the English one gets its texts in English. */
+function systemPrompt(lang: Lang) {
+  const prompt = `${SYSTEM}\n\n${OUTPUT_FORMAT}`;
+  if (lang === "fr") return prompt;
+  return prompt.replaceAll("French", "English").replace("written in English (sometimes English)", "written in English (sometimes French)");
+}
+
 /** `usage` accumulates the tokens of every attempt, even when the translation fails. */
-export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage): Promise<ParseResult & { problems: string[] }> {
+export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage, lang: Lang = "fr"): Promise<ParseResult & { problems: string[] }> {
   const client = new Anthropic();
   const userContent = current
-    ? `Stratégie actuelle (JSON) à modifier selon la demande :\n${JSON.stringify(current)}\n\nDemande :\n${text}`
+    ? lang === "en"
+      ? `Current strategy (JSON), to change as requested:\n${JSON.stringify(current)}\n\nRequest:\n${text}`
+      : `Stratégie actuelle (JSON) à modifier selon la demande :\n${JSON.stringify(current)}\n\nDemande :\n${text}`
     : text;
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: userContent }];
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -96,7 +107,7 @@ export async function parseStrategyText(text: string, current: Strategy | undefi
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "medium" },
-      system: `${SYSTEM}\n\n${OUTPUT_FORMAT}`,
+      system: systemPrompt(lang),
       messages,
     });
     const u = response.usage;
@@ -104,10 +115,10 @@ export async function parseStrategyText(text: string, current: Strategy | undefi
     usage.outputTokens += u.output_tokens;
     usage.model = response.model;
     if (response.stop_reason === "refusal") {
-      throw new Error("L'IA a refusé de traiter cette demande. Reformule la stratégie ou utilise le constructeur manuel.");
+      throw new UserError("L'IA a refusé de traiter cette demande. Reformule la stratégie ou utilise le constructeur manuel.");
     }
     if (response.stop_reason === "max_tokens") {
-      throw new Error("La réponse de l'IA est incomplète. Réessaie avec une description plus courte.");
+      throw new UserError("La réponse de l'IA est incomplète. Réessaie avec une description plus courte.");
     }
     const raw = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
     let error: string;
@@ -126,5 +137,5 @@ export async function parseStrategyText(text: string, current: Strategy | undefi
       { role: "user", content: `Your JSON does not match the schema:\n${error}\nSend the corrected JSON object only.` },
     );
   }
-  throw new Error("La réponse de l'IA est invalide. Réessaie, ou utilise le constructeur manuel.");
+  throw new UserError("La réponse de l'IA est invalide. Réessaie, ou utilise le constructeur manuel.");
 }

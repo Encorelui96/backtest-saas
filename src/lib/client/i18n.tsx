@@ -3,7 +3,7 @@
 import { Fragment, createContext, useContext, useMemo, type ComponentProps, type ReactNode } from "react";
 import NextLink from "next/link";
 import { usePathname, useRouter as useNextRouter } from "next/navigation";
-import { localePath, localeTag, setCurrentLang, switchPath, translator, type Lang, type T } from "@/lib/i18n";
+import { localePath, localeTag, setCurrentLang, switchPath, translateText, translator, type Lang, type T } from "@/lib/i18n";
 import { setFormatLocale } from "./format";
 
 const LangContext = createContext<Lang>("fr");
@@ -77,4 +77,10 @@ export function LanguageSwitch({ className = "" }: { className?: string }) {
 /** A translated sentence with React nodes (bold, coloured numbers…) in place of its {0}, {1}… */
 export function rich(text: string, nodes: readonly ReactNode[]): ReactNode {
   return text.split(/\{(\d+)\}/).map((part, i) => (i % 2 ? <Fragment key={i}>{nodes[Number(part)]}</Fragment> : part));
+}
+
+/** For French texts saved already filled in (report warnings, robustness labels): translateText() in the page language. */
+export function useText(): (text: string) => string {
+  const lang = useLang();
+  return useMemo(() => (text: string) => translateText(lang, text), [lang]);
 }

@@ -79,7 +79,7 @@ async function getPage(m: Market, interval: Interval, from: number, to: number, 
   if (code === 401) throw new UserError("Clé Twelve Data refusée : vérifie TWELVEDATA_API_KEY.");
   if (/no data is available/i.test(message)) return [];
   if (code === 403 || /plan|upgrade|available/i.test(message)) {
-    throw new UserError(`${m.label} n'est pas inclus dans l'offre Twelve Data actuelle.`);
+    throw new UserError("{0} n'est pas inclus dans l'offre Twelve Data actuelle.", [m.label]);
   }
   throw new Error(`Twelve Data ${code}: ${message.slice(0, 200)}`);
 }

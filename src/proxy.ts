@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { translatorOf } from "@/lib/server/lang";
 
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -32,7 +33,7 @@ function checkOrigin(req: NextRequest) {
   if (origin === null) return NextResponse.next();
   const host = hostOf(origin);
   if (host && siteHosts(req).has(host)) return NextResponse.next();
-  return NextResponse.json({ error: "Requête refusée : elle ne vient pas de Backtest Lab." }, { status: 403 });
+  return NextResponse.json({ error: translatorOf(req)("Requête refusée : elle ne vient pas de Backtest Lab.") }, { status: 403 });
 }
 
 /**

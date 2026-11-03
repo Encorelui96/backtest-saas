@@ -1,3 +1,4 @@
+import { currentLang, formatEuros, type Lang } from "@/lib/i18n";
 import type { Interval } from "./types";
 
 /**
@@ -91,7 +92,7 @@ export const PACKS: Pack[] = [
 
 export const PACK_BY_ID = Object.fromEntries(PACKS.map((p) => [p.id, p])) as Record<PackId, Pack>;
 
-/** "12,50 €": French price formatting, without decimals when the price is whole. */
-export function euros(n: number) {
-  return `${n.toLocaleString("fr-FR", { minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 })} €`;
+/** "12,50 €" or "€12.50", in the language of the page by default. */
+export function euros(n: number, lang: Lang = currentLang()) {
+  return formatEuros(n, lang);
 }

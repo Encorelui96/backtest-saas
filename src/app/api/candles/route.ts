@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
     if (!Number.isFinite(from) || !Number.isFinite(to) || from > to) throw new UserError("Période invalide.");
     from = Math.max(from, to - MAX_BARS * INTERVAL_MS[interval]);
     // Checked before any download, so an invented symbol costs no request to the sources.
-    if (!(await isKnownSymbol(symbol))) throw new UserError(`Symbole inconnu : ${symbol}.`);
+    if (!(await isKnownSymbol(symbol))) throw new UserError("Symbole inconnu : {0}.", [symbol]);
     const c = await getCandles(symbol, interval, from, to, { metered: true });
     const rows = Array.from(c.t, (t, i) => ({ t, o: c.o[i], h: c.h[i], l: c.l[i], c: c.c[i], v: c.v[i] }));
     return Response.json(rows);

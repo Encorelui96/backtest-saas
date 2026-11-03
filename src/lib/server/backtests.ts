@@ -1,4 +1,7 @@
 import "server-only";
+import { UserError } from "./errors";
+
+export { UserError };
 import { gunzipSync, gzipSync } from "node:zlib";
 import { MAX_HISTORY_DAYS, type Candles, type Interval } from "../types";
 import type { BacktestConfig, Strategy } from "../strategy/schema";
@@ -17,20 +20,17 @@ export interface BacktestSummary {
   avgR: number | null;
 }
 
-/** An error whose message is meant for the user. */
-export class UserError extends Error {}
-
 /** Checks a request before it is queued, so the user hears about a bad period right away. */
 export function validateBacktest(input: Strategy, config: BacktestConfig) {
   const { strategy, problems } = normalizeStrategy(input);
   const blocking = problems.filter((p) => p.startsWith("Aucune condition") || p.startsWith("Symbole"));
-  if (blocking.length) throw new UserError(blocking.join(" "));
+  if (blocking.length) throw blocking.length === 1 ? new UserError(blocking[0]) : new UserError("{0:t} {1:t}", blocking);
   const start = Date.parse(`${config.startDate}T00:00:00Z`);
   const end = Date.parse(`${config.endDate}T23:59:59Z`);
   if (!(start < end)) throw new UserError("La date de fin doit être après la date de début.");
   const maxDays = MAX_HISTORY_DAYS[strategy.interval];
   if ((end - start) / 86_400_000 > maxDays) {
-    throw new UserError(`En ${strategy.interval}, la période est limitée à ${maxDays} jours pour garder le test rapide.`);
+    throw new UserError("En {0}, la période est limitée à {1} jours pour garder le test rapide.", [strategy.interval, maxDays]);
   }
   return { strategy, problems, start, end };
 }
@@ -42,7 +42,7 @@ export async function computeBacktest(input: Strategy, config: BacktestConfig, o
   const candles = await getCandles(strategy.symbol, strategy.interval, start - warmupMs(strategy), end);
   let startIndex = candles.t.findIndex((t) => t >= start);
   if (candles.t.length === 0 || startIndex === -1) {
-    throw new UserError(`Aucune donnée pour ${strategy.symbol} en ${strategy.interval} sur cette période. Vérifie le symbole (ex. BTCUSDT).`);
+    throw new UserError("Aucune donnée pour {0} en {1} sur cette période. Vérifie le symbole (ex. BTCUSDT).", [strategy.symbol, strategy.interval]);
   }
   if (startIndex === 0 && candles.t.length > 200) startIndex = Math.min(200, candles.t.length - 1);
   const higher: Partial<Record<Interval, Candles>> = {};

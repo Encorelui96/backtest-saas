@@ -1,5 +1,6 @@
 import { pool } from "../lib/server/db";
 import { linkChat, runAlertChecks, unlinkChat } from "../lib/server/alerts";
+import { translate } from "../lib/i18n";
 import { TelegramError, sendMessage, telegram, telegramEnabled } from "../lib/server/telegram";
 
 /**
@@ -22,8 +23,11 @@ interface Update {
   message?: { text?: string; chat: { id: number; type: string }; from?: { username?: string } };
 }
 
-const HELP =
-  "Bonjour ! Je suis le bot d'alertes de <b>Backtest Lab</b>.\n\nPour recevoir les signaux de tes stratégies, relie ce chat depuis ton compte : Mon compte → Alertes Telegram → <b>Relier Telegram</b>.\n\n/stop pour ne plus rien recevoir ici.";
+// Before the chat is linked, the bot can't know the site's language: it answers in both.
+const HELP = [
+  "Bonjour ! Je suis le bot d'alertes de <b>Backtest Lab</b>.\n\nPour recevoir les signaux de tes stratégies, relie ce chat depuis ton compte : Mon compte → Alertes Telegram → <b>Relier Telegram</b>.\n\n/stop pour ne plus rien recevoir ici.",
+  "Hello! I'm the <b>Backtest Lab</b> alert bot.\n\nTo get your strategies' signals, link this chat from your account: My account → Telegram alerts → <b>Link Telegram</b>.\n\n/stop to stop receiving anything here.",
+].join("\n\n———\n\n");
 
 async function handle(update: Update) {
   const msg = update.message;
@@ -31,16 +35,16 @@ async function handle(update: Update) {
   const [command, arg] = msg.text.trim().split(/\s+/, 2);
   const chatId = msg.chat.id;
   if (command === "/start" && arg) {
-    const ok = await linkChat(arg, chatId, msg.from?.username ?? null);
+    const lang = await linkChat(arg, chatId, msg.from?.username ?? null);
     await sendMessage(
       chatId,
-      ok
-        ? "✅ Ton compte Backtest Lab est relié. Tu recevras ici les signaux des stratégies pour lesquelles tu as activé une alerte.\n\n/stop pour arrêter."
-        : "Ce lien a expiré ou a déjà servi. Retourne sur Mon compte et clique à nouveau sur <b>Relier Telegram</b>.",
+      lang
+        ? translate(lang, "✅ Ton compte Backtest Lab est relié. Tu recevras ici les signaux des stratégies pour lesquelles tu as activé une alerte.\n\n/stop pour arrêter.")
+        : "Ce lien a expiré ou a déjà servi. Retourne sur Mon compte et clique à nouveau sur <b>Relier Telegram</b>.\n\nThis link has expired or was already used. Go back to My account and click <b>Link Telegram</b> again.",
     );
   } else if (command === "/stop") {
-    await unlinkChat(chatId);
-    await sendMessage(chatId, "C'est noté : plus aucune alerte ne sera envoyée ici. Tu peux relier Telegram à nouveau depuis ton compte.");
+    const lang = (await unlinkChat(chatId)) ?? "fr";
+    await sendMessage(chatId, translate(lang, "C'est noté : plus aucune alerte ne sera envoyée ici. Tu peux relier Telegram à nouveau depuis ton compte."));
   } else {
     await sendMessage(chatId, HELP);
   }

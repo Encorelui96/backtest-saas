@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { Resend } from "resend";
 import { pool } from "./db";
+import { translator, type Lang } from "@/lib/i18n";
 
 /**
  * Accounts: e-mail and password, plus Google when its keys are set. Everything
@@ -17,14 +18,30 @@ const devSignInLinks = !emailLinksEnabled && process.env.NODE_ENV !== "productio
 
 const attr = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
+/**
+ * The language of an e-mail: the page asked for the link with an address under
+ * /en to come back to (callbackURL, or the reset page), which the link carries.
+ */
+function langOfLink(url: string): Lang {
+  try {
+    const u = new URL(url);
+    const back = u.searchParams.get("callbackURL") ?? u.searchParams.get("redirectTo") ?? "";
+    return /^\/en(\/|$|\?)/.test(back) ? "en" : "fr";
+  } catch {
+    return "fr";
+  }
+}
+
 /** One e-mail with one button: `action` is what the link does, "pour te connecter". */
 async function sendLinkEmail(to: string, subject: string, action: string, url: string, validity: string) {
+  const t = translator(langOfLink(url));
+  const [a, v] = [t(action), t(validity)];
   const { error } = await new Resend(process.env.RESEND_API_KEY).emails.send({
     from: process.env.EMAIL_FROM ?? "Backtest Lab <connexion@example.com>",
     to,
-    subject,
-    text: `Bonjour,\n\nClique sur ce lien ${action} (valable ${validity}) :\n${url}\n\nSi tu n'as rien demandé, ignore ce message.`,
-    html: `<p>Bonjour,</p><p><a href="${attr(url)}">Clique ici ${action}</a>. Le lien est valable ${validity}.</p><p>Si tu n'as rien demandé, ignore ce message.</p>`,
+    subject: t(subject),
+    text: t("Bonjour,\n\nClique sur ce lien {0} (valable {1}) :\n{2}\n\nSi tu n'as rien demandé, ignore ce message.", [a, v, url]),
+    html: t("<p>Bonjour,</p><p><a href=\"{2}\">Clique ici {0}</a>. Le lien est valable {1}.</p><p>Si tu n'as rien demandé, ignore ce message.</p>", [a, v, attr(url)]),
   });
   if (error) throw new Error(`Envoi de l'e-mail impossible : ${error.message}`);
 }

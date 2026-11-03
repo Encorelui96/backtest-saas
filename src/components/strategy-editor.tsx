@@ -1,7 +1,7 @@
 "use client";
 
 import { tr } from "@/lib/i18n";
-import { Link, rich, useRouter, useT } from "@/lib/client/i18n";
+import { Link, rich, useRouter, useT, useText } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
@@ -655,6 +655,7 @@ function RulesSummary({ strategy }: { strategy: Strategy }) {
 
 function AiSummary({ ai }: { ai: AiResult }) {
   const tl = useT();
+  const tx = useText();
   return (
     <div className="flex flex-col gap-2 rounded-md border border-accent/30 bg-accent/5 p-3 text-sm">
       <p>{ai.explanation}</p>
@@ -681,7 +682,7 @@ function AiSummary({ ai }: { ai: AiResult }) {
       )}
       {ai.problems.map((p, i) => (
         <p key={i} className="text-xs text-warn">
-          {p}
+          {tx(p)}
         </p>
       ))}
     </div>

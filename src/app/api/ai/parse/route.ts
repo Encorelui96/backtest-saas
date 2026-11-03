@@ -2,6 +2,7 @@ import { z } from "zod";
 import { StrategySchema } from "@/lib/strategy/schema";
 import { aiEnabled, parseStrategyText } from "@/lib/server/ai";
 import { handle } from "@/lib/server/http";
+import { langOf } from "@/lib/server/lang";
 import { UserError } from "@/lib/server/backtests";
 import { requireUser } from "@/lib/server/auth";
 import { consumeAi, recordAiUsage, type AiUsage } from "@/lib/server/quotas";
@@ -16,7 +17,7 @@ export async function POST(req: Request) {
     const eventId = await consumeAi(user);
     const usage: AiUsage = { inputTokens: 0, outputTokens: 0, model: null };
     try {
-      return Response.json(await parseStrategyText(body.text, body.current ?? undefined, usage));
+      return Response.json(await parseStrategyText(body.text, body.current ?? undefined, usage, langOf(req)));
     } finally {
       await recordAiUsage(eventId, usage).catch((e) => console.error("[ai] usage non enregistré", e));
     }

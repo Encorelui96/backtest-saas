@@ -2,7 +2,7 @@
 
 import { tr } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, rich, useT } from "@/lib/client/i18n";
+import { Link, rich, useT, useText } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { date, money, num, pct, price, r, tone } from "@/lib/client/format";
 import type { BacktestReport } from "@/lib/engine/report";
@@ -42,6 +42,7 @@ function spanLabel(ms: number) {
 /** `shared`: `id` is a public link id, the report is read-only and anyone can open it. */
 export function BacktestResults({ id, shared = false }: { id: string; shared?: boolean }) {
   const tl = useT();
+  const tx = useText();
   const [data, setData] = useState<Stored | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
@@ -93,7 +94,7 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
       </div>
 
       {report.warnings.map((w, i) => (
-        <Alert key={i}>{w}</Alert>
+        <Alert key={i}>{tx(w)}</Alert>
       ))}
 
       {beginner ? (
@@ -535,6 +536,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
 
 function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean }) {
   const tl = useT();
+  const tx = useText();
   const { monteCarlo: mc, edge, split, sensitivity, doubleCosts } = report.robustness;
   const fmtAvg = (avgR: number | null, avgPct: number) => (hasR && avgR !== null ? r(avgR) : pct(avgPct, 2));
   const verdict = robustnessVerdict(report);
@@ -579,7 +581,7 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
               {split.map((s) => (
                 <tr key={s.label} className="border-t border-line/50">
                   <td>
-                    {s.label}
+                    {tx(s.label)}
                     <div className="text-xs text-muted">
                       {date(s.from, false)} → {date(Math.min(s.to, report.period.to), false)}
                     </div>
@@ -656,7 +658,7 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
               <tbody>
                 {sensitivity.rows.map((row, i) => (
                   <tr key={i} className="border-t border-line/50">
-                    <td className="py-1.5 pr-3">{row.label}</td>
+                    <td className="py-1.5 pr-3">{tx(row.label)}</td>
                     {row.variants.map((v) => (
                       <td key={v.value} className={`px-2 text-right ${tone(v.returnPercent)} ${v.value === row.base ? "font-bold" : ""}`}>
                         <div className="text-[11px] text-muted">{v.value}</div>

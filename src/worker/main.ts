@@ -45,7 +45,9 @@ async function loop() {
     } catch (e) {
       const ref = job.id;
       console.error(`[worker] ${ref} en échec`, e);
-      await failJob(job.id, e instanceof UserError ? e.message : `Le calcul a échoué (réf. ${ref}).`).catch(() => {});
+      // Stored as text and values, so the page shows it in its own language.
+      const error = e instanceof UserError ? { text: e.text, values: e.values } : { text: "Le calcul a échoué (réf. {0}).", values: [ref] };
+      await failJob(job.id, JSON.stringify(error)).catch(() => {});
     }
   }
 }

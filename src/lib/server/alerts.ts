@@ -13,36 +13,40 @@ import { newId, query, queryOne } from "./db";
 import { PLANS, QuotaError, isAdmin, planOf, type PlanId } from "./quotas";
 import type { SessionUser } from "./auth";
 import { UserError } from "./backtests";
+import { hasLang, localeTag, translator, type Lang } from "@/lib/i18n";
 import { TelegramError, botUsername, escapeHtml, sendMessage } from "./telegram";
 
 /* ---------- Linking a Telegram chat to an account ---------- */
 
 /** A t.me link that opens the bot with a one-time code (15 minutes) binding the chat to this account. */
-export async function createLinkUrl(userId: string): Promise<string> {
+export async function createLinkUrl(userId: string, lang: Lang = "fr"): Promise<string> {
   const code = randomBytes(12).toString("base64url");
   await query("DELETE FROM telegram_link_codes WHERE user_id = $1 OR expires_at < now()", [userId]);
-  await query("INSERT INTO telegram_link_codes (code, user_id, expires_at) VALUES ($1, $2, now() + interval '15 minutes')", [code, userId]);
+  await query("INSERT INTO telegram_link_codes (code, user_id, expires_at, lang) VALUES ($1, $2, now() + interval '15 minutes', $3)", [code, userId, lang]);
   return `https://t.me/${await botUsername()}?start=${code}`;
 }
 
-/** Consumes a code sent with /start. Returns false when it is unknown or expired. */
-export async function linkChat(code: string, chatId: number, username: string | null): Promise<boolean> {
-  const row = await queryOne<{ user_id: string }>("DELETE FROM telegram_link_codes WHERE code = $1 AND expires_at > now() RETURNING user_id", [code]);
-  if (!row) return false;
+/** Consumes a code sent with /start. Returns the language of the chat, or null when the code is unknown or expired. */
+export async function linkChat(code: string, chatId: number, username: string | null): Promise<Lang | null> {
+  const row = await queryOne<{ user_id: string; lang: string }>("DELETE FROM telegram_link_codes WHERE code = $1 AND expires_at > now() RETURNING user_id, lang", [code]);
+  if (!row) return null;
+  const lang = hasLang(row.lang) ? row.lang : "fr";
   await query(
-    `INSERT INTO telegram_links (user_id, chat_id, username) VALUES ($1, $2, $3)
-     ON CONFLICT (user_id) DO UPDATE SET chat_id = $2, username = $3, linked_at = now()`,
-    [row.user_id, chatId, username],
+    `INSERT INTO telegram_links (user_id, chat_id, username, lang) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id) DO UPDATE SET chat_id = $2, username = $3, lang = $4, linked_at = now()`,
+    [row.user_id, chatId, username, lang],
   );
-  return true;
+  return lang;
 }
 
 export async function unlinkUser(userId: string) {
   await query("DELETE FROM telegram_links WHERE user_id = $1", [userId]);
 }
 
-export async function unlinkChat(chatId: number) {
-  await query("DELETE FROM telegram_links WHERE chat_id = $1", [chatId]);
+/** Returns the language the chat was linked in, or null when it wasn't linked. */
+export async function unlinkChat(chatId: number): Promise<Lang | null> {
+  const rows = await query<{ lang: string }>("DELETE FROM telegram_links WHERE chat_id = $1 RETURNING lang", [chatId]);
+  return rows.length ? (hasLang(rows[0].lang) ? rows[0].lang : "fr") : null;
 }
 
 export async function telegramLinkOf(userId: string) {
@@ -84,13 +88,13 @@ export async function createAlert(user: SessionUser, strategyId: string): Promis
   const plan = await planOf(user);
   const strategy = await queryOne<{ json: Strategy }>("SELECT json FROM strategies WHERE id = $1 AND user_id = $2", [strategyId, user.id]);
   if (!strategy) throw new UserError("Stratégie introuvable.");
-  if (plan.alerts === 0) throw new QuotaError(`L'offre ${plan.label} n'inclut pas d'alertes : passe à l'offre Trader pour en recevoir sur Telegram.`);
+  if (plan.alerts === 0) throw new QuotaError("L'offre {0:t} n'inclut pas d'alertes : passe à l'offre Trader pour en recevoir sur Telegram.", [plan.label]);
   if (INTERVAL_MS[strategy.json.interval] < INTERVAL_MS[plan.minInterval]) {
-    throw new QuotaError(`L'offre ${plan.label} suit les stratégies à partir de l'unité ${plan.minInterval}.`);
+    throw new QuotaError("L'offre {0:t} suit les stratégies à partir de l'unité {1}.", [plan.label, plan.minInterval]);
   }
   const [{ n }] = await query<{ n: string }>("SELECT count(*) AS n FROM alerts WHERE user_id = $1", [user.id]);
   const existing = await queryOne("SELECT 1 FROM alerts WHERE user_id = $1 AND strategy_id = $2", [user.id, strategyId]);
-  if (!existing && Number(n) >= plan.alerts) throw new QuotaError(`Ton offre ${plan.label} permet ${plan.alerts} alerte${plan.alerts > 1 ? "s" : ""} : supprime-en une avant d'en créer une autre.`);
+  if (!existing && Number(n) >= plan.alerts) throw new QuotaError("Ton offre {0:t} permet {1} alerte{2} : supprime-en une avant d'en créer une autre.", [plan.label, plan.alerts, plan.alerts > 1 ? "s" : ""]);
   await query(
     `INSERT INTO alerts (id, user_id, strategy_id) VALUES ($1, $2, $3)
      ON CONFLICT (user_id, strategy_id) DO UPDATE SET enabled = true, last_error = NULL`,
@@ -122,28 +126,29 @@ function siteUrl() {
   return url?.replace(/\/$/, "") ?? null;
 }
 
-function formatPrice(x: number) {
+function formatPrice(x: number, lang: Lang) {
   const digits = x >= 1000 ? 2 : x >= 1 ? 4 : 6;
-  return x.toLocaleString("fr-FR", { maximumFractionDigits: digits });
+  return x.toLocaleString(localeTag(lang), { maximumFractionDigits: digits });
 }
 
-/** The Telegram message for the signals of one candle close. */
-export function alertMessage(strategy: Strategy, strategyId: string, signals: SignalKind[], closeTime: number, closePrice: number) {
+/** The Telegram message for the signals of one candle close, in the language the chat was linked in. */
+export function alertMessage(strategy: Strategy, strategyId: string, signals: SignalKind[], closeTime: number, closePrice: number, lang: Lang = "fr") {
+  const t = translator(lang);
   const lt = localTime(strategy.timezone, closeTime);
-  const hhmm = `${String(lt.hour).padStart(2, "0")}h${String(lt.minute).padStart(2, "0")}`;
+  const hhmm = lang === "en" ? `${String(lt.hour).padStart(2, "0")}:${String(lt.minute).padStart(2, "0")}` : `${String(lt.hour).padStart(2, "0")}h${String(lt.minute).padStart(2, "0")}`;
   const lines = [
     `🔔 <b>${escapeHtml(strategy.name)}</b>`,
-    `${escapeHtml(strategy.symbol)} · ${strategy.interval} · clôture de ${hhmm} (${escapeHtml(strategy.timezone)})`,
+    `${escapeHtml(strategy.symbol)} · ${strategy.interval} · ${t("clôture de {0}", [hhmm])} (${escapeHtml(strategy.timezone)})`,
     "",
-    ...signals.map((s) => LABELS[s]),
-    `Prix de clôture : ${formatPrice(closePrice)}`,
+    ...signals.map((s) => t(LABELS[s])),
+    t("Prix de clôture : {0}", [formatPrice(closePrice, lang)]),
   ];
   if (signals.some((s) => s === "long" || s === "short")) {
-    lines.push(`Stop prévu : ${escapeHtml(stopLabel(strategy))} · Objectif : ${escapeHtml(targetLabel(strategy))}`);
+    lines.push(t("Stop prévu : {0} · Objectif : {1}", [escapeHtml(stopLabel(strategy, t)), escapeHtml(targetLabel(strategy, t))]));
   }
   const site = siteUrl();
-  if (site) lines.push("", `<a href="${site}/live?strategy=${encodeURIComponent(strategyId)}">Voir en direct</a>`);
-  lines.push("", "<i>Signal calculé par ta stratégie, à titre de simulation : ce n'est pas un conseil en investissement.</i>");
+  if (site) lines.push("", `<a href="${site}${lang === "en" ? "/en" : ""}/live?strategy=${encodeURIComponent(strategyId)}">${t("Voir en direct")}</a>`);
+  lines.push("", `<i>${t("Signal calculé par ta stratégie, à titre de simulation : ce n'est pas un conseil en investissement.")}</i>`);
   return lines.join("\n");
 }
 
@@ -157,6 +162,7 @@ interface DueAlert {
   json: Strategy;
   last_bar: string | null;
   chat_id: string;
+  lang: string;
   rank: string;
 }
 
@@ -184,7 +190,7 @@ async function evaluateLastClose(strategy: Strategy, now: number) {
  */
 export async function runAlertChecks(now = Date.now()) {
   const due = await query<DueAlert>(
-    `SELECT a.id, a.user_id, u.email, u."emailVerified" AS email_verified, p.plan, a.strategy_id, s.json, a.last_bar, t.chat_id,
+    `SELECT a.id, a.user_id, u.email, u."emailVerified" AS email_verified, p.plan, a.strategy_id, s.json, a.last_bar, t.chat_id, t.lang,
             row_number() OVER (PARTITION BY a.user_id ORDER BY a.created_at) AS rank
      FROM alerts a
      JOIN strategies s ON s.id = a.strategy_id
@@ -215,7 +221,7 @@ export async function runAlertChecks(now = Date.now()) {
         continue;
       }
       if (signals.length) {
-        await sendMessage(a.chat_id, alertMessage(strategy, a.strategy_id, signals, barTime + ms, close));
+        await sendMessage(a.chat_id, alertMessage(strategy, a.strategy_id, signals, barTime + ms, close, hasLang(a.lang) ? a.lang : "fr"));
         sent++;
       }
       await query("UPDATE alerts SET last_bar = $2, last_error = NULL, last_signal_at = CASE WHEN $3 THEN now() ELSE last_signal_at END WHERE id = $1", [

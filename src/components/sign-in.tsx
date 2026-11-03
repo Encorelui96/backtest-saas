@@ -1,7 +1,7 @@
 "use client";
 
-import { tr } from "@/lib/i18n";
-import { Link, useRouter, useT } from "@/lib/client/i18n";
+import { localePath, tr } from "@/lib/i18n";
+import { Link, useLang, useRouter, useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/client/auth-client";
@@ -58,6 +58,10 @@ export function SignIn() {
   const params = useSearchParams();
   const router = useRouter();
   const next = safeNext(params.get("next"));
+  const lang = useLang();
+  // Addresses better-auth redirects to itself (after a link or Google): in the page's language, which the e-mails follow too.
+  const back = localePath(lang, next);
+  const signInPage = localePath(lang, "/connexion");
   const [mode, setMode] = useState<Mode>(params.get("mode") === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -85,7 +89,7 @@ export function SignIn() {
     const { error } =
       mode === "signin"
         ? await authClient.signIn.email({ email: address, password })
-        : await authClient.signUp.email({ email: address, password, name: address.split("@")[0], callbackURL: next });
+        : await authClient.signUp.email({ email: address, password, name: address.split("@")[0], callbackURL: back });
     if (error) {
       setBusy(false);
       setError(message(error, mode));
@@ -104,7 +108,7 @@ export function SignIn() {
   const sendLink = async () => {
     setBusy(true);
     setError(null);
-    const { error } = await authClient.signIn.magicLink({ email: email.trim(), callbackURL: next, errorCallbackURL: "/connexion" });
+    const { error } = await authClient.signIn.magicLink({ email: email.trim(), callbackURL: back, errorCallbackURL: signInPage });
     setBusy(false);
     if (error) setError(error.status === 429 ? tl("Trop d'essais : réessaie dans une minute.") : tl("Envoi impossible. Vérifie l'adresse e-mail."));
     else setSent("link");
@@ -113,7 +117,7 @@ export function SignIn() {
   const sendReset = async () => {
     setBusy(true);
     setError(null);
-    const { error } = await authClient.requestPasswordReset({ email: email.trim().toLowerCase(), redirectTo: "/connexion/nouveau-mot-de-passe" });
+    const { error } = await authClient.requestPasswordReset({ email: email.trim().toLowerCase(), redirectTo: localePath(lang, "/connexion/nouveau-mot-de-passe") });
     setBusy(false);
     if (error) setError(error.status === 429 ? tl("Trop d'essais : réessaie dans une minute.") : tl("Envoi impossible. Vérifie l'adresse e-mail."));
     else setSent("reset");
@@ -200,7 +204,7 @@ export function SignIn() {
                 {tl("Recevoir un lien par e-mail")}</Button>
             )}
             {google && (
-              <Button type="button" variant="ghost" onClick={() => authClient.signIn.social({ provider: "google", callbackURL: next, errorCallbackURL: "/connexion" })}>
+              <Button type="button" variant="ghost" onClick={() => authClient.signIn.social({ provider: "google", callbackURL: back, errorCallbackURL: signInPage })}>
                 {tl("Continuer avec Google")}</Button>
             )}
           </form>

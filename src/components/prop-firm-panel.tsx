@@ -93,7 +93,7 @@ export function PropFirmPanel({ trades, strategy }: { trades: Trade[]; strategy:
           </div>
         )}
         <p className="mt-3 text-[11px] text-muted">
-          {tl("Règles et prix relevés sur les sites officiels le ")}{PROP_FIRMS_CHECKED}{tl(", pour un compte de 100 000 $ : ils changent souvent, vérifie avant d'acheter. Backtest Lab n'est lié à aucune de ces sociétés. Réussir sur le passé ne garantit pas de réussir demain.")}</p>
+          {tl("Règles et prix relevés sur les sites officiels le ")}{tl(PROP_FIRMS_CHECKED)}{tl(", pour un compte de 100 000 $ : ils changent souvent, vérifie avant d'acheter. Backtest Lab n'est lié à aucune de ces sociétés. Réussir sur le passé ne garantit pas de réussir demain.")}</p>
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
@@ -117,7 +117,7 @@ export function PropFirmPanel({ trades, strategy }: { trades: Trade[]; strategy:
                 <optgroup label={tl("Modèles types")}>
                   {PROP_PRESETS.map((p, i) => (
                     <option key={p.name} value={PROP_FIRMS.length + i}>
-                      {p.name}
+                      {tl(p.name)}
                     </option>
                   ))}
                 </optgroup>
@@ -127,7 +127,7 @@ export function PropFirmPanel({ trades, strategy }: { trades: Trade[]; strategy:
             </Field>
             {rules.phases.map((p, i) => (
               <div key={i} className="grid grid-cols-2 gap-2">
-                <Field label={`Objectif ${p.name} (%)`}>
+                <Field label={tl("Objectif {0} (%)", [tl(p.name)])}>
                   <input type="number" step="0.5" value={p.targetPercent} onChange={(e) => setPhase(i, { targetPercent: Number(e.target.value) })} />
                 </Field>
                 <Field label={tl("Jours max")} hint={tl("vide = illimité")}>
@@ -191,7 +191,7 @@ export function PropFirmPanel({ trades, strategy }: { trades: Trade[]; strategy:
 }
 
 function verdict(run: Run, rules: PropRules) {
-  const phase = rules.phases[Math.min(run.phaseReached, rules.phases.length - 1)]?.name ?? "";
+  const phase = tr(rules.phases[Math.min(run.phaseReached, rules.phases.length - 1)]?.name ?? "");
   switch (run.outcome) {
     case "pass":
       return { tone: "text-up", text: tr("Réussi en {0} jour{1}", [run.days, run.days > 1 ? "s" : ""]) };
@@ -292,20 +292,20 @@ function FirmCard({
       </ul>
       <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 text-xs">
         <dt className="text-muted">{tl("Prix")}</dt>
-        <dd>{offer.price}</dd>
+        <dd>{tl(offer.price)}</dd>
         <dt className="text-muted">{tl("Frais")}</dt>
-        <dd>{offer.refund}</dd>
+        <dd>{tl(offer.refund)}</dd>
         <dt className="text-muted">{tl("Partage")}</dt>
-        <dd>{offer.split}</dd>
+        <dd>{tl(offer.split)}</dd>
         {offer.payouts && (
           <>
             <dt className="text-muted">{tl("Paiements")}</dt>
-            <dd>{offer.payouts}</dd>
+            <dd>{tl(offer.payouts)}</dd>
           </>
         )}
         <dt className="text-muted">{tl("Annonces")}</dt>
         <dd>
-          {offer.news}
+          {tl(offer.news)}
           {newsApplies && newsTrades > 0 && (
             <span className="mt-0.5 block text-warn">
               {newsTrades > 1
@@ -314,7 +314,7 @@ function FirmCard({
           )}
         </dd>
         <dt className="text-muted">{tl("Week-end")}</dt>
-        <dd>{offer.weekend}</dd>
+        <dd>{tl(offer.weekend)}</dd>
         <dt className="text-muted">{tl("Levier")}</dt>
         <dd>
           {maxLeverage !== undefined ? (
@@ -328,13 +328,13 @@ function FirmCard({
           ) : (
             <span>{tl("Ta plus grosse position fait ")}{num(leverage, 1)} {tl(" fois le compte.")}</span>
           )}{" "}
-          <span className="text-muted">{offer.leverageNote}</span>
+          <span className="text-muted">{tl(offer.leverageNote)}</span>
         </dd>
       </dl>
       {offer.extras.length > 0 && (
         <ul className="list-disc pl-4 text-xs text-muted">
           {offer.extras.map((x) => (
-            <li key={x}>{x}</li>
+            <li key={x}>{tl(x)}</li>
           ))}
         </ul>
       )}

@@ -1,9 +1,10 @@
 import "server-only";
 import { INTERVAL_MS, type Interval } from "../types";
 import type { PoolClient } from "pg";
-import { PACK_BY_ID, PLANS, euros, type CreditKind, type PackId, type Plan, type PlanId } from "../plans";
+import { PACK_BY_ID, PLANS, type CreditKind, type PackId, type Plan, type PlanId } from "../plans";
 import { query, queryOne, transaction } from "./db";
 import type { SessionUser } from "./auth";
+import { UserError } from "./errors";
 
 export { PLANS, type Plan, type PlanId };
 
@@ -12,13 +13,14 @@ const AI_PER_MINUTE = 5;
 /** AI translations a day for the whole site: a crowd of new accounts, each with its free quota, can't run up the bill. */
 const AI_DAILY_CAP = Number(process.env.AI_DAILY_CAP) > 0 ? Number(process.env.AI_DAILY_CAP) : 200;
 
-export class QuotaError extends Error {
+export class QuotaError extends UserError {
   constructor(
-    message: string,
+    text: string,
+    values: readonly unknown[] = [],
     /** The recharge that would lift this limit, offered next to the message. */
     readonly recharge?: PackId,
   ) {
-    super(message);
+    super(text, values);
   }
 }
 
@@ -96,12 +98,9 @@ export async function withUserLock<T>(user: SessionUser, fn: (run: Runner, clien
   });
 }
 
-function quotaSpent(what: string, u: Usage, pack: PackId) {
+function quotaSpent(text: string, count: number, u: Usage, pack: PackId) {
   const p = PACK_BY_ID[pack];
-  return new QuotaError(
-    `Tu as utilisé tes ${what} du mois (offre ${u.plan.label}). Ils reviennent le ${new Date(u.resetsAt).toLocaleDateString("fr-FR")}, ou recharge tout de suite : ${p.label} pour ${euros(p.price)}.`,
-    pack,
-  );
+  return new QuotaError(text, [count, u.plan.label, u.resetsAt, p.label, p.price], pack);
 }
 
 /**
@@ -112,14 +111,14 @@ function quotaSpent(what: string, u: Usage, pack: PackId) {
 export async function checkBacktestAllowed(user: SessionUser, interval: Interval, run: Runner = query): Promise<{ useCredit: boolean }> {
   const u = await usageOf(user, run);
   if (INTERVAL_MS[interval] < INTERVAL_MS[u.plan.minInterval]) {
-    throw new QuotaError(`L'offre ${u.plan.label} teste à partir de l'unité ${u.plan.minInterval}. Passe à l'offre Trader pour le scalp en ${interval}.`);
+    throw new QuotaError("L'offre {0:t} teste à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [u.plan.label, u.plan.minInterval, interval]);
   }
   if (u.activeJobs >= u.plan.concurrentJobs) {
-    throw new QuotaError(`${u.activeJobs} backtest${u.activeJobs > 1 ? "s sont" : " est"} déjà en cours : attends qu'il se termine.`);
+    throw new QuotaError(u.activeJobs > 1 ? "{0} backtests sont déjà en cours : attends qu'ils se terminent." : "1 backtest est déjà en cours : attends qu'il se termine.", [u.activeJobs]);
   }
   if (u.backtests < u.plan.backtestsPerMonth) return { useCredit: false };
   if (u.credits.backtest > 0) return { useCredit: true };
-  throw quotaSpent(`${u.plan.backtestsPerMonth} backtests`, u, "bt100");
+  throw quotaSpent("Tu as utilisé tes {0} backtests du mois (offre {1:t}). Ils reviennent le {2:date}, ou recharge tout de suite : {3:t} pour {4:euros}.", u.plan.backtestsPerMonth, u, "bt100");
 }
 
 /** Records the use of one recharge credit (`reason` names what it paid for). */
@@ -149,7 +148,7 @@ export async function consumeAi(user: SessionUser): Promise<string> {
   return withUserLock(user, async (run) => {
     const u = await usageOf(user, run);
     const useCredit = u.ai >= u.plan.aiPerMonth;
-    if (useCredit && u.credits.ai === 0) throw quotaSpent(`${u.plan.aiPerMonth} traductions par l'IA`, u, "ai50");
+    if (useCredit && u.credits.ai === 0) throw quotaSpent("Tu as utilisé tes {0} traductions par l'IA du mois (offre {1:t}). Elles reviennent le {2:date}, ou recharge tout de suite : {3:t} pour {4:euros}.", u.plan.aiPerMonth, u, "ai50");
     const [recent] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'ai' AND created_at > now() - interval '1 minute'", [user.id]);
     if (Number(recent.n) >= AI_PER_MINUTE) throw new QuotaError("Trop de traductions d'affilée : attends une minute.");
     // The site-wide count runs under its own lock, so accounts translating at the same moment can't all slip under the cap.

@@ -8,6 +8,7 @@ import { runBacktest } from "@/lib/engine/backtest";
 import { defaultConfig } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { handle } from "@/lib/server/http";
+import { requestT } from "@/lib/server/lang";
 import { translatorOf } from "@/lib/server/lang";
 import { requireUser } from "@/lib/server/auth";
 import { limitPerMinute } from "@/lib/server/rate-limit";
@@ -38,7 +39,7 @@ export async function POST(req: Request) {
     const plan = await planOf(user);
     const ms = INTERVAL_MS[strategy.interval];
     if (ms < INTERVAL_MS[plan.minInterval]) {
-      throw new QuotaError(`L'offre ${plan.label} suit les stratégies à partir de l'unité ${plan.minInterval}. Passe à l'offre Trader pour le scalp en ${strategy.interval}.`);
+      throw new QuotaError("L'offre {0:t} suit les stratégies à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [plan.label, plan.minInterval, strategy.interval]);
     }
     const display = body.display ?? 300;
     const warmBars = Math.min(4000, Math.ceil(warmupMs(strategy) / ms) + 10);
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     const forming = rows.find((r) => r.t + ms > now) ?? null;
     const candles = rowsToCandles(closed);
     const n = candles.t.length;
-    if (n < 10) return Response.json({ error: "Pas assez de données pour ce symbole." }, { status: 400 });
+    if (n < 10) return Response.json({ error: (await requestT())("Pas assez de données pour ce symbole.") }, { status: 400 });
     const startIndex = Math.max(0, n - display);
 
     const ctx = new SeriesContext(candles, strategy.interval, strategy.timezone);

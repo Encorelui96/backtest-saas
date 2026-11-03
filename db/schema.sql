@@ -119,6 +119,9 @@ CREATE TABLE IF NOT EXISTS telegram_link_codes (
   user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
   expires_at timestamptz NOT NULL
 );
+-- The language of the site the chat was linked from ('fr' or 'en'): the bot writes in it.
+ALTER TABLE telegram_links ADD COLUMN IF NOT EXISTS lang text NOT NULL DEFAULT 'fr';
+ALTER TABLE telegram_link_codes ADD COLUMN IF NOT EXISTS lang text NOT NULL DEFAULT 'fr';
 
 -- Signal alerts: the worker checks each enabled strategy at every candle close.
 CREATE TABLE IF NOT EXISTS alerts (
