@@ -36,6 +36,22 @@ function checkOrigin(req: NextRequest) {
   return NextResponse.json({ error: translatorOf(req)("Requête refusée : elle ne vient pas de Backtest Lab.") }, { status: 403 });
 }
 
+/** The address Render gives every service: it stays reachable, but it isn't the site's public one. */
+const RENDER_HOST = ".onrender.com";
+
+/**
+ * Sends visitors of Render's address to the public one: sign-in only works there (better-auth refuses
+ * other origins), and each page keeps one URL. Pages only: Render's health check goes to /api/me.
+ */
+function toPublicAddress(req: NextRequest) {
+  if (req.method !== "GET" && req.method !== "HEAD") return null;
+  const host = (req.headers.get("x-forwarded-host") ?? req.headers.get("host"))?.split(",")[0].trim();
+  const publicUrl = process.env.BETTER_AUTH_URL;
+  const publicHost = hostOf(publicUrl);
+  if (!host?.endsWith(RENDER_HOST) || !publicHost || publicHost.endsWith(RENDER_HOST)) return null;
+  return NextResponse.redirect(new URL(`${req.nextUrl.pathname}${req.nextUrl.search}`, publicUrl), 308);
+}
+
 /**
  * Pages live under app/[lang]. The French site keeps its addresses (/tarifs is served from /fr/tarifs);
  * the English one is under /en. /fr/… redirects to the address without it, so each page has one URL.
@@ -75,7 +91,8 @@ function routeLanguage(req: NextRequest) {
 }
 
 export function proxy(req: NextRequest) {
-  return req.nextUrl.pathname.startsWith("/api/") ? checkOrigin(req) : routeLanguage(req);
+  if (req.nextUrl.pathname.startsWith("/api/")) return checkOrigin(req);
+  return toPublicAddress(req) ?? routeLanguage(req);
 }
 
 export const config = {
