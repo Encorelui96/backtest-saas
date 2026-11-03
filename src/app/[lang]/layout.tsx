@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Prom
   return {
     metadataBase: new URL(SITE_URL),
     title: "Backtest Lab",
-    description: t("Backteste tes stratégies de scalp, day et swing trading sur les cryptos, le forex, l'or et le Nasdaq, avant d'y mettre ton argent."),
+    description: t("Estime tes chances de réussir un challenge de prop firm avant de le payer : ta stratégie rejouée sur des années de cours avec les règles de FTMO, FundedNext et The5ers. Cryptos, forex, or et Nasdaq."),
     openGraph: { siteName: SITE_NAME, locale: lang === "en" ? "en_US" : "fr_FR", type: "website" },
     twitter: { card: "summary_large_image" },
     appleWebApp: { capable: true, title: "Backtest Lab", statusBarStyle: "black-translucent" },

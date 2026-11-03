@@ -5,4 +5,4 @@
 export const SITE_URL = (process.env.SITE_URL ?? process.env.RENDER_EXTERNAL_URL ?? "https://backtest-lab-rnt9.onrender.com").replace(/\/$/, "");
 
 export const SITE_NAME = "Backtest Lab";
-export const SITE_TAGLINE = "Teste ta stratégie de trading avant d'y mettre ton argent";
+export const SITE_TAGLINE = "Avant de payer ton challenge, estime tes chances sur l'historique";

@@ -8,7 +8,7 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/tarifs">):
   const { lang, t } = await pageLang(params);
   return {
     title: t("Tarifs · Backtest Lab"),
-    description: t("Backtest Lab est gratuit pour découvrir ({0} backtests par mois). Offres Trader à {1} et Pro à {2} par mois, 2 mois offerts à l'année.", [
+    description: t("Estime tes chances sur un challenge prop firm gratuitement ({0} backtests par mois). Offres Trader à {1} et Pro à {2} par mois, 2 mois offerts à l'année.", [
       PLANS.free.backtestsPerMonth,
       euros(PLANS.trader.monthly, lang),
       euros(PLANS.pro.monthly, lang),
@@ -17,6 +17,10 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/tarifs">):
 }
 
 const FAQ: { q: string; a: string }[] = [
+  {
+    q: "Le challenge prop firm est-il inclus dans l'offre gratuite ?",
+    a: "Oui. Après un backtest, l'onglet Challenge prop firm estime tes chances sur l'historique, avec les essais et les frais à prévoir. C'est une estimation sur le passé, pas une garantie de réussite.",
+  },
   {
     q: "Qu'est-ce qu'un backtest compte ?",
     a: "Chaque test lancé et terminé compte pour un. Un test qui échoue ne compte pas. Rouvrir un rapport déjà calculé est gratuit et illimité.",
@@ -46,7 +50,7 @@ export default async function TarifsPage({ params }: PageProps<"/[lang]/tarifs">
       <header className="text-center">
         <h1 className="text-2xl font-semibold sm:text-3xl">{t("Des tarifs simples")}</h1>
         <p className="mx-auto mt-2 max-w-xl text-sm text-muted sm:text-base">
-          {t("Commence gratuitement. Passe à une offre payante le jour où tu testes plus d'idées, ou en unités de temps courtes.")}
+          {t("Commence gratuitement et estime tes chances sur un challenge prop firm. Passe à une offre payante le jour où tu testes plus d'idées, ou en unités de temps courtes.")}
         </p>
       </header>
       <Pricing />

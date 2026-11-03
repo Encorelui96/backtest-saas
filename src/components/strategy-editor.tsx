@@ -2,7 +2,7 @@
 
 import { tr } from "@/lib/i18n";
 import { Link, rich, useRouter, useT, useText } from "@/lib/client/i18n";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
@@ -85,8 +85,11 @@ export function StrategyEditor({ id }: { id?: string }) {
   // Beginners see a summary of the rules and no idea box until they ask for them.
   const [editRules, setEditRules] = useState(false);
   const [showIdea, setShowIdea] = useState(false);
+  // Came from the home page's main button: the report opens on the challenge. Read once, saving rewrites the address.
+  const challengeGoal = useRef(false);
 
   useEffect(() => {
+    challengeGoal.current = new URLSearchParams(window.location.search).get("goal") === "prop";
     api<Meta>("/api/meta").then(setMeta).catch((e) => setError(e.message));
     if (id) {
       api<{ strategy: Strategy; sourceText: string | null }>(`/api/strategies/${id}`)
@@ -179,7 +182,7 @@ export function StrategyEditor({ id }: { id?: string }) {
         const state = await api<JobState>(`/api/jobs/${jobId}`);
         setJob(state);
         if (state.status === "done" && state.resultId) {
-          router.push(`/backtests/${state.resultId}`);
+          router.push(`/backtests/${state.resultId}${challengeGoal.current ? "?tab=prop" : ""}`);
           return;
         }
         if (state.status === "failed") throw new Error(state.error ?? tl("Le calcul a échoué."));

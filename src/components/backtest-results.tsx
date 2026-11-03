@@ -45,7 +45,8 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
   const tx = useText();
   const [data, setData] = useState<Stored | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("overview");
+  // The first render shows "loading" on the server and in the browser alike, so reading the address here can't mismatch.
+  const [tab, setTab] = useState<Tab>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "prop" ? "prop" : "overview"));
   const [selected, setSelected] = useState<number | null>(null);
   const beginner = useBeginner();
 

@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Backtest Lab : teste ta stratégie de trading avant d'y mettre ton argent";
+export const alt = "Backtest Lab : avant de payer ton challenge, estime tes chances sur l'historique";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -17,10 +17,10 @@ export default async function Image({ params }: { params: Promise<{ lang: string
           Backtest<span style={{ color: "#3b82f6" }}>Lab</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, lineHeight: 1.1 }}>{en ? "Test your trading strategy" : "Teste ta stratégie de trading"}</div>
-          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, lineHeight: 1.1, color: "#3b82f6" }}>{en ? "before you put your money in" : "avant d'y mettre ton argent"}</div>
+          <div style={{ display: "flex", fontSize: 56, fontWeight: 700, lineHeight: 1.1 }}>{en ? "Before you pay for your challenge," : "Avant de payer ton challenge,"}</div>
+          <div style={{ display: "flex", fontSize: 56, fontWeight: 700, lineHeight: 1.1, color: "#3b82f6" }}>{en ? "estimate your chances on past data" : "estime tes chances sur l'historique"}</div>
           <div style={{ display: "flex", marginTop: 20, fontSize: 30, color: "#8a97ab" }}>
-            {en ? "Crypto, forex, gold and Nasdaq · your rules in plain words · robustness and prop firm" : "Crypto, forex, or et Nasdaq · tes règles en français · robustesse et prop firm"}
+            {en ? "FTMO, FundedNext and The5ers rules · chances, attempts and fees" : "Règles de FTMO, FundedNext et The5ers · chances, essais et frais"}
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 130 }}>
