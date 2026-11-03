@@ -8,6 +8,7 @@ import { eventsBetween } from "@/lib/engine/calendar";
 import { PROP_PRESETS, simulatePropFirm, type PropResult, type PropRules, type PropSummary, type Run } from "@/lib/engine/propfirm";
 import { isCrypto, market } from "@/lib/markets";
 import { PROP_FIRMS, PROP_FIRMS_CHECKED, type AssetKind, type PropFirmOffer } from "@/lib/prop-firms";
+import { PlanLock } from "./plan-lock";
 import type { Strategy } from "@/lib/strategy/schema";
 import { num, pct } from "@/lib/client/format";
 import { Help } from "./learn";
@@ -23,7 +24,9 @@ const ZONE_LABEL: Record<string, string> = {
 
 const money = (x: number, currency: string) => `${num(Math.round(x), 0)} ${currency}`;
 
-export function PropFirmPanel({ trades, strategy }: { trades: Trade[]; strategy: Strategy }) {
+export function PropFirmPanel({ trades, strategy, locked = false }: { trades: Trade[]; strategy: Strategy; locked?: boolean }) {
+  // Free plan: one firm at a time.
+  const [firm, setFirm] = useState(0);
   const tl = useT();
   const hasStop = trades.length > 0 && trades.every((t) => t.r !== null);
   const baseRisk = hasStop ? strategy.riskPerTradePercent : strategy.positionSizePercent;
@@ -85,6 +88,21 @@ export function PropFirmPanel({ trades, strategy }: { trades: Trade[]; strategy:
         </p>
         {firms?.key !== risk ? (
           <p className="text-sm text-muted">{tl("Simulation en cours…")}</p>
+        ) : locked ? (
+          <div className="flex flex-col gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              <span className="text-muted">{tl("Prop firm")}</span>
+              <select value={firm} onChange={(e) => setFirm(Number(e.target.value))}>
+                {FLAGSHIPS.map((f, i) => (
+                  <option key={f.id} value={i}>
+                    {f.firm}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <FirmCard offer={FLAGSHIPS[firm]} res={firms.results[firm]} asset={asset} leverage={leverage} newsTrades={newsTrades} total={trades.length} onDetail={() => setRules(FLAGSHIPS[firm].rules)} />
+            <PlanLock>{tl("Le comparatif côte à côte des prop firms est réservé aux offres Trader et Pro.")}</PlanLock>
+          </div>
         ) : (
           <div className="grid gap-3 lg:grid-cols-3">
             {FLAGSHIPS.map((f, i) => (

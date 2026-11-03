@@ -92,3 +92,33 @@ describe("recharges", () => {
     expect(db.ledger).toHaveLength(0);
   });
 });
+
+describe("free plan limits", () => {
+  const DAY = 86_400_000;
+
+  beforeEach(() => {
+    db.plan = "free";
+  });
+
+  it("allows 15 minutes and refuses 5 minutes", async () => {
+    expect(await checkBacktestAllowed(user, "15m", sql)).toEqual({ useCredit: false });
+    await expect(checkBacktestAllowed(user, "5m", sql)).rejects.toBeInstanceOf(QuotaError);
+  });
+
+  it("refuses a test that starts before the last 12 months", async () => {
+    await expect(checkBacktestAllowed(user, "1h", sql, Date.now() - 400 * DAY)).rejects.toBeInstanceOf(QuotaError);
+    expect(await checkBacktestAllowed(user, "1h", sql, Date.now() - 300 * DAY)).toEqual({ useCredit: false });
+  });
+
+  it("leaves the paid plans the whole history", async () => {
+    db.plan = "trader";
+    expect(await checkBacktestAllowed(user, "1h", sql, Date.now() - 2000 * DAY)).toEqual({ useCredit: false });
+  });
+
+  it("counts 30 backtests a month", async () => {
+    db.backtests = 29;
+    expect(await checkBacktestAllowed(user, "1h", sql)).toEqual({ useCredit: false });
+    db.backtests = 30;
+    await expect(checkBacktestAllowed(user, "1h", sql)).rejects.toBeInstanceOf(QuotaError);
+  });
+});

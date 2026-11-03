@@ -12,6 +12,10 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      {
+        title: "Une offre gratuite plus large",
+        text: "30 backtests et 5 traductions par l'IA par mois, à partir de l'unité 15 minutes, sur les 12 derniers mois. Les unités 1 et 5 minutes, tout l'historique, le détail de la robustesse, le comparatif des prop firms et le suivi Live passent aux offres Trader et Pro.",
+      },
       { title: "Backtest Lab en anglais", text: "Tout le site existe aussi en anglais, sous /en : bouton FR / EN en haut de chaque page. L'IA répond dans la langue du site." },
       { title: "Alertes Telegram", text: "Les offres Trader et Pro reçoivent sur Telegram les signaux de leurs stratégies, à la clôture de chaque bougie." },
       { title: "Recharges", text: "Quand le quota du mois est épuisé, une recharge ajoute des backtests ou des traductions par l'IA, sans attendre le mois suivant. Les crédits n'expirent pas." },

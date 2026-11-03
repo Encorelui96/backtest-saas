@@ -20,11 +20,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/questions"
 const FAQ_FR: { q: string; a: string }[] = [
   {
     q: "Qu'est-ce que Backtest Lab ?",
-    a: "Un outil en ligne qui teste une stratégie de trading sur des années de cours passés, avant d'y mettre de l'argent. Tu décris tes règles en français ou tu les choisis dans des menus ; Backtest Lab rejoue le marché bougie par bougie, applique les frais, puis te dit ce que la stratégie aurait gagné ou perdu et si ce résultat tient la route.",
+    a: "Un outil en ligne pour estimer tes chances de réussir un challenge de prop firm avant de le payer, et plus largement pour tester une stratégie de trading sur des années de cours passés. Tu décris tes règles en français ou tu les choisis dans des menus ; Backtest Lab rejoue le marché bougie par bougie, applique les frais, puis te dit ce que la stratégie aurait gagné ou perdu et si ce résultat tient la route.",
   },
   {
     q: "Pour qui ?",
-    a: "Pour les traders particuliers qui veulent vérifier une idée avant de la jouer : débutants (un mode guidé explique chaque mot), traders qui préparent un challenge de prop firm, et traders expérimentés qui veulent tester vite sans écrire de code.",
+    a: "Pour les traders particuliers qui préparent un challenge de prop firm et veulent estimer leurs chances avant de payer, pour les débutants (un mode guidé explique chaque mot), et pour les traders expérimentés qui veulent tester vite sans écrire de code.",
   },
   {
     q: "Sur quels marchés ?",
@@ -40,7 +40,7 @@ const FAQ_FR: { q: string; a: string }[] = [
   },
   {
     q: "Combien ça coûte ?",
-    a: `L'offre Découverte est gratuite, sans carte bancaire : ${PLANS.free.backtestsPerMonth} backtests et ${PLANS.free.aiPerMonth} traductions par l'IA par mois. Les offres Trader (${euros(PLANS.trader.monthly)} par mois) et Pro (${euros(PLANS.pro.monthly)} par mois) donnent plus de tests et toutes les unités de temps, avec 2 mois offerts à l'année. Le paiement en ligne n'est pas encore ouvert.`,
+    a: `L'offre Découverte est gratuite, sans carte bancaire : ${PLANS.free.backtestsPerMonth} backtests et ${PLANS.free.aiPerMonth} traductions par l'IA par mois, à partir de l'unité 15 minutes, sur les 12 derniers mois. Les offres Trader (${euros(PLANS.trader.monthly)} par mois) et Pro (${euros(PLANS.pro.monthly)} par mois) donnent plus de tests, toutes les unités de temps, tout l'historique, le détail de la robustesse, le comparatif des prop firms et le suivi Live, avec 2 mois offerts à l'année. Le paiement en ligne n'est pas encore ouvert.`,
   },
   {
     q: "Backtest Lab passe-t-il des ordres pour moi ?",
@@ -49,6 +49,10 @@ const FAQ_FR: { q: string; a: string }[] = [
   {
     q: "Qu'est-ce que la simulation de challenge prop firm ?",
     a: "À partir des trades de ton backtest, Backtest Lab estime ta probabilité de réussir un challenge de prop firm (objectif de gain, perte maximale du jour et totale) selon ton risque par trade, et la compare à celle d'un trader qui jouerait au hasard. Les challenges de FTMO, FundedNext et The5ers sont rejoués avec leurs règles officielles, avec le nombre d'essais et les frais à prévoir.",
+  },
+  {
+    q: "Est-ce que ça garantit de réussir un challenge ?",
+    a: "Non. L'estimation repose sur des données passées et sur les règles relevées à une date donnée, qui peuvent changer. Elle aide à décider, mais le passé ne garantit rien, et Backtest Lab n'a aucun lien avec ces prop firms.",
   },
   {
     q: "Que deviennent mes stratégies ?",
@@ -82,11 +86,11 @@ const COMPARISON_FR: { tool: string; good: string; limits: string }[] = [
 const FAQ_EN: { q: string; a: string }[] = [
   {
     q: "What is Backtest Lab?",
-    a: "An online tool that tests a trading strategy on years of past prices, before you put money into it. You describe your rules in plain words or pick them from menus; Backtest Lab replays the market candle by candle, applies the fees, then tells you what the strategy would have made or lost and whether that result holds up.",
+    a: "An online tool to estimate your chances of passing a prop firm challenge before you pay for it, and more broadly to test a trading strategy on years of past prices. You describe your rules in plain words or pick them from menus; Backtest Lab replays the market candle by candle, applies the fees, then tells you what the strategy would have made or lost and whether that result holds up.",
   },
   {
     q: "Who is it for?",
-    a: "For retail traders who want to check an idea before trading it: beginners (a guided mode explains every term), traders preparing a prop firm challenge, and experienced traders who want to test quickly without writing code.",
+    a: "For retail traders preparing a prop firm challenge who want to estimate their chances before paying, for beginners (a guided mode explains every term), and for experienced traders who want to test quickly without writing code.",
   },
   {
     q: "Which markets?",
@@ -102,7 +106,7 @@ const FAQ_EN: { q: string; a: string }[] = [
   },
   {
     q: "How much does it cost?",
-    a: `The Starter plan is free, no credit card: ${PLANS.free.backtestsPerMonth} backtests and ${PLANS.free.aiPerMonth} AI translations a month. The Trader (${euros(PLANS.trader.monthly, "en")} a month) and Pro (${euros(PLANS.pro.monthly, "en")} a month) plans give more tests and every timeframe, with 2 months free when paid yearly. Online payment isn't open yet.`,
+    a: `The Starter plan is free, no credit card: ${PLANS.free.backtestsPerMonth} backtests and ${PLANS.free.aiPerMonth} AI translations a month, from the 15-minute timeframe, on the last 12 months. The Trader (${euros(PLANS.trader.monthly, "en")} a month) and Pro (${euros(PLANS.pro.monthly, "en")} a month) plans give more tests, every timeframe, the full history, the robustness detail, the prop firm comparison and Live tracking, with 2 months free when paid yearly. Online payment isn't open yet.`,
   },
   {
     q: "Does Backtest Lab place orders for me?",
@@ -111,6 +115,10 @@ const FAQ_EN: { q: string; a: string }[] = [
   {
     q: "What is the prop firm challenge simulation?",
     a: "From the trades of your backtest, Backtest Lab estimates your probability of passing a prop firm challenge (profit target, daily and overall max loss) depending on your risk per trade, and compares it with a trader who would trade at random. The FTMO, FundedNext and The5ers challenges are replayed with their official rules, with the number of attempts and the fees to expect.",
+  },
+  {
+    q: "Does it guarantee passing a challenge?",
+    a: "No. The estimate rests on past data and on rules read on a given date, which can change. It helps you decide, but the past guarantees nothing, and Backtest Lab has no tie with these prop firms.",
   },
   {
     q: "What happens to my strategies?",

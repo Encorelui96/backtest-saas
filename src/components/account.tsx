@@ -13,7 +13,7 @@ interface Me {
   hasPassword: boolean;
   isAdmin: boolean;
   usage: {
-    plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number; minInterval: string; alerts: number };
+    plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number; minInterval: string; historyDays: number | null; alerts: number };
     backtests: number;
     ai: number;
     resetsAt: string;
@@ -68,7 +68,7 @@ export function Account() {
           <Meter label={tl("Backtests ce mois-ci")} used={u.backtests} max={u.plan.backtestsPerMonth} />
           <Meter label={tl("Traductions par l'IA ce mois-ci")} used={u.ai} max={u.plan.aiPerMonth} />
           <p className="text-xs text-muted">
-            {tl("Unité de temps minimale : ")}{u.plan.minInterval}{tl(" · alertes : ")}{u.plan.alerts}{tl(" · compteurs remis à zéro le ")}{date(new Date(u.resetsAt).getTime(), false)}.
+            {tl("Unité de temps minimale : ")}{u.plan.minInterval}{tl(" · historique : ")}{u.plan.historyDays === null ? tl("complet") : tl("{0} mois", [Math.round(u.plan.historyDays / 30.44)])}{tl(" · alertes : ")}{u.plan.alerts}{tl(" · compteurs remis à zéro le ")}{date(new Date(u.resetsAt).getTime(), false)}.
           </p>
           {(u.credits.ai > 0 || u.credits.backtest > 0) && (
             <p className="text-sm">

@@ -52,6 +52,7 @@ describe("addresses", () => {
     expect(localePath("en", "/tarifs")).toBe("/en/tarifs");
     expect(localePath("en", "/")).toBe("/en");
     expect(localePath("en", "/api/me")).toBe("/api/me");
+    expect(localePath("en", "/strategies/new?goal=prop")).toBe("/en/strategies/new?goal=prop");
     expect(switchPath("/en/tarifs", "fr")).toBe("/tarifs");
     expect(switchPath("/tarifs", "en")).toBe("/en/tarifs");
   });

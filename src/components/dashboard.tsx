@@ -4,7 +4,8 @@ import { tr } from "@/lib/i18n";
 import { Link, useRouter, useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
-import { welcomeDone } from "@/lib/client/preferences";
+import { stepSeen, welcomeDone } from "@/lib/client/preferences";
+import { firstStepsDone } from "@/lib/next-step";
 import { date, num, pct, r, tone, formatLocale } from "@/lib/client/format";
 import type { Strategy } from "@/lib/strategy/schema";
 import type { BacktestSummary } from "@/lib/server/backtests";
@@ -65,14 +66,16 @@ function verdict(s: BacktestSummary) {
   return { label: tr("Fragile"), style: "border-warn/40 text-warn" };
 }
 
-/** Beginner mode: three first steps that tick themselves as the user goes. */
-function FirstSteps({ backtests }: { backtests: BacktestRow[] }) {
+/** Beginner mode: four first steps that tick themselves as the user goes. Each report opens on the latest test. */
+function FirstSteps({ strategies, backtests }: { strategies: number; backtests: BacktestRow[] }) {
   const tl = useT();
-  const markets = new Set(backtests.map((b) => b.symbol)).size;
+  const done = firstStepsDone({ strategies, backtests: backtests.length, verdictSeen: stepSeen("verdict"), challengeSeen: stepSeen("challenge") });
+  const report = backtests[0] ? `/backtests/${backtests[0].id}` : "/strategies/new";
   const steps = [
-    { done: backtests.length > 0, text: tl("Lancer ton premier backtest"), href: "/strategies/new" },
-    { done: markets >= 2, text: tl("Tester la même idée sur un autre marché"), href: "/strategies/new" },
-    { done: backtests.length >= 3, text: tl("Comparer au moins 3 tests"), href: "/strategies/new" },
+    { done: done.model, text: tl("Choisir un modèle"), href: "/strategies/new" },
+    { done: done.run, text: tl("Lancer le test"), href: "/strategies/new" },
+    { done: done.verdict, text: tl("Lire le verdict"), href: report },
+    { done: done.challenge, text: tl("Tester le challenge prop firm"), href: backtests[0] ? `${report}?tab=prop` : report },
   ];
   if (steps.every((s) => s.done)) return null;
   return (
@@ -141,7 +144,7 @@ export function Dashboard() {
       {welcome && backtests !== null && backtests.length === 0 ? (
         <Welcome onDone={() => setWelcome(false)} />
       ) : (
-        beginner && backtests !== null && <FirstSteps backtests={backtests} />
+        beginner && backtests !== null && <FirstSteps strategies={strategies?.length ?? 0} backtests={backtests} />
       )}
       {me && !me.surveyAnswered && backtests !== null && backtests.length >= 3 && <PmfSurvey />}
 

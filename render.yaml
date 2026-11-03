@@ -59,10 +59,7 @@ services:
         sync: false
       # The site's address, for the "Voir en direct" link in the alerts.
       - key: SITE_HOST
-        fromService:
-          name: backtest-lab
-          type: web
-          property: host
+        value: backtestlab.fr
 
 databases:
   - name: backtest-db
