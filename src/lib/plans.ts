@@ -22,6 +22,12 @@ export interface Plan {
   aiPerMonth: number;
   /** Shortest strategy timeframe allowed. */
   minInterval: Interval;
+  /** How far back from today a backtest can start, in days; null for the whole history. */
+  historyDays: number | null;
+  /** Following strategies on the Live page. Plain charts stay open to all. */
+  live: boolean;
+  /** The detail of the robustness checks and the side-by-side prop firm comparison. */
+  advanced: boolean;
   /** Backtests running or waiting at the same time. */
   concurrentJobs: number;
   alerts: number;
@@ -34,9 +40,12 @@ export const PLANS: Record<PlanId, Plan> = {
     pitch: "Pour découvrir le backtest et tester tes premières idées.",
     monthly: 0,
     yearly: 0,
-    backtestsPerMonth: 5,
-    aiPerMonth: 3,
-    minInterval: "1h",
+    backtestsPerMonth: 30,
+    aiPerMonth: 5,
+    minInterval: "15m",
+    historyDays: 365,
+    live: false,
+    advanced: false,
     concurrentJobs: 1,
     alerts: 0,
   },
@@ -49,6 +58,9 @@ export const PLANS: Record<PlanId, Plan> = {
     backtestsPerMonth: 100,
     aiPerMonth: 50,
     minInterval: "1m",
+    historyDays: null,
+    live: true,
+    advanced: true,
     concurrentJobs: 2,
     alerts: 3,
   },
@@ -62,12 +74,38 @@ export const PLANS: Record<PlanId, Plan> = {
     // About 15 € of AI at most on a 39 € plan; recharges cover the heavy months.
     aiPerMonth: 200,
     minInterval: "1m",
+    historyDays: null,
+    live: true,
+    advanced: true,
     concurrentJobs: 3,
     alerts: 20,
   },
 };
 
 export const PAID_PLANS = [PLANS.trader, PLANS.pro];
+
+const DAY = 86_400_000;
+
+/**
+ * The first day a plan can test, at midnight UTC since test periods are whole
+ * days; null when the whole history is open. Counted from today, so a long
+ * history can't be rebuilt one year at a time.
+ */
+export function earliestStart(plan: Plan, now = Date.now()): number | null {
+  return plan.historyDays === null ? null : Math.floor(now / DAY) * DAY - plan.historyDays * DAY;
+}
+
+/** Moves a "YYYY-MM-DD" start date forward to what the plan allows. */
+export function clampStartDate(startDate: string, plan: Plan, now = Date.now()) {
+  const earliest = earliestStart(plan, now);
+  if (earliest === null || Date.parse(startDate) >= earliest) return startDate;
+  return new Date(earliest).toISOString().slice(0, 10);
+}
+
+/** The plan's history in months, for the messages: 12 for 365 days. */
+export function historyMonths(plan: Plan) {
+  return plan.historyDays === null ? null : Math.round(plan.historyDays / 30.44);
+}
 
 export type CreditKind = "ai" | "backtest";
 export type PackId = "ai50" | "bt100" | "combo";

@@ -19,7 +19,11 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/tarifs">):
 const FAQ: { q: string; a: string }[] = [
   {
     q: "Le challenge prop firm est-il inclus dans l'offre gratuite ?",
-    a: "Oui. Après un backtest, l'onglet Challenge prop firm estime tes chances sur l'historique, avec les essais et les frais à prévoir. C'est une estimation sur le passé, pas une garantie de réussite.",
+    a: "Oui. Après un backtest, l'onglet Challenge prop firm estime tes chances sur l'historique, firme par firme, avec les essais et les frais à prévoir. C'est une estimation sur le passé, pas une garantie de réussite.",
+  },
+  {
+    q: "Que réservent les offres payantes ?",
+    a: "Les unités 1 et 5 minutes, tout l'historique au lieu des 12 derniers mois, le détail des contrôles de robustesse (Monte Carlo, réglages voisins), le comparatif côte à côte des prop firms et le suivi Live de tes stratégies. Le verdict reste lisible avec l'offre gratuite.",
   },
   {
     q: "Qu'est-ce qu'un backtest compte ?",

@@ -3,6 +3,7 @@
 import { tr } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, rich, useT, useText } from "@/lib/client/i18n";
+import { usePlan } from "@/lib/client/plan";
 import { setStepSeen } from "@/lib/client/preferences";
 import { BEGINNER_TABS, nextStep } from "@/lib/next-step";
 import { api } from "@/lib/client/api";
@@ -16,6 +17,7 @@ import { EquityChart, PriceChart, type ChartMarker, type PriceChartHandle } from
 import { Help, Term, Tip, setLevel, useBeginner } from "./learn";
 import { EXIT_LABELS, tradeEvents } from "@/lib/engine/insights";
 import { EVENT_KINDS, type EventKind } from "@/lib/engine/calendar";
+import { PlanLock } from "./plan-lock";
 import { PropFirmPanel } from "./prop-firm-panel";
 import { SharePanel } from "./share-panel";
 import { AnalysisPanel, RiskPanel } from "./trade-insights";
@@ -51,6 +53,9 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
   const [tab, setTab] = useState<Tab>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "prop" ? "prop" : "overview"));
   const [selected, setSelected] = useState<number | null>(null);
   const beginner = useBeginner();
+  const plan = usePlan();
+  // A shared report stays whole: it is the public example of what the site does.
+  const locked = !shared && plan !== null && !plan.advanced;
 
   useEffect(() => {
     api<Stored>(shared ? `/api/r/${id}` : `/api/backtests/${id}`).then(setData).catch((e) => setError(e.message));
@@ -163,9 +168,9 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
         />
       )}
       {tab === "analysis" && <AnalysisPanel trades={report.trades} strategy={strategy} period={report.period} />}
-      {tab === "robustness" && <Robustness report={report} hasR={hasR} />}
+      {tab === "robustness" && (locked ? <RobustnessSummary report={report} /> : <Robustness report={report} hasR={hasR} />)}
       {tab === "risk" && <RiskPanel trades={report.trades} strategy={strategy} />}
-      {tab === "prop" && <PropFirmPanel trades={report.trades} strategy={strategy} />}
+      {tab === "prop" && <PropFirmPanel trades={report.trades} strategy={strategy} locked={locked} />}
     </div>
   );
 }
@@ -559,6 +564,34 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
   );
 }
 
+/** The free plan: the verdict and each check's outcome. The figures behind them are in the paid plans. */
+function RobustnessSummary({ report }: { report: BacktestReport }) {
+  const tl = useT();
+  const verdict = robustnessVerdict(report);
+  const passed = robustnessChecks(report);
+  const labels = [tl("L'avantage est-il réel ?"), tl("Étude puis validation sur la suite"), tl("Réglages voisins"), tl("Frais doublés")];
+  return (
+    <div className="flex flex-col gap-4">
+      <Alert tone={verdict.tone}>
+        <strong>{verdict.title}</strong> {verdict.text}
+      </Alert>
+      <Card title={tl("Les 4 contrôles")}>
+        <ul className="flex flex-col gap-1.5 text-sm">
+          {labels.map((label, i) => (
+            <li key={label} className="flex gap-2">
+              <span className={passed[i] ? "text-up" : "text-down"} aria-label={passed[i] ? tl("réussi") : tl("échoué")}>
+                {passed[i] ? "✓" : "✗"}
+              </span>
+              {label}
+            </li>
+          ))}
+        </ul>
+      </Card>
+      <PlanLock>{tl("Le détail des contrôles (Monte Carlo, réglages voisins) est réservé aux offres Trader et Pro.")}</PlanLock>
+    </div>
+  );
+}
+
 function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean }) {
   const tl = useT();
   const tx = useText();
@@ -704,21 +737,25 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
   );
 }
 
-function robustnessVerdict(report: BacktestReport): { tone: "warn" | "error" | "info"; title: string; text: string } {
-  const m = report.metrics;
+/** The outcome of the 4 checks, in the order of the page: real edge, validation, neighbouring settings, doubled costs. */
+function robustnessChecks(report: BacktestReport) {
   const edge = report.robustness.edge;
   const valid = report.robustness.split[1];
   const share = report.robustness.sensitivity.profitableShare;
   const hasKnobs = report.robustness.sensitivity.rows.length > 0;
-  if (m.trades < 30) return { tone: "warn", title: tr("Pas assez de trades."), text: tr("Moins de 30 trades ne permettent pas de conclure, dans un sens comme dans l'autre.") };
-  if (m.totalReturnPercent <= 0) return { tone: "error", title: tr("Stratégie perdante sur la période."), text: tr("Les frais compris, elle ne gagne pas d'argent.") };
-  const checks = [
+  return [
     edge !== null && edge.probabilityNoEdge < 10,
     valid.trades >= 10 && (valid.avgR ?? valid.avgTradePercent) > 0,
     !hasKnobs || share >= 70,
     report.robustness.doubleCosts.returnPercent > 0,
   ];
-  const passed = checks.filter(Boolean).length;
+}
+
+function robustnessVerdict(report: BacktestReport): { tone: "warn" | "error" | "info"; title: string; text: string } {
+  const m = report.metrics;
+  if (m.trades < 30) return { tone: "warn", title: tr("Pas assez de trades."), text: tr("Moins de 30 trades ne permettent pas de conclure, dans un sens comme dans l'autre.") };
+  if (m.totalReturnPercent <= 0) return { tone: "error", title: tr("Stratégie perdante sur la période."), text: tr("Les frais compris, elle ne gagne pas d'argent.") };
+  const passed = robustnessChecks(report).filter(Boolean).length;
   if (passed === 4) return { tone: "info", title: tr("Résultat solide sur les 4 contrôles."), text: tr("L'avantage semble réel, tient sur la suite de l'historique, sur les réglages voisins et avec des frais doublés. Ça reste un test sur le passé.") };
   if (passed >= 2) return { tone: "warn", title: tr("Résultat fragile : {0} contrôles sur 4.", [passed]), text: tr("Regarde ci-dessous lesquels échouent avant d'y mettre de l'argent.") };
   return { tone: "error", title: tr("Résultat peu fiable : {0} contrôle{1} sur 4.", [passed, passed > 1 ? "s" : ""]), text: tr("Le gain vient probablement du hasard ou d'un réglage trop ajusté au passé.") };

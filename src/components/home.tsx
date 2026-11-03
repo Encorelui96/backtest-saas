@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Link, useT } from "@/lib/client/i18n";
+import { PLANS } from "@/lib/plans";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { CandleHero } from "./candle-hero";
@@ -60,7 +61,7 @@ export function Home() {
             <Link href="/apprendre" className="rounded-md border border-line bg-panel/70 px-5 py-2.5 font-medium text-fg backdrop-blur hover:border-accent">
               {tl("Apprendre les bases")}</Link>
           </div>
-          <p className="mt-3 text-xs text-muted">{tl("5 backtests par mois offerts, sans carte bancaire.")}</p>
+          <p className="mt-3 text-xs text-muted">{tl("{0} backtests par mois offerts, sans carte bancaire.", [PLANS.free.backtestsPerMonth])}</p>
           <p className="mt-1 text-[11px] text-muted">{tl("Une estimation sur le passé, pas une garantie de réussite. Aucun lien avec ces prop firms.")}</p>
           <div className="mt-3">
             <ExampleLink />
