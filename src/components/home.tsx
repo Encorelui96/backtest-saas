@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Link, useT } from "@/lib/client/i18n";
-import { PLANS } from "@/lib/plans";
+import { PLANS, euros } from "@/lib/plans";
+import { date, num, pct } from "@/lib/client/format";
+import { PROP_FIRMS_CHECKED } from "@/lib/prop-firms";
+import { SHOWCASE as S } from "@/lib/showcase";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { CandleHero } from "./candle-hero";
@@ -31,6 +34,40 @@ function ExampleLink() {
   return (
     <Link href={`/r/${id}`} className="text-sm text-accent hover:underline">
       {tl("Voir un exemple de rapport, sans créer de compte →")}</Link>
+  );
+}
+
+/** A real result with its weaknesses: a winning strategy can still be an expensive challenge. */
+function Showcase() {
+  const tl = useT();
+  const stats = [
+    { label: tl("Rendement sur 5 ans"), value: pct(S.returnPercent), hint: tl("Acheter et garder : {0}", [pct(S.buyAndHoldPercent)]) },
+    { label: tl("Baisse max"), value: pct(-S.maxDrawdownPercent), hint: tl("{0} trades", [S.trades]) },
+    { label: tl("Robustesse"), value: tl("Fragile"), hint: tl("{0} contrôles sur 4", [S.checksPassed]) },
+    { label: tl("Chances sur {0}", [S.challenge.firm]), value: pct(S.challenge.passPercent, 0, false), hint: tl("≈ {0} essais, {1} de frais", [num(S.challenge.attempts, 1), euros(S.challenge.feesEuros)]) },
+  ];
+  return (
+    <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
+      <h2 className="text-lg font-semibold">{tl("Un exemple réel, sans filtre")}</h2>
+      <p className="mt-1 text-sm text-muted">
+        {tl(S.strategy)} · {S.market} · {S.interval} · {date(S.from, false)} → {date(S.to, false)}
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+        {stats.map((s) => (
+          <div key={s.label} className="rounded-md border border-line px-3 py-2">
+            <div className="text-xs text-muted">{s.label}</div>
+            <div className="num text-lg font-semibold">{s.value}</div>
+            <div className="text-xs text-muted">{s.hint}</div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-3 text-sm">{tl("Gagnante sur 5 ans, et pourtant un challenge resterait un pari coûteux. Mieux vaut le savoir avant de payer.")}</p>
+      <p className="mt-2 text-[11px] text-muted">
+        {tl("Résultats simulés sur des données passées, frais compris, à 1 % de risque par trade : ils ne promettent aucun gain futur. Seule stratégie sur {0} à passer nos critères, ce qui peut tenir en partie au hasard : les mêmes règles perdent sur d'autres marchés. Règles et prix du challenge relevés le {1}.", [S.tested, tl(PROP_FIRMS_CHECKED)])}</p>
+      <div className="mt-2">
+        <ExampleLink />
+      </div>
+    </section>
   );
 }
 
@@ -63,11 +100,9 @@ export function Home() {
           </div>
           <p className="mt-3 text-xs text-muted">{tl("{0} backtests par mois offerts, sans carte bancaire.", [PLANS.free.backtestsPerMonth])}</p>
           <p className="mt-1 text-[11px] text-muted">{tl("Une estimation sur le passé, pas une garantie de réussite. Aucun lien avec ces prop firms.")}</p>
-          <div className="mt-3">
-            <ExampleLink />
-          </div>
         </div>
       </section>
+      <Showcase />
       <section className="rounded-lg border border-line bg-panel p-4 text-center sm:p-5">
         <h2 className="font-semibold">{tl("Tu ne vises pas de prop firm ?")}</h2>
         <p className="mx-auto mt-1 max-w-2xl text-sm text-muted">

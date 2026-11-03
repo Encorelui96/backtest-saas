@@ -39,3 +39,15 @@ describe("proxy (origin check)", () => {
     expect(passed(call("POST", "/api/auth/sign-in/email", { origin: "https://evil.example" }))).toBe(true);
   });
 });
+
+describe("proxy (language)", () => {
+  it("serves the French share image at its own address", () => {
+    expect(passed(call("GET", "/fr/opengraph-image", {}))).toBe(true);
+  });
+
+  it("still redirects the other /fr addresses", () => {
+    const res = call("GET", "/fr/tarifs", {});
+    expect(res.status).toBe(308);
+    expect(new URL(res.headers.get("location") as string).pathname).toBe("/tarifs");
+  });
+});

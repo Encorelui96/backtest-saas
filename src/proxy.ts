@@ -43,6 +43,8 @@ function checkOrigin(req: NextRequest) {
 function routeLanguage(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   if (pathname === "/en" || pathname.startsWith("/en/")) return NextResponse.next();
+  // The share image only exists under /fr: without its prefix there is no page to send link previews to.
+  if (pathname === "/fr/opengraph-image") return NextResponse.next();
   if (pathname === "/fr" || pathname.startsWith("/fr/")) {
     const url = req.nextUrl.clone();
     url.pathname = pathname.slice(3) || "/";
