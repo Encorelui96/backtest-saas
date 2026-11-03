@@ -204,7 +204,7 @@ export function SignIn() {
                 {tl("Recevoir un lien par e-mail")}</Button>
             )}
             {google && (
-              <Button type="button" variant="ghost" onClick={() => authClient.signIn.social({ provider: "google", callbackURL: back, errorCallbackURL: signInPage })}>
+              <Button type="button" variant="light" onClick={() => authClient.signIn.social({ provider: "google", callbackURL: back, errorCallbackURL: signInPage })}>
                 {tl("Continuer avec Google")}</Button>
             )}
           </form>
