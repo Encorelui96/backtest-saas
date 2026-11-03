@@ -35,8 +35,8 @@ type Tab = "overview" | "trades" | "analysis" | "robustness" | "risk" | "prop";
 /** "3 ans", "8 mois": the length of a test period, rounded. */
 function spanLabel(ms: number) {
   const years = Math.round(ms / (365.25 * 86_400_000));
-  if (years >= 1) return `${years} an${years > 1 ? "s" : ""}`;
-  return `${Math.max(1, Math.round(ms / (30.44 * 86_400_000)))} mois`;
+  if (years >= 1) return years > 1 ? tr("{0} ans", [years]) : tr("1 an");
+  return tr("{0} mois", [Math.max(1, Math.round(ms / (30.44 * 86_400_000)))]);
 }
 
 /** `shared`: `id` is a public link id, the report is read-only and anyone can open it. */
@@ -124,12 +124,12 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: "overview", label: "Vue d'ensemble" },
-          { id: "trades", label: `Trades (${m.trades})` },
-          { id: "analysis", label: "Analyse" },
-          { id: "robustness", label: "Robustesse" },
-          { id: "risk", label: "Risque" },
-          { id: "prop", label: "Challenge prop firm" },
+          { id: "overview", label: tl("Vue d'ensemble") },
+          { id: "trades", label: tl("Trades ({0})", [m.trades]) },
+          { id: "analysis", label: tl("Analyse") },
+          { id: "robustness", label: tl("Robustesse") },
+          { id: "risk", label: tl("Risque") },
+          { id: "prop", label: tl("Challenge prop firm") },
         ]}
       />
 
@@ -405,8 +405,8 @@ const EVENT_LABEL = Object.fromEntries(EVENT_KINDS.map((k) => [k.kind, k.label])
 function EventTags({ kinds }: { kinds: EventKind[] }) {
   if (!kinds.length) return null;
   return (
-    <span className="text-warn" title={kinds.map((k) => EVENT_LABEL[k]).join(", ")}>
-      {kinds.map((k) => EVENT_SHORT[k]).join(" · ")}
+    <span className="text-warn" title={kinds.map((k) => tr(EVENT_LABEL[k])).join(", ")}>
+      {kinds.map((k) => tr(EVENT_SHORT[k])).join(" · ")}
     </span>
   );
 }
@@ -506,7 +506,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
                   <td className={t.side === "long" ? "text-up" : "text-down"}>{t.side === "long" ? tl("Achat") : tl("Vente")}</td>
                   <td className="text-right">{price(t.entryPrice)}</td>
                   <td className="text-right">{price(t.exitPrice)}</td>
-                  <td className="text-muted">{EXIT_LABELS[t.exitReason]}</td>
+                  <td className="text-muted">{tl(EXIT_LABELS[t.exitReason])}</td>
                   <td className="text-right">{t.bars}</td>
                   <td className="text-xs">
                     <EventTags kinds={tradeEvents(t)} />

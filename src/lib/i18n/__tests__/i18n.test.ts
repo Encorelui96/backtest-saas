@@ -33,6 +33,7 @@ describe("translateText", () => {
       "3 candles missing from the data (2 gaps, often an exchange outage): the indicators step over these gaps.",
     );
     expect(translateText("en", "Période d'étude (70 %)")).toBe("Study period (70%)");
+    expect(translateText("en", "Durée max 16 bougies")).toBe("Max duration 16 candles");
     expect(translateText("fr", "Période d'étude (70 %)")).toBe("Période d'étude (70 %)");
   });
 });

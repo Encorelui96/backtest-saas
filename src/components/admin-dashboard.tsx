@@ -1,10 +1,12 @@
 "use client";
 
+import { tr } from "@/lib/i18n";
+
 import { formatLocale } from "@/lib/client/format";
 import { useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import type { AdminMetrics, Ratio } from "@/lib/admin-metrics";
-import { PACKS, PACK_BY_ID, PLANS, type PackId, type PlanId } from "@/lib/plans";
+import { PACKS, PACK_BY_ID, PLANS, euros, type PackId, type PlanId } from "@/lib/plans";
 import { api } from "@/lib/client/api";
 import { Alert, Card, Stat } from "./ui";
 
@@ -13,7 +15,7 @@ function share({ n, of }: Ratio) {
 }
 
 function RatioStat({ label, ratio, hint }: { label: string; ratio: Ratio; hint: string }) {
-  return <Stat label={label} value={share(ratio)} hint={`${ratio.n} sur ${ratio.of} · ${hint}`} />;
+  return <Stat label={label} value={share(ratio)} hint={tr("{0} sur {1} · {2}", [ratio.n, ratio.of, hint])} />;
 }
 
 const usd = (n: number) => `${n.toLocaleString(formatLocale(), { minimumFractionDigits: 2, maximumFractionDigits: n < 1 ? 3 : 2 })} $`;
@@ -131,7 +133,7 @@ export function AdminDashboard() {
             {m.pmf.comments.map((c, i) => (
               <li key={i} className="rounded-md border border-line px-3 py-2">
                 <div className="text-[11px] text-muted">
-                  {ANSWERS[c.answer] ?? c.answer} · {new Date(c.createdAt).toLocaleDateString(formatLocale())}
+                  {tl(ANSWERS[c.answer] ?? c.answer)} · {new Date(c.createdAt).toLocaleDateString(formatLocale())}
                 </div>
                 {c.comment}
               </li>
@@ -149,8 +151,8 @@ export function AdminDashboard() {
               <li key={`${i.plan}-${i.billing}`} className="flex justify-between py-1.5">
                 <span>
                   {i.plan.startsWith("pack:")
-                    ? tl("Recharge {0}", [PACK_BY_ID[i.plan.slice(5) as PackId]?.label ?? i.plan])
-                    : `${PLANS[i.plan as PlanId]?.label ?? i.plan} · ${i.billing === "year" ? tl("à l'année") : tl("au mois")}`}
+                    ? tl("Recharge {0}", [tl(PACK_BY_ID[i.plan.slice(5) as PackId]?.label ?? i.plan)])
+                    : `${tl(PLANS[i.plan as PlanId]?.label ?? i.plan)} · ${i.billing === "year" ? tl("à l'année") : tl("au mois")}`}
                 </span>
                 <span className="num font-semibold">{i.n}</span>
               </li>
@@ -193,7 +195,7 @@ function GrantCredits() {
         <select value={pack} onChange={(e) => setPack(e.target.value as PackId)}>
           {PACKS.map((p) => (
             <option key={p.id} value={p.id}>
-              {p.label} ({p.price} €)
+              {tl(p.label)} ({euros(p.price)})
             </option>
           ))}
         </select>

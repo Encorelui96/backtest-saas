@@ -56,7 +56,7 @@ export function Account() {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-4">
       <h1 className="text-xl font-semibold">{tl("Mon compte")}</h1>
-      <Card title={tl("Offre {0}", [u.plan.label])}>
+      <Card title={tl("Offre {0}", [tl(u.plan.label)])}>
         <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">
             {me.user.email}

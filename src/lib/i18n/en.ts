@@ -1262,4 +1262,12 @@ export const EN: Record<string, string> = {
   "Données passées, aucun gain promis": "Past data, no gains promised",
   "Rapport introuvable · Backtest Lab": "Report not found · Backtest Lab",
   "{0} trades du {1} au {2}, baisse max {3}. Backtest réalisé avec Backtest Lab : teste ta propre stratégie gratuitement.": "{0} trades from {1} to {2}, max drawdown {3}. Backtest made with Backtest Lab: test your own strategy for free.",
+  "{0} du mois sont utilisés (offre {1}). Compteurs remis à zéro le {2}.": "{0} for the month are used ({1} plan). Counters reset on {2}.",
+  "Vue d'ensemble": "Overview",
+  "Trades ({0})": "Trades ({0})",
+  "Analyse": "Analysis",
+  "Risque": "Risk",
+  "{0} ans": "{0} years",
+  "{0} mois": "{0} months",
+  "{0} sur {1} · {2}": "{0} of {1} · {2}",
 };

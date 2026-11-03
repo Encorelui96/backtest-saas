@@ -43,7 +43,7 @@ export function translate(lang: Lang, fr: string, values?: readonly unknown[]): 
 export type T = (fr: string, values?: readonly unknown[]) => string;
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-let patterns: { re: RegExp; slots: number[]; en: string }[] | null = null;
+let patterns: { re: RegExp; slots: number[]; en: string; fixed: number }[] | null = null;
 
 /**
  * A French text already filled in, such as a report warning saved before
@@ -59,7 +59,10 @@ export function translateText(lang: Lang, text: string): string {
       re: new RegExp(`^${fr.split(/\{\d+\}/).map(escape).join("(.*?)")}$`, "s"),
       slots: [...fr.matchAll(/\{(\d+)\}/g)].map((m) => Number(m[1])),
       en,
-    }));
+      fixed: fr.replace(/\{\d+\}/g, "").length,
+    }))
+    // The template with the most fixed text first: "Durée max {0} bougies" before "{0} bougies".
+    .sort((a, b) => b.fixed - a.fixed);
   for (const p of patterns) {
     const m = p.re.exec(text);
     if (!m) continue;

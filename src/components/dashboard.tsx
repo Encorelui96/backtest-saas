@@ -33,7 +33,11 @@ function QuotaBanner({ usage }: { usage: NonNullable<Me["usage"]> }) {
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2.5 text-sm">
       <span className="flex-1">
-        {items.map((i) => tl("{0} de tes {1} {2}", [Math.min(i.used, i.max), i.max, i.what])).join(" et ")} {tl(" du mois sont utilisés (offre ")}{usage.plan.label}{tl("). Compteurs remis à zéro le ")}{reset}.
+        {tl("{0} du mois sont utilisés (offre {1}). Compteurs remis à zéro le {2}.", [
+          items.map((i) => tl("{0} de tes {1} {2}", [Math.min(i.used, i.max), i.max, i.what])).join(tl(" et ")),
+          tl(usage.plan.label),
+          reset,
+        ])}
       </span>
       <Link href="/tarifs" className="font-medium text-accent hover:underline">
         {tl("Voir les offres →")}</Link>

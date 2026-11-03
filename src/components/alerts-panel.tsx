@@ -92,7 +92,7 @@ export function AlertsPanel() {
 
         {state.limit === 0 ? (
           <p>
-            {tl("L'offre {0} n'inclut pas d'alertes.", [state.plan])}{" "}
+            {tl("L'offre {0} n'inclut pas d'alertes.", [tl(state.plan)])}{" "}
             <Link href="/tarifs" className="text-accent hover:underline">
               {tl("Voir les offres Trader et Pro →")}</Link>
           </p>
