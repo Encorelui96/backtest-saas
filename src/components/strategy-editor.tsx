@@ -3,11 +3,13 @@
 import { tr } from "@/lib/i18n";
 import { Link, rich, useRouter, useT, useText } from "@/lib/client/i18n";
 import { useEffect, useRef, useState } from "react";
+import { usePlan } from "@/lib/client/plan";
+import { clampStartDate, earliestStart, historyMonths } from "@/lib/plans";
 import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
 import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
 import type { Template } from "@/lib/strategy/templates";
-import { INTERVALS, MAX_HISTORY_DAYS } from "@/lib/types";
+import { INTERVALS, INTERVAL_MS, MAX_HISTORY_DAYS } from "@/lib/types";
 import { isCrypto } from "@/lib/markets";
 import { date } from "@/lib/client/format";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
@@ -85,6 +87,12 @@ export function StrategyEditor({ id }: { id?: string }) {
   // Beginners see a summary of the rules and no idea box until they ask for them.
   const [editRules, setEditRules] = useState(false);
   const [showIdea, setShowIdea] = useState(false);
+  const plan = usePlan();
+  // What the plan allows, computed at each render: the choice itself is kept for a later upgrade.
+  const period = plan ? { ...config, startDate: clampStartDate(config.startDate, plan) } : config;
+  const firstEarliest = plan ? earliestStart(plan) : null;
+  const firstDay = firstEarliest === null ? undefined : new Date(firstEarliest).toISOString().slice(0, 10);
+  const reservedInterval = (i: Strategy["interval"]) => plan !== null && INTERVAL_MS[i] < INTERVAL_MS[plan.minInterval];
   // Came from the home page's main button: the report opens on the challenge. Read once, saving rewrites the address.
   const challengeGoal = useRef(false);
 
@@ -176,7 +184,7 @@ export function StrategyEditor({ id }: { id?: string }) {
     setError(null);
     try {
       const strategyId = await save();
-      const { jobId } = await api<{ jobId: string }>("/api/backtests", { json: { strategy, config, strategyId } });
+      const { jobId } = await api<{ jobId: string }>("/api/backtests", { json: { strategy, config: period, strategyId } });
       // The worker computes the backtest; follow its progress until the report exists.
       for (;;) {
         const state = await api<JobState>(`/api/jobs/${jobId}`);
@@ -206,7 +214,7 @@ export function StrategyEditor({ id }: { id?: string }) {
     setAi(null);
   };
 
-  const years = (Date.parse(config.endDate) - Date.parse(config.startDate)) / (365.25 * 86_400_000);
+  const years = (Date.parse(period.endDate) - Date.parse(period.startDate)) / (365.25 * 86_400_000);
 
   return (
     <div className="grid gap-4 pb-24 md:pb-0 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -270,7 +278,9 @@ export function StrategyEditor({ id }: { id?: string }) {
                     key={i}
                     onClick={() => chooseInterval(i)}
                     aria-pressed={strategy.interval === i}
-                    className={`shrink-0 rounded-md border px-3 py-1.5 text-sm ${strategy.interval === i ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
+                    disabled={reservedInterval(i)}
+                    title={reservedInterval(i) ? tl("Réservé aux offres Trader et Pro") : undefined}
+                    className={`shrink-0 rounded-md border px-3 py-1.5 text-sm disabled:opacity-40 ${strategy.interval === i ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                   >
                     {beginner ? tl(INTERVAL_LABELS[i]) : i}
                     {beginner && RECOMMENDED.has(i) && <span className="ml-1 text-[10px] text-up">{tl("conseillé")}</span>}
@@ -483,11 +493,14 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {PERIODS.map((p) => {
                   const span = Math.min(p.days, MAX_HISTORY_DAYS[strategy.interval]);
                   const on = Math.abs(years * 365.25 - span) < 3;
+                  const reserved = plan?.historyDays != null && p.days > plan.historyDays;
                   return (
                     <button
                       key={p.label}
                       onClick={() => choosePeriod(p.days)}
-                      className={`flex-1 rounded-md border px-2 py-1.5 text-xs ${on ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
+                      disabled={reserved}
+                      title={reserved ? tl("Réservé aux offres Trader et Pro") : undefined}
+                      className={`flex-1 rounded-md border px-2 py-1.5 text-xs disabled:opacity-40 ${on ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                     >
                       {tl(p.label)}
                     </button>
@@ -497,19 +510,20 @@ export function StrategyEditor({ id }: { id?: string }) {
             </div>
             {beginner ? (
               <p className="text-[11px] text-muted">
-                {tl("Du {0} au {1}", [date(new Date(config.startDate).getTime(), false), date(new Date(config.endDate).getTime(), false)])}
+                {tl("Du {0} au {1}", [date(new Date(period.startDate).getTime(), false), date(new Date(period.endDate).getTime(), false)])}
               </p>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <Field label={tl("Du")}>
-                    <input type="date" value={config.startDate} onChange={(e) => setConfig({ ...config, startDate: e.target.value })} />
+                    <input type="date" min={firstDay} value={period.startDate} onChange={(e) => setConfig({ ...config, startDate: e.target.value })} />
                   </Field>
                   <Field label={tl("Au")}>
                     <input type="date" value={config.endDate} onChange={(e) => setConfig({ ...config, endDate: e.target.value })} />
                   </Field>
                 </div>
                 <p className="text-[11px] text-muted">{tl("Max ")}{MAX_HISTORY_DAYS[strategy.interval]} {tl(" jours en ")}{strategy.interval}.</p>
+                {plan?.historyDays != null && <p className="text-[11px] text-muted">{tl("L'offre {0} teste les {1} derniers mois.", [tl(plan.label), historyMonths(plan)])}</p>}
               </>
             )}
             <Field label={tl("Capital de départ (USD)")} term="capital">
