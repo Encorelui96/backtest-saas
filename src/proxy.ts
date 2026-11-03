@@ -48,6 +48,16 @@ function routeLanguage(req: NextRequest) {
     url.pathname = pathname.slice(3) || "/";
     return NextResponse.redirect(url, 308);
   }
+  // ?lang=fr on a link (such as "read the French version") switches language like the FR / EN buttons.
+  const asked = req.nextUrl.searchParams.get("lang");
+  if (asked === "fr" || asked === "en") {
+    const url = req.nextUrl.clone();
+    url.searchParams.delete("lang");
+    if (asked === "en") url.pathname = pathname === "/" ? "/en" : `/en${pathname}`;
+    const res = NextResponse.redirect(url, 307);
+    res.cookies.set("lang", asked, { maxAge: 31_536_000, path: "/", sameSite: "lax" });
+    return res;
+  }
   // A French address for someone who chose English, or a first visit from an English-speaking browser: the English page.
   const chosen = req.cookies.get("lang")?.value;
   const prefersEnglish = !chosen && pathname === "/" && /^en\b/i.test(req.headers.get("accept-language") ?? "");

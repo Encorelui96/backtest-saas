@@ -1,13 +1,17 @@
 import type { Metadata } from "next";
 import { Link } from "@/lib/client/i18n";
-import { GLOSSARY, GLOSSARY_CATEGORIES } from "@/lib/learn/glossary";
+import { GLOSSARY_CATEGORIES, glossaryIn } from "@/lib/learn/glossary";
+import { pageLang } from "@/lib/i18n/page";
 import { LevelToggle } from "@/components/learn";
 import { Card } from "@/components/ui";
 
-export const metadata: Metadata = {
-  title: "Apprendre · Backtest Lab",
-  description: "Les mots du trading expliqués simplement, et comment faire ton premier backtest pas à pas.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/apprendre">): Promise<Metadata> {
+  const { t } = await pageLang(params);
+  return {
+    title: t("Apprendre · Backtest Lab"),
+    description: t("Les mots du trading expliqués simplement, et comment faire ton premier backtest pas à pas."),
+  };
+}
 
 const STEPS: { title: string; text: string }[] = [
   {
@@ -45,69 +49,71 @@ const MISTAKES: { title: string; text: string }[] = [
   { title: "Passer en réel trop vite", text: "Suis d'abord la stratégie en direct quelques semaines avec « Suivre en direct », puis commence petit." },
 ];
 
-export default function LearnPage() {
+export default async function LearnPage({ params }: PageProps<"/[lang]/apprendre">) {
+  const { lang, t } = await pageLang(params);
+  const entries = glossaryIn(lang);
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 pb-24 md:pb-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold">Apprendre</h1>
-          <p className="mt-1 text-sm text-muted">Les mots du trading expliqués simplement, et comment bien utiliser Backtest Lab.</p>
+          <h1 className="text-xl font-semibold">{t("Apprendre")}</h1>
+          <p className="mt-1 text-sm text-muted">{t("Les mots du trading expliqués simplement, et comment bien utiliser Backtest Lab.")}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
           <LevelToggle />
-          <span className="text-[11px] text-muted">Débutant : aides et explications partout</span>
+          <span className="text-[11px] text-muted">{t("Débutant : aides et explications partout")}</span>
         </div>
       </div>
 
-      <Card title="Ton premier backtest en 6 étapes">
+      <Card title={t("Ton premier backtest en 6 étapes")}>
         <ol className="flex flex-col gap-3">
           {STEPS.map((s, i) => (
             <li key={s.title} className="flex gap-3">
               <span className="num flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-semibold text-white">{i + 1}</span>
               <div>
-                <div className="text-sm font-semibold">{s.title}</div>
-                <p className="text-sm text-muted">{s.text}</p>
+                <div className="text-sm font-semibold">{t(s.title)}</div>
+                <p className="text-sm text-muted">{t(s.text)}</p>
               </div>
             </li>
           ))}
         </ol>
         <Link href="/strategies/new" className="mt-4 inline-block rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white hover:brightness-110">
-          Faire mon premier backtest
+          {t("Faire mon premier backtest")}
         </Link>
       </Card>
 
-      <Card title="Les 6 erreurs de débutant">
+      <Card title={t("Les 6 erreurs de débutant")}>
         <ul className="grid gap-3 sm:grid-cols-2">
           {MISTAKES.map((m) => (
             <li key={m.title} className="rounded-md border border-line bg-panel-2/60 p-2.5">
-              <div className="text-sm font-semibold text-warn">{m.title}</div>
-              <p className="mt-0.5 text-sm text-muted">{m.text}</p>
+              <div className="text-sm font-semibold text-warn">{t(m.title)}</div>
+              <p className="mt-0.5 text-sm text-muted">{t(m.text)}</p>
             </li>
           ))}
         </ul>
       </Card>
 
       <div>
-        <h2 className="text-lg font-semibold">Glossaire</h2>
+        <h2 className="text-lg font-semibold">{t("Glossaire")}</h2>
         <nav className="no-scrollbar -mx-3 mt-2 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:flex-wrap sm:px-0">
           {GLOSSARY_CATEGORIES.map((c) => (
             <a key={c.id} href={`#cat-${c.id}`} className="shrink-0 rounded-full border border-line px-2.5 py-0.5 text-xs text-muted hover:border-accent hover:text-fg">
-              {c.label}
+              {t(c.label)}
             </a>
           ))}
         </nav>
       </div>
 
       {GLOSSARY_CATEGORIES.map((c) => (
-        <Card key={c.id} title={c.label}>
+        <Card key={c.id} title={t(c.label)}>
           <span id={`cat-${c.id}`} className="block scroll-mt-20" />
           <dl className="flex flex-col divide-y divide-line/50">
-            {GLOSSARY.filter((e) => e.category === c.id).map((e) => (
+            {entries.filter((e) => e.category === c.id).map((e) => (
               <div key={e.id} id={e.id} className="scroll-mt-20 py-2.5 first:pt-0 last:pb-0 target:bg-accent/5">
                 <dt className="text-sm font-semibold">{e.term}</dt>
                 <dd className="mt-0.5 text-sm text-fg/85">{e.short}</dd>
                 {e.long && <dd className="mt-1 text-sm text-muted">{e.long}</dd>}
-                {e.example && <dd className="mt-1 text-xs text-accent/90">Exemple : {e.example}</dd>}
+                {e.example && <dd className="mt-1 text-xs text-accent/90">{t("Exemple : {0}", [e.example])}</dd>}
               </div>
             ))}
           </dl>

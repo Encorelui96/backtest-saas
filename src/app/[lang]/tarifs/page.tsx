@@ -2,11 +2,19 @@ import type { Metadata } from "next";
 import { Link } from "@/lib/client/i18n";
 import { Pricing } from "@/components/pricing";
 import { PLANS, euros } from "@/lib/plans";
+import { pageLang } from "@/lib/i18n/page";
 
-export const metadata: Metadata = {
-  title: "Tarifs · Backtest Lab",
-  description: `Backtest Lab est gratuit pour découvrir (${PLANS.free.backtestsPerMonth} backtests par mois). Offres Trader à ${euros(PLANS.trader.monthly)} et Pro à ${euros(PLANS.pro.monthly)} par mois, 2 mois offerts à l'année.`,
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/tarifs">): Promise<Metadata> {
+  const { lang, t } = await pageLang(params);
+  return {
+    title: t("Tarifs · Backtest Lab"),
+    description: t("Backtest Lab est gratuit pour découvrir ({0} backtests par mois). Offres Trader à {1} et Pro à {2} par mois, 2 mois offerts à l'année.", [
+      PLANS.free.backtestsPerMonth,
+      euros(PLANS.trader.monthly, lang),
+      euros(PLANS.pro.monthly, lang),
+    ]),
+  };
+}
 
 const FAQ: { q: string; a: string }[] = [
   {
@@ -15,7 +23,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Que se passe-t-il quand j'atteins la limite du mois ?",
-    a: "Tu ne peux plus lancer de nouveau test jusqu'au 1er du mois suivant, mais tout le reste reste accessible : tes stratégies, tes rapports, la page Live et le constructeur de règles sans IA.",
+    a: "Tu peux prendre une recharge, qui ajoute des backtests ou des traductions par l'IA tout de suite, ou attendre le 1er du mois suivant. Tout le reste reste accessible : tes stratégies, tes rapports, la page Live et le constructeur de règles sans IA.",
   },
   {
     q: "Pourquoi les traductions par l'IA sont-elles limitées ?",
@@ -31,28 +39,33 @@ const FAQ: { q: string; a: string }[] = [
   },
 ];
 
-export default function TarifsPage() {
+export default async function TarifsPage({ params }: PageProps<"/[lang]/tarifs">) {
+  const { t } = await pageLang(params);
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-6">
       <header className="text-center">
-        <h1 className="text-2xl font-semibold sm:text-3xl">Des tarifs simples</h1>
+        <h1 className="text-2xl font-semibold sm:text-3xl">{t("Des tarifs simples")}</h1>
         <p className="mx-auto mt-2 max-w-xl text-sm text-muted sm:text-base">
-          Commence gratuitement. Passe à une offre payante le jour où tu testes plus d&apos;idées, ou en unités de temps courtes.
+          {t("Commence gratuitement. Passe à une offre payante le jour où tu testes plus d'idées, ou en unités de temps courtes.")}
         </p>
       </header>
       <Pricing />
       <section className="mx-auto w-full max-w-3xl">
-        <h2 className="mb-3 text-lg font-semibold">Questions fréquentes</h2>
+        <h2 className="mb-3 text-lg font-semibold">{t("Questions fréquentes")}</h2>
         <div className="flex flex-col gap-2">
           {FAQ.map((f) => (
             <details key={f.q} className="rounded-lg border border-line bg-panel px-4 py-3">
-              <summary className="cursor-pointer text-sm font-medium">{f.q}</summary>
-              <p className="mt-2 text-sm text-muted">{f.a}</p>
+              <summary className="cursor-pointer text-sm font-medium">{t(f.q)}</summary>
+              <p className="mt-2 text-sm text-muted">{t(f.a)}</p>
             </details>
           ))}
         </div>
         <p className="mt-4 text-xs text-muted">
-          Voir aussi les <Link href="/conditions" className="underline hover:text-fg">conditions d&apos;utilisation</Link>.
+          {t("Voir aussi les ")}
+          <Link href="/conditions" className="underline hover:text-fg">
+            {t("conditions d'utilisation")}
+          </Link>
+          .
         </p>
       </section>
     </div>

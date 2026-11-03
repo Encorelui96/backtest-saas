@@ -1,16 +1,20 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/legal-page";
+import { pageLang } from "@/lib/i18n/page";
 
-export const metadata: Metadata = {
-  title: "Nouveautés · Backtest Lab",
-  description: "Ce qui a changé dans Backtest Lab, du plus récent au plus ancien.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/nouveautes">): Promise<Metadata> {
+  const { t } = await pageLang(params);
+  return { title: t("Nouveautés · Backtest Lab"), description: t("Ce qui a changé dans Backtest Lab, du plus récent au plus ancien.") };
+}
 
-/** Newest first. Add a line each time something visible ships: users see the product moving. */
+/** Newest first. Add a line each time something visible ships: users see the product moving. English: in the dictionary (lib/i18n/en.ts). */
 const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "Backtest Lab en anglais", text: "Tout le site existe aussi en anglais, sous /en : bouton FR / EN en haut de chaque page. L'IA répond dans la langue du site." },
+      { title: "Alertes Telegram", text: "Les offres Trader et Pro reçoivent sur Telegram les signaux de leurs stratégies, à la clôture de chaque bougie." },
+      { title: "Recharges", text: "Quand le quota du mois est épuisé, une recharge ajoute des backtests ou des traductions par l'IA, sans attendre le mois suivant. Les crédits n'expirent pas." },
       {
         title: "FTMO, FundedNext et The5ers",
         text: "L'onglet Challenge prop firm rejoue ta stratégie avec les règles de ces trois prop firms : réussite ou échec sur ta période, chances de réussite, essais et frais à prévoir, prix, partage des gains, règles sur les annonces, le week-end et le levier.",
@@ -45,17 +49,23 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   },
 ];
 
-export default function NouveautesPage() {
+export default async function NouveautesPage({ params }: PageProps<"/[lang]/nouveautes">) {
+  const { lang, t } = await pageLang(params);
   return (
-    <LegalPage title="Nouveautés" intro="Ce qui a changé dans Backtest Lab, du plus récent au plus ancien. Une idée ou un manque ? Dis-le-nous : c'est ce qui décide de la suite." updated={false}>
+    <LegalPage
+      lang={lang}
+      title={t("Nouveautés")}
+      intro={t("Ce qui a changé dans Backtest Lab, du plus récent au plus ancien. Une idée ou un manque ? Dis-le-nous : c'est ce qui décide de la suite.")}
+      updated={false}
+    >
       {CHANGES.map((c) => (
         <section key={c.month} className="flex flex-col gap-3">
-          <h2 className="text-base font-semibold">{c.month}</h2>
+          <h2 className="text-base font-semibold">{t(c.month)}</h2>
           <ul className="flex flex-col gap-2">
             {c.items.map((i) => (
               <li key={i.title} className="rounded-lg border border-line bg-panel px-4 py-3">
-                <div className="font-medium">{i.title}</div>
-                <p className="mt-0.5 text-muted">{i.text}</p>
+                <div className="font-medium">{t(i.title)}</div>
+                <p className="mt-0.5 text-muted">{t(i.text)}</p>
               </li>
             ))}
           </ul>

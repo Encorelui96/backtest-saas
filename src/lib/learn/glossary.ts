@@ -1,4 +1,6 @@
 import type { IndicatorName } from "../strategy/schema";
+import type { Lang } from "../i18n";
+import { GLOSSARY_EN, USES_EN } from "./glossary.en";
 
 /**
  * Plain-French definitions for beginner mode: shown in the term pop-ups and on
@@ -728,9 +730,17 @@ export const USES: Record<string, string> = {
 
 const BY_ID = new Map(GLOSSARY.map((e) => [e.id, e]));
 
-export function glossary(id: string): GlossaryEntry | undefined {
-  return BY_ID.get(id);
+/** The entry in the page's language (the English site falls back to French for an entry it lacks). */
+export function glossary(id: string, lang: Lang = "fr"): GlossaryEntry | undefined {
+  const entry = BY_ID.get(id);
+  return entry && lang === "en" && GLOSSARY_EN[id] ? { ...entry, ...GLOSSARY_EN[id] } : entry;
 }
+
+/** The whole glossary in the page's language, for the Learn page. */
+export const glossaryIn = (lang: Lang): GlossaryEntry[] => GLOSSARY.map((e) => glossary(e.id, lang)!);
+
+/** What a setting or indicator is for, in the page's language. */
+export const purposeOf = (id: string, lang: Lang = "fr"): string | undefined => (lang === "en" ? (USES_EN[id] ?? USES[id]) : USES[id]);
 
 /** The glossary entry that explains each indicator of the rule builder. */
 export const INDICATOR_TERMS: Partial<Record<IndicatorName, string>> = {

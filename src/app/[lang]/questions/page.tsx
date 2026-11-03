@@ -2,18 +2,22 @@ import type { Metadata } from "next";
 import { Link } from "@/lib/client/i18n";
 import { LegalPage, Section } from "@/components/legal-page";
 import { PLANS, euros } from "@/lib/plans";
+import { pageLang } from "@/lib/i18n/page";
+import type { Lang } from "@/lib/i18n";
 
-export const metadata: Metadata = {
-  title: "Questions fréquentes · Backtest Lab",
-  description:
-    "Ce que fait Backtest Lab, pour qui, sur quels marchés, à quel prix, et en quoi il diffère de TradingView, d'un tableur ou du backtest à la main.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/questions">): Promise<Metadata> {
+  const { t } = await pageLang(params);
+  return {
+    title: t("Questions fréquentes · Backtest Lab"),
+    description: t("Ce que fait Backtest Lab, pour qui, sur quels marchés, à quel prix, et en quoi il diffère de TradingView, d'un tableur ou du backtest à la main."),
+  };
+}
 
 /**
  * Plain, factual answers: what search engines and AI assistants quote when
  * someone asks how to backtest a trading strategy. Also sent as FAQPage data.
  */
-const FAQ: { q: string; a: string }[] = [
+const FAQ_FR: { q: string; a: string }[] = [
   {
     q: "Qu'est-ce que Backtest Lab ?",
     a: "Un outil en ligne qui teste une stratégie de trading sur des années de cours passés, avant d'y mettre de l'argent. Tu décris tes règles en français ou tu les choisis dans des menus ; Backtest Lab rejoue le marché bougie par bougie, applique les frais, puis te dit ce que la stratégie aurait gagné ou perdu et si ce résultat tient la route.",
@@ -52,7 +56,7 @@ const FAQ: { q: string; a: string }[] = [
   },
 ];
 
-const COMPARISON: { tool: string; good: string; limits: string }[] = [
+const COMPARISON_FR: { tool: string; good: string; limits: string }[] = [
   {
     tool: "Backtest Lab",
     good: "Règles en français ou par menus, sans coder. Frais et glissement compris. Contrôles de robustesse et simulation de challenge prop firm. Mode guidé pour débuter.",
@@ -75,14 +79,83 @@ const COMPARISON: { tool: string; good: string; limits: string }[] = [
   },
 ];
 
-export default function QuestionsPage() {
+const FAQ_EN: { q: string; a: string }[] = [
+  {
+    q: "What is Backtest Lab?",
+    a: "An online tool that tests a trading strategy on years of past prices, before you put money into it. You describe your rules in plain words or pick them from menus; Backtest Lab replays the market candle by candle, applies the fees, then tells you what the strategy would have made or lost and whether that result holds up.",
+  },
+  {
+    q: "Who is it for?",
+    a: "For retail traders who want to check an idea before trading it: beginners (a guided mode explains every term), traders preparing a prop firm challenge, and experienced traders who want to test quickly without writing code.",
+  },
+  {
+    q: "Which markets?",
+    a: "Crypto on the Binance spot market (bitcoin, ether, solana and the other USDT pairs), 9 forex pairs (EUR/USD, GBP/USD, USD/JPY…), gold (XAU/USD) and the Nasdaq 100 (the NQ future, nearly 24 hours a day, or the QQQ fund). Timeframes from 1 minute to 1 day.",
+  },
+  {
+    q: "Do I need to code?",
+    a: "No. You write your strategy in plain words (“buy when the 14 RSI drops below 30 and the price is above the 200 moving average”) and an AI turns it into rules you can read and correct. You can also build everything with menus, without the AI.",
+  },
+  {
+    q: "Are the results reliable?",
+    a: "The engine avoids the classic traps: signals are read at the close of a candle and executed at the open of the next one, without peeking into the future; fees, spread and slippage are counted. Then four robustness checks tell you whether the gain could come from luck: a comparison with randomly taken trades, how it holds on the most recent 30% of the period, nearby settings and doubled fees, plus thousands of random reshuffles of the trades to show the range of possible results. A backtest is still a simulation on the past: it promises no future gains.",
+  },
+  {
+    q: "How much does it cost?",
+    a: `The Starter plan is free, no credit card: ${PLANS.free.backtestsPerMonth} backtests and ${PLANS.free.aiPerMonth} AI translations a month. The Trader (${euros(PLANS.trader.monthly, "en")} a month) and Pro (${euros(PLANS.pro.monthly, "en")} a month) plans give more tests and every timeframe, with 2 months free when paid yearly. Online payment isn't open yet.`,
+  },
+  {
+    q: "Does Backtest Lab place orders for me?",
+    a: "No. It isn't connected to any broker and holds no funds. The Live page applies your rules to live prices and flags the entries, so you can see whether the strategy behaves as in the test, but no order is placed.",
+  },
+  {
+    q: "What is the prop firm challenge simulation?",
+    a: "From the trades of your backtest, Backtest Lab estimates your probability of passing a prop firm challenge (profit target, daily and overall max loss) depending on your risk per trade, and compares it with a trader who would trade at random. The FTMO, FundedNext and The5ers challenges are replayed with their official rules, with the number of attempts and the fees to expect.",
+  },
+  {
+    q: "What happens to my strategies?",
+    a: "They stay private. You can share a report through a link you can withdraw at any time, download all your data or delete your account from “My account”. The servers are in Germany (Frankfurt).",
+  },
+];
+
+const COMPARISON_EN: { tool: string; good: string; limits: string }[] = [
+  {
+    tool: "Backtest Lab",
+    good: "Rules in plain words or from menus, no coding. Fees and slippage included. Robustness checks and prop firm challenge simulation. Guided mode for beginners.",
+    limits: "Fewer indicators and markets than TradingView. No live trading from the tool.",
+  },
+  {
+    tool: "TradingView",
+    good: "A huge choice of markets, charts and indicators. Built-in strategy tester and a large community of scripts.",
+    limits: "Strategies are written in Pine Script, its programming language, or come from other users' scripts that you have to understand and check.",
+  },
+  {
+    tool: "Manual backtesting",
+    good: "Replaying the chart candle by candle trains the eye and helps you understand your setup.",
+    limits: "Slow, prone to bias (you “see” what you expect) and limited to a few dozen trades: too few to conclude.",
+  },
+  {
+    tool: "Spreadsheet (Excel, Sheets)",
+    good: "Completely flexible, you control every calculation.",
+    limits: "You have to import the prices, write the formulas and avoid the mistakes yourself: looking at the next candle, forgetting fees or slippage.",
+  },
+];
+
+const CONTENT: Record<Lang, { faq: typeof FAQ_FR; comparison: typeof COMPARISON_FR }> = {
+  fr: { faq: FAQ_FR, comparison: COMPARISON_FR },
+  en: { faq: FAQ_EN, comparison: COMPARISON_EN },
+};
+
+export default async function QuestionsPage({ params }: PageProps<"/[lang]/questions">) {
+  const { lang, t } = await pageLang(params);
+  const { faq: FAQ, comparison: COMPARISON } = CONTENT[lang];
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
   };
   return (
-    <LegalPage title="Questions fréquentes" intro="Ce que fait Backtest Lab, pour qui, sur quels marchés et à quel prix." updated={false}>
+    <LegalPage lang={lang} title={t("Questions fréquentes")} intro={t("Ce que fait Backtest Lab, pour qui, sur quels marchés et à quel prix.")} updated={false}>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
       {FAQ.map((f) => (
         <Section key={f.q} title={f.q}>
@@ -90,18 +163,18 @@ export default function QuestionsPage() {
         </Section>
       ))}
 
-      <Section title="Backtest Lab, TradingView, un tableur ou le backtest à la main ?">
-        <p>Chaque méthode a ses forces. Voici une comparaison honnête pour choisir celle qui te convient.</p>
+      <Section title={t("Backtest Lab, TradingView, un tableur ou le backtest à la main ?")}>
+        <p>{t("Chaque méthode a ses forces. Voici une comparaison honnête pour choisir celle qui te convient.")}</p>
         <div className="flex flex-col gap-2">
           {COMPARISON.map((c) => (
             <div key={c.tool} className="rounded-lg border border-line bg-panel px-4 py-3">
               <div className="font-semibold">{c.tool}</div>
               <p className="mt-1">
-                <span className="text-up">Points forts : </span>
+                <span className="text-up">{t("Points forts : ")}</span>
                 {c.good}
               </p>
               <p className="mt-1">
-                <span className="text-warn">Limites : </span>
+                <span className="text-warn">{t("Limites : ")}</span>
                 {c.limits}
               </p>
             </div>
@@ -110,8 +183,15 @@ export default function QuestionsPage() {
       </Section>
 
       <p className="text-fg/85">
-        Envie d&apos;essayer ? <Link href="/connexion?mode=signup" className="text-accent hover:underline">Crée un compte gratuit</Link>, ou découvre d&apos;abord{" "}
-        <Link href="/apprendre" className="text-accent hover:underline">les mots du trading expliqués simplement</Link>.
+        {t("Envie d'essayer ? ")}
+        <Link href="/connexion?mode=signup" className="text-accent hover:underline">
+          {t("Crée un compte gratuit")}
+        </Link>
+        {t(", ou découvre d'abord ")}
+        <Link href="/apprendre" className="text-accent hover:underline">
+          {t("les mots du trading expliqués simplement")}
+        </Link>
+        .
       </p>
     </LegalPage>
   );

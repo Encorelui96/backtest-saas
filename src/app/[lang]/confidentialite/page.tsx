@@ -2,13 +2,21 @@ import type { Metadata } from "next";
 import { Link } from "@/lib/client/i18n";
 import { Fill, LegalPage, Section } from "@/components/legal-page";
 import { EDITOR, HOST } from "@/lib/legal";
+import { pageLang } from "@/lib/i18n/page";
 
-export const metadata: Metadata = {
-  title: "Confidentialité · Backtest Lab",
-  description: "Les données que Backtest Lab collecte, pourquoi, chez qui elles sont hébergées et comment les récupérer ou les effacer.",
-};
+export async function generateMetadata({ params }: PageProps<"/[lang]/confidentialite">): Promise<Metadata> {
+  const { lang } = await pageLang(params);
+  return lang === "en"
+    ? { title: "Privacy · Backtest Lab", description: "The data Backtest Lab collects, why, where it is hosted and how to get it back or erase it." }
+    : { title: "Confidentialité · Backtest Lab", description: "Les données que Backtest Lab collecte, pourquoi, chez qui elles sont hébergées et comment les récupérer ou les effacer." };
+}
 
-export default function ConfidentialitePage() {
+export default async function ConfidentialitePage({ params }: PageProps<"/[lang]/confidentialite">) {
+  const { lang } = await pageLang(params);
+  return lang === "en" ? <English /> : <French />;
+}
+
+function French() {
   return (
     <LegalPage
       title="Politique de confidentialité"
@@ -60,8 +68,8 @@ export default function ConfidentialitePage() {
 
       <Section title="Cookies">
         <p>
-          Un seul cookie : celui qui te garde connecté. Il est indispensable au service, c&apos;est pourquoi aucun bandeau ne te demande ton accord. Aucun cookie de
-          publicité ni de mesure d&apos;audience.
+          Le cookie qui te garde connecté, indispensable au service, et, si tu choisis une langue avec les boutons FR / EN, un cookie qui la retient. C&apos;est
+          pourquoi aucun bandeau ne te demande ton accord. Aucun cookie de publicité ni de mesure d&apos;audience.
         </p>
       </Section>
 
@@ -113,6 +121,111 @@ export default function ConfidentialitePage() {
         <p>
           Connexion chiffrée (HTTPS), mots de passe jamais stockés en clair, données séparées par compte et tentatives de connexion limitées. En cas de violation de données
           à risque, la CNIL et les personnes concernées seront prévenues comme le prévoit la loi.
+        </p>
+      </Section>
+    </LegalPage>
+  );
+}
+
+/** Courtesy translation: the French page prevails. */
+function English() {
+  const email = EDITOR.email ? <a href={`mailto:${EDITOR.email}`}>{EDITOR.email}</a> : <Fill lang="en" value="" />;
+  return (
+    <LegalPage
+      lang="en"
+      legal
+      title="Privacy policy"
+      intro="Backtest Lab collects the minimum needed to run your account and your tests. No advertising, no data resale, no third-party tracking tool."
+    >
+      <Section title="Who is responsible for your data">
+        <p>
+          The publisher of the site: <Fill lang="en" value={EDITOR.name} />, reachable at {email}. See the <Link href="/mentions-legales">legal notice</Link>.
+        </p>
+      </Section>
+
+      <Section title="What is collected">
+        <ul>
+          <li>
+            <strong>Your account</strong>: your email address, a name taken from that address, your password (stored in a scrambled form that can&apos;t be turned back
+            into the password) and your sign-up date.
+          </li>
+          <li>
+            <strong>Your sessions</strong>: for each signed-in device, the IP address and the type of browser, kept while the session is open (30 days at most).
+          </li>
+          <li>
+            <strong>What you create</strong>: your strategies (rules and description text) and your backtests (settings and results).
+          </li>
+          <li>
+            <strong>Your usage</strong>: the number of backtests and AI translations, to apply the limits of your plan, and what each translation consumed.
+          </li>
+          <li>
+            <strong>Your answers</strong>, if you give any: the satisfaction question and the plans you&apos;re interested in on the Pricing page.
+          </li>
+        </ul>
+        <p>The Beginner / Expert choice is kept in your browser and is never sent to the server.</p>
+      </Section>
+
+      <Section title="Why">
+        <ul>
+          <li>Running the service you ask for: your account, your tests, your reports (performance of the contract).</li>
+          <li>Protecting the service: limiting sign-in attempts and abuse, applying quotas (legitimate interest).</li>
+          <li>Improving it: internal statistics, such as the share of sign-ups who run a first test, computed over all accounts (legitimate interest).</li>
+        </ul>
+      </Section>
+
+      <Section title="Cookies">
+        <p>
+          The cookie that keeps you signed in, which the service needs, and, if you choose a language with the FR / EN buttons, a cookie that remembers it. That&apos;s why
+          no banner asks for your consent. No advertising or audience measurement cookie.
+        </p>
+      </Section>
+
+      <Section title="Who else sees it">
+        <ul>
+          <li>
+            <strong>{HOST.name}</strong> hosts the site and the database, on servers in Frankfurt (Germany).
+          </li>
+          <li>
+            <strong>Anthropic</strong> (the Claude AI) receives the strategy text you ask to translate, without your email or your name. Under its commercial terms,
+            Anthropic doesn&apos;t use data received through its API to train its models. Don&apos;t write personal information in your descriptions.
+          </li>
+          <li>
+            <strong>Binance</strong>: the price ticker and the Live page connect straight from your browser to Binance&apos;s public price feeds, which then see your IP
+            address as with any site you visit.
+          </li>
+          <li>
+            <strong>Twelve Data and Databento</strong> only receive price requests (market, dates) sent by our servers, with no data about you.
+          </li>
+          <li>
+            <strong>People you give a share link to</strong> see the rules and results of that backtest, without your name or email. You can withdraw the link at any time
+            from the report; it then leads nowhere.
+          </li>
+        </ul>
+        <p>
+          {HOST.name} and Anthropic are US companies. Any transfers outside the European Union are covered by the safeguards provided for by the GDPR (the European
+          Commission&apos;s standard contractual clauses or the EU–US Data Privacy Framework), according to each provider&apos;s commitments.
+        </p>
+      </Section>
+
+      <Section title="How long">
+        <p>
+          As long as your account exists. When you delete it, your account, your strategies, your backtests and your usage history are erased from the database at once.
+          The host&apos;s backup copies then disappear as they are renewed.
+        </p>
+      </Section>
+
+      <Section title="Your rights">
+        <p>
+          You can access your data, correct it, erase it, get a copy of it, object to processing or ask for it to be restricted. Two buttons in{" "}
+          <Link href="/compte">My account</Link> do it right away: “Download my data” and “Delete my account”. For anything else, write to {email}. If you believe your
+          rights aren&apos;t respected, you can complain to the CNIL, the French data protection authority (<a href="https://www.cnil.fr">cnil.fr</a>).
+        </p>
+      </Section>
+
+      <Section title="Security">
+        <p>
+          Encrypted connection (HTTPS), passwords never stored in clear text, data kept apart by account and sign-in attempts limited. In the event of a risky data breach,
+          the CNIL and the people concerned will be informed as the law requires.
         </p>
       </Section>
     </LegalPage>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
-import { Link, useT } from "@/lib/client/i18n";
-import { USES, glossary } from "@/lib/learn/glossary";
+import { Link, useT, useLang } from "@/lib/client/i18n";
+import { glossary, purposeOf } from "@/lib/learn/glossary";
 
 /**
  * Beginner mode: clickable terms, explanation boxes and a guided reading of
@@ -104,9 +104,10 @@ export function FieldHelp({ children }: { children: ReactNode }) {
  */
 function Definition({ id, trigger, triggerClass, label }: { id: string; trigger: ReactNode; triggerClass: string; label: string }) {
   const tl = useT();
+  const lang = useLang();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLSpanElement>(null);
-  const entry = glossary(id);
+  const entry = glossary(id, lang);
 
   useEffect(() => {
     if (!open) return;
@@ -123,7 +124,7 @@ function Definition({ id, trigger, triggerClass, label }: { id: string; trigger:
   }, [open]);
 
   if (!entry) return <>{trigger}</>;
-  const use = USES[id];
+  const use = purposeOf(id, lang);
   return (
     <span ref={ref} className="relative inline">
       <button
@@ -186,7 +187,7 @@ export function Help({ id }: { id: string }) {
 export function Term({ id, children }: { id: string; children?: ReactNode }) {
   const tl = useT();
   const beginner = useBeginner();
-  const entry = glossary(id);
+  const entry = glossary(id, useLang());
   const label = children ?? entry?.term ?? id;
   if (!beginner || !entry) return <>{label}</>;
   return (

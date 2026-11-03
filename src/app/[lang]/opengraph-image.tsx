@@ -8,7 +8,8 @@ export const contentType = "image/png";
 const CANDLES = [40, 46, 43, 52, 49, 58, 55, 63, 60, 71, 67, 76, 73, 84, 80, 91, 88, 99, 95, 108];
 
 /** The card shown when the site's address is pasted in Discord, X, LinkedIn or a messaging app. */
-export default function Image() {
+export default async function Image({ params }: { params: Promise<{ lang: string }> }) {
+  const en = (await params).lang === "en";
   return new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", justifyContent: "space-between", background: "#0b0e14", color: "#e6ebf3", padding: 64 }}>
@@ -16,9 +17,11 @@ export default function Image() {
           Backtest<span style={{ color: "#3b82f6" }}>Lab</span>
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, lineHeight: 1.1 }}>Teste ta stratégie de trading</div>
-          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, lineHeight: 1.1, color: "#3b82f6" }}>avant d&apos;y mettre ton argent</div>
-          <div style={{ display: "flex", marginTop: 20, fontSize: 30, color: "#8a97ab" }}>Crypto, forex, or et Nasdaq · tes règles en français · robustesse et prop firm</div>
+          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, lineHeight: 1.1 }}>{en ? "Test your trading strategy" : "Teste ta stratégie de trading"}</div>
+          <div style={{ display: "flex", fontSize: 64, fontWeight: 700, lineHeight: 1.1, color: "#3b82f6" }}>{en ? "before you put your money in" : "avant d'y mettre ton argent"}</div>
+          <div style={{ display: "flex", marginTop: 20, fontSize: 30, color: "#8a97ab" }}>
+            {en ? "Crypto, forex, gold and Nasdaq · your rules in plain words · robustness and prop firm" : "Crypto, forex, or et Nasdaq · tes règles en français · robustesse et prop firm"}
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 130 }}>
           {CANDLES.map((h, i) => {
