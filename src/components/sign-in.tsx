@@ -5,6 +5,7 @@ import { Link, useLang, useRouter, useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PLANS } from "@/lib/plans";
+import { linkError } from "@/lib/sign-in-error";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
 import { EDITOR } from "@/lib/legal";
@@ -36,13 +37,6 @@ function message(error: { code?: string; status?: number; message?: string }, mo
   }
   if (error.status === 429) return tr("Trop d'essais : réessaie dans une minute.");
   return mode === "signin" ? tr("Connexion impossible. Vérifie ton e-mail et ton mot de passe.") : tr("Création du compte impossible. Réessaie.");
-}
-
-/** The `error` better-auth adds to the page address when a link or a Google sign-in fails. */
-function linkError(code: string | null) {
-  if (!code) return null;
-  if (code === "account_not_linked") return tr("Un compte existe déjà avec cette adresse, créé avec un mot de passe : connecte-toi avec ton mot de passe.");
-  return tr("Le lien a expiré ou a déjà servi.");
 }
 
 /** What was just sent by e-mail, shown instead of the form. */

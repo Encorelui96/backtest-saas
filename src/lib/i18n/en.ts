@@ -745,6 +745,7 @@ export const EN: Record<string, string> = {
   "Création du compte impossible. Réessaie.": "Couldn't create the account. Try again.",
   "Un compte existe déjà avec cette adresse, créé avec un mot de passe : connecte-toi avec ton mot de passe.": "An account already exists with this address, created with a password: sign in with your password.",
   "Le lien a expiré ou a déjà servi.": "The link has expired or has already been used.",
+  "Connexion impossible pour le moment. Réessaie, ou utilise ton e-mail et ton mot de passe.": "Couldn't sign in right now. Try again, or use your email and password.",
   "Vérifie ta boîte mail.": "Check your inbox.",
   "Un lien de connexion vient d'être envoyé à {email}. Il est valable 10 minutes.": "A sign-in link has just been sent to {email}. It is valid for 10 minutes.",
   "Confirme ton adresse.": "Confirm your address.",
