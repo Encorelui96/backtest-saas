@@ -3,6 +3,8 @@
 import { tr } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, rich, useT, useText } from "@/lib/client/i18n";
+import { setStepSeen } from "@/lib/client/preferences";
+import { BEGINNER_TABS, nextStep } from "@/lib/next-step";
 import { api } from "@/lib/client/api";
 import { date, money, num, pct, price, r, tone } from "@/lib/client/format";
 import type { BacktestReport } from "@/lib/engine/report";
@@ -11,7 +13,7 @@ import type { BacktestConfig, Strategy } from "@/lib/strategy/schema";
 import { stopLabel, targetLabel } from "@/lib/strategy/describe";
 import { INTERVAL_MS, type CandleRow } from "@/lib/types";
 import { EquityChart, PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
-import { Help, Term, Tip, useBeginner } from "./learn";
+import { Help, Term, Tip, setLevel, useBeginner } from "./learn";
 import { EXIT_LABELS, tradeEvents } from "@/lib/engine/insights";
 import { EVENT_KINDS, type EventKind } from "@/lib/engine/calendar";
 import { PropFirmPanel } from "./prop-firm-panel";
@@ -53,6 +55,13 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
   useEffect(() => {
     api<Stored>(shared ? `/api/r/${id}` : `/api/backtests/${id}`).then(setData).catch((e) => setError(e.message));
   }, [id, shared]);
+
+  // Ticks the first steps on the dashboard.
+  useEffect(() => {
+    if (!data || shared) return;
+    setStepSeen("verdict");
+    if (tab === "prop") setStepSeen("challenge");
+  }, [data, shared, tab]);
 
   if (error) return <Alert tone="error">{error}</Alert>;
   if (!data) return <p className="text-muted">{tl("Chargement…")}</p>;
@@ -98,8 +107,10 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
         <Alert key={i}>{tx(w)}</Alert>
       ))}
 
+      <NextStepCard data={data} shared={shared} onOpen={setTab} />
+
       {beginner ? (
-        // Beginners: the four numbers that matter most, each with its "?", then the guided reading.
+        // Beginners: the four numbers that matter most, each with its "?".
         <div className="grid grid-cols-2 gap-1.5 sm:gap-2 md:grid-cols-4">
           <Stat label={tl("Rendement total")} term="rendement" value={pct(m.totalReturnPercent)} className={tone(m.totalReturnPercent)} hint={tl("Acheter et garder : {0}", [pct(m.buyAndHoldPercent)])} />
           <Stat label={tl("Baisse max")} term="drawdown" value={pct(-m.maxDrawdownPercent)} className="text-down" hint={tl("≈ {0} au pire moment", [money((data.config.initialCapital * m.maxDrawdownPercent) / 100)])} />
@@ -119,20 +130,26 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
         </div>
       )}
 
-      <GuidedReading data={data} onOpenRobustness={() => setTab("robustness")} />
-
       <Tabs<Tab>
         value={tab}
         onChange={setTab}
         tabs={[
-          { id: "overview", label: tl("Vue d'ensemble") },
-          { id: "trades", label: tl("Trades ({0})", [m.trades]) },
-          { id: "analysis", label: tl("Analyse") },
-          { id: "robustness", label: tl("Robustesse") },
-          { id: "risk", label: tl("Risque") },
-          { id: "prop", label: tl("Challenge prop firm") },
-        ]}
+          { id: "overview" as const, label: tl("Vue d'ensemble") },
+          { id: "trades" as const, label: tl("Trades ({0})", [m.trades]) },
+          { id: "analysis" as const, label: tl("Analyse") },
+          { id: "robustness" as const, label: tl("Robustesse") },
+          { id: "risk" as const, label: tl("Risque") },
+          { id: "prop" as const, label: tl("Challenge prop firm") },
+          // A tab opened from the card stays visible, so a beginner can come back to it.
+        ].filter((t) => !beginner || BEGINNER_TABS.includes(t.id) || t.id === tab)}
       />
+      {beginner && (
+        <p className="-mt-2 text-xs text-muted">
+          {tl("Analyse, Risque et Robustesse restent disponibles en mode Expert.")}{" "}
+          <button onClick={() => setLevel("expert")} className="text-accent hover:underline">
+            {tl("Passer en mode Expert")}</button>
+        </p>
+      )}
 
       {tab === "overview" && <Overview data={data} selected={selected} onSelect={setSelected} shared={shared} />}
       {tab === "trades" && (
@@ -154,33 +171,40 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
 }
 
 /**
- * Beginner mode: one verdict and one piece of advice. The numbers themselves
- * are already in the four cards above; the details are one tap away.
+ * At the top of the report: the verdict and a single next action. Visitors of a
+ * shared report only get the reading, in beginner mode: there is nothing of theirs to change.
  */
-function GuidedReading({ data, onOpenRobustness }: { data: Stored; onOpenRobustness: () => void }) {
+function NextStepCard({ data, shared, onOpen }: { data: Stored; shared: boolean; onOpen: (tab: Tab) => void }) {
   const tl = useT();
   const beginner = useBeginner();
-  if (!beginner) return null;
+  if (shared && !beginner) return null;
   const m = data.report.metrics;
-  const solid = robustnessVerdict(data.report).tone === "info";
-  const [tone, title, advice]: ["good" | "meh" | "bad", string, string] =
-    m.trades < 30
-      ? ["meh", tl("Pas assez de trades pour juger."), tl("Allonge la période (bouton « 5 ans ») ou choisis une unité de temps plus courte.")]
-      : m.totalReturnPercent <= 0
-        ? ["bad", tl("Cette stratégie perd de l'argent."), tl("Essaie un autre modèle ou un autre marché.")]
-        : solid
-          ? ["good", tl("Résultat encourageant."), tl("Suis-la en direct quelques semaines avant d'y mettre de l'argent.")]
-          : ["meh", tl("Gagnante, mais fragile."), tl("Le gain vient peut-être en partie du hasard : regarde pourquoi avant d'aller plus loin.")];
-  const style = { good: "border-up/40 bg-up/10 text-up", meh: "border-warn/40 bg-warn/10 text-warn", bad: "border-down/40 bg-down/10 text-down" }[tone];
+  const step = nextStep(m.trades, m.totalReturnPercent, robustnessVerdict(data.report).tone === "info");
+  const edit = data.strategyId ? `/strategies/${data.strategyId}` : "/strategies/new";
+  const card = {
+    "few-trades": { tone: "meh", title: tl("Pas assez de trades pour juger."), advice: tl("Choisis une unité de temps plus courte ou assouplis tes règles pour dépasser 30 trades."), label: tl("Modifier la stratégie →"), href: edit, open: null },
+    losing: { tone: "bad", title: tl("Cette stratégie perd de l'argent."), advice: tl("Essaie un autre modèle ou un autre marché."), label: tl("Essayer un autre modèle →"), href: "/strategies/new", open: null },
+    fragile: { tone: "meh", title: tl("Gagnante, mais fragile."), advice: tl("Le gain vient peut-être en partie du hasard : regarde pourquoi avant d'aller plus loin."), label: tl("Voir la robustesse →"), href: null, open: "robustness" },
+    solid: { tone: "good", title: tl("Résultat encourageant."), advice: tl("Estime maintenant tes chances sur un challenge de prop firm, sur l'historique."), label: tl("Tester le challenge prop firm →"), href: null, open: "prop" },
+  }[step] as { tone: "good" | "meh" | "bad"; title: string; advice: string; label: string; href: string | null; open: Tab | null };
+  const style = { good: "border-up/40 bg-up/10 text-up", meh: "border-warn/40 bg-warn/10 text-warn", bad: "border-down/40 bg-down/10 text-down" }[card.tone];
   return (
     <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-3 ${style}`}>
       <div>
-        <div className="font-semibold">{title}</div>
-        <div className="text-sm text-fg/80">{advice}</div>
+        <div className="text-xs font-medium text-fg/70">{tl("Et maintenant ?")}</div>
+        <div className="font-semibold">{card.title}</div>
+        <div className="text-sm text-fg/80">{card.advice}</div>
       </div>
-      <button onClick={onOpenRobustness} className="shrink-0 text-sm text-accent hover:underline">
-        {tl("Pourquoi ? →")}
-      </button>
+      {card.open ? (
+        <button onClick={() => onOpen(card.open as Tab)} className="shrink-0 text-sm font-medium text-accent hover:underline">
+          {card.label}
+        </button>
+      ) : (
+        card.href && !shared && (
+          <Link href={card.href} className="shrink-0 text-sm font-medium text-accent hover:underline">
+            {card.label}</Link>
+        )
+      )}
     </div>
   );
 }
