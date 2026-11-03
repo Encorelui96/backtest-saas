@@ -105,9 +105,16 @@ npm run lint
 | `src/proxy.ts` | Contrôle de l'origine des requêtes de l'API. |
 | `src/components` | Interface. |
 
+## Alertes Telegram
+
+Le worker vérifie chaque alerte active à la clôture de chaque bougie et envoie un message Telegram en cas de signal d'entrée ou de sortie. Il répond aussi au bot (`/start` relie un compte, `/stop` le délie). Avec plusieurs instances du worker, une seule s'en charge, grâce à un verrou Postgres.
+
+1. Crée le bot avec @BotFather et garde son token.
+2. Mets `TELEGRAM_BOT_TOKEN` sur le service web **et** sur le worker (Render > service > Environment).
+3. Chaque utilisateur relie son Telegram dans **Mon compte > Alertes Telegram**, puis active une alerte par stratégie (ou depuis la page Live). Nombre d'alertes : 0 en Découverte, 3 en Trader, 20 en Pro.
+
 ## Prochaines étapes prévues
 
 - Paiement des offres avec Stripe.
 - Envoi des e-mails avec Resend (confirmation d'adresse, mot de passe oublié).
-- Alertes de signal (Telegram ou e-mail), déjà prévues dans les offres.
 - Optimisation de paramètres avec validation glissante (walk-forward).

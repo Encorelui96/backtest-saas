@@ -106,3 +106,31 @@ CREATE TABLE IF NOT EXISTS candle_chunks (
   complete boolean NOT NULL,
   PRIMARY KEY (symbol, interval, month)
 );
+
+-- Telegram: the chat each account receives its alerts in, and the one-time codes that link them.
+CREATE TABLE IF NOT EXISTS telegram_links (
+  user_id text PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
+  chat_id bigint NOT NULL,
+  username text,
+  linked_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS telegram_link_codes (
+  code text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  expires_at timestamptz NOT NULL
+);
+
+-- Signal alerts: the worker checks each enabled strategy at every candle close.
+CREATE TABLE IF NOT EXISTS alerts (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  strategy_id text NOT NULL REFERENCES strategies(id) ON DELETE CASCADE,
+  enabled boolean NOT NULL DEFAULT true,
+  -- Open time of the last candle checked, so each close is evaluated once.
+  last_bar bigint,
+  last_signal_at timestamptz,
+  last_error text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, strategy_id)
+);
+CREATE INDEX IF NOT EXISTS alerts_enabled ON alerts (enabled);

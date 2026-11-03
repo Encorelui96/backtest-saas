@@ -37,6 +37,9 @@ services:
         sync: false
       - key: GOOGLE_CLIENT_SECRET
         sync: false
+      # Telegram bot token from @BotFather: the alerts. Also on the worker.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
 
   # Computes the queued backtests, apart from the website.
   - type: worker
@@ -51,6 +54,15 @@ services:
         fromDatabase:
           name: backtest-db
           property: connectionString
+      # Same token as the web service: the worker reads the bot's messages and sends the alerts.
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      # The site's address, for the "Voir en direct" link in the alerts.
+      - key: SITE_HOST
+        fromService:
+          name: backtest-lab
+          type: web
+          property: host
 
 databases:
   - name: backtest-db

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/lib/client/api";
@@ -144,6 +145,7 @@ export function LiveView() {
             ))}
           </select>
         </Field>
+        {strategy && strategyId && <AlertButton strategyId={strategyId} />}
         {!strategy && (
           <>
             <Field label="Unité de temps">
@@ -265,4 +267,37 @@ function ConditionsCard({ title, groups }: { title: string; groups: GroupState[]
 function fmt(x: number) {
   if (x === null || !Number.isFinite(x)) return "—";
   return Math.abs(x) >= 1000 ? num(x, 0) : Math.abs(x) >= 1 ? num(x, 2) : num(x, 4);
+}
+
+/** Turns on the Telegram alert for the strategy followed here; the account page manages the link and the list. */
+function AlertButton({ strategyId }: { strategyId: string }) {
+  const [state, setState] = useState<"idle" | "busy" | "on" | "error">("idle");
+  const [message, setMessage] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        disabled={state === "busy" || state === "on"}
+        onClick={async () => {
+          setState("busy");
+          try {
+            await api("/api/alerts", { json: { strategyId } });
+            setState("on");
+            setMessage(null);
+          } catch (e) {
+            setState("error");
+            setMessage((e as Error).message);
+          }
+        }}
+        className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-accent disabled:opacity-60"
+      >
+        {state === "on" ? "🔔 Alerte Telegram activée" : state === "busy" ? "…" : "🔔 Recevoir les signaux sur Telegram"}
+      </button>
+      {state === "on" && (
+        <Link href="/compte" className="text-[11px] text-accent hover:underline">
+          Relier Telegram et gérer mes alertes →
+        </Link>
+      )}
+      {message && <span className="max-w-72 text-[11px] text-down">{message}</span>}
+    </div>
+  );
 }

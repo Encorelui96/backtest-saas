@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { Alert, Button, Card, Field } from "./ui";
+import { AlertsPanel } from "./alerts-panel";
 
 interface Me {
   user: { id: string; email: string; name: string } | null;
@@ -81,6 +82,7 @@ export function Account() {
           Pilotage : activation, rétention, coût de l&apos;IA →
         </Link>
       )}
+      <AlertsPanel />
       <PasswordCard hasPassword={me.hasPassword} onSet={() => setMe({ ...me, hasPassword: true })} />
       <DataCard hasPassword={me.hasPassword} />
       <Button

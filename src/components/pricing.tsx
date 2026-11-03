@@ -17,7 +17,7 @@ function features(p: Plan) {
     "Crypto, forex, or et Nasdaq",
     "Robustesse et challenge prop firm",
     p.concurrentJobs > 1 ? `${p.concurrentJobs} backtests en parallèle` : "1 backtest à la fois",
-    ...(p.alerts ? [`${p.alerts} alertes Telegram (bientôt)`] : []),
+    ...(p.alerts ? [`${p.alerts} alertes Telegram`] : []),
   ];
 }
 

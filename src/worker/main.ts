@@ -1,6 +1,7 @@
 import { BacktestPayload, claimNext, failJob, finishJob, reportProgress, type Job } from "../lib/server/jobs";
 import { UserError, computeBacktest, saveBacktest } from "../lib/server/backtests";
 import { pool } from "../lib/server/db";
+import { startTelegram } from "./telegram";
 
 /**
  * The calculation process. It runs apart from the web server (on Render, the
@@ -47,7 +48,6 @@ async function loop() {
       await failJob(job.id, e instanceof UserError ? e.message : `Le calcul a échoué (réf. ${ref}).`).catch(() => {});
     }
   }
-  await pool().end();
 }
 
 for (const sig of ["SIGINT", "SIGTERM"]) {
@@ -57,4 +57,8 @@ for (const sig of ["SIGINT", "SIGTERM"]) {
   });
 }
 
-loop();
+// The bot and the alerts run beside the backtest queue, in the same process.
+const telegramDone = startTelegram(() => stopping);
+loop()
+  .then(() => telegramDone)
+  .finally(() => pool().end());
