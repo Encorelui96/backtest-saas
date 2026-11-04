@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Nav, NavFallback } from "@/components/nav";
 import { APP_MODE_SCRIPT } from "@/lib/app-mode";
-import { SITE_NAME, SITE_URL } from "@/lib/site";
+import { SITE_NAME, SITE_URL, SOCIAL_LINKS } from "@/lib/site";
 import { LANGS, hasLang, localePath, translator } from "@/lib/i18n";
 import { LangProvider } from "@/lib/client/i18n";
 import "../globals.css";
@@ -70,6 +70,13 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
                 <Link key={l.href} href={localePath(lang, l.href)} className={l.web ? "web-only hover:text-fg" : "hover:text-fg"}>
                   {t(l.label)}
                 </Link>
+              ))}
+            </nav>
+            <nav className="web-only flex flex-wrap gap-x-4 gap-y-1" aria-label={t("Réseaux sociaux")}>
+              {SOCIAL_LINKS.map((l) => (
+                <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer" className="hover:text-fg">
+                  {l.label}
+                </a>
               ))}
             </nav>
             <p>
