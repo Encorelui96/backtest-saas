@@ -84,9 +84,8 @@ export function StrategyEditor({ id }: { id?: string }) {
     setRecharge(e instanceof ApiError ? e.recharge : null);
   };
   const [notice, setNotice] = useState<string | null>(null);
-  // Beginners see a summary of the rules and no idea box until they ask for them.
+  // Beginners see a summary of the rules until they ask to edit them.
   const [editRules, setEditRules] = useState(false);
-  const [showIdea, setShowIdea] = useState(false);
   const plan = usePlan();
   // What the plan allows, computed at each render: the choice itself is kept for a later upgrade.
   const period = plan ? { ...config, startDate: clampStartDate(config.startDate, plan) } : config;
@@ -221,11 +220,11 @@ export function StrategyEditor({ id }: { id?: string }) {
       <div className="flex flex-col gap-4">
         {beginner && (
           <p className="text-sm text-muted">
-            {rich(tl("Choisis un modèle, un marché, puis lance le test. Un {0} explique chaque case."), [<span key="q" className="font-bold text-accent">?</span>])}
+            {rich(tl("Choisis un modèle ou décris ton idée, puis un marché, et lance le test. Un {0} explique chaque case."), [<span key="q" className="font-bold text-accent">?</span>])}
           </p>
         )}
 
-        <Card title={beginner ? tl("1. Choisis un modèle") : tl("1. Stratégie")}>
+        <Card title={beginner ? tl("1. Choisis un modèle ou décris ton idée") : tl("1. Stratégie")}>
           <div className="flex flex-col gap-3">
             {meta && (
               <Templates
@@ -235,16 +234,18 @@ export function StrategyEditor({ id }: { id?: string }) {
                 beginner={beginner}
               />
             )}
-            {beginner && !showIdea ? (
-              <button onClick={() => setShowIdea(true)} className="self-start text-sm text-accent hover:underline">
-                {tl("Ou décris ta propre idée en français →")}</button>
-            ) : (
             <div className="flex flex-col gap-2">
+              {beginner && <p className="text-sm font-medium">{tl("Ou décris ton idée en français : l'IA la traduit en règles.")}</p>}
               <textarea
                 rows={beginner ? 3 : 4}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                placeholder={tl("Ex. : En 4 heures sur ETHUSDT, j'achète quand la MME 20 croise au-dessus de la MME 50. Stop à 2 ATR, objectif 3R.")}
+                placeholder={
+                  beginner
+                    ? tl("Ex. : J'achète quand le prix passe au-dessus de sa moyenne des 50 dernières bougies, et je vends quand il repasse en dessous.")
+                    : tl("Ex. : En 4 heures sur ETHUSDT, j'achète quand la MME 20 croise au-dessus de la MME 50. Stop à 2 ATR, objectif 3R.")
+                }
+                aria-label={tl("Ta stratégie en français")}
                 className="w-full"
               />
               <div className="flex flex-wrap items-center gap-2">
@@ -254,7 +255,6 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {meta && !meta.aiEnabled && <span className="text-xs text-muted">{tl("IA indisponible : le constructeur ci-dessous marche sans.")}</span>}
               </div>
             </div>
-            )}
             {ai && <AiSummary ai={ai} />}
           </div>
         </Card>
