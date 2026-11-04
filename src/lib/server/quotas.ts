@@ -2,6 +2,7 @@ import "server-only";
 import { INTERVAL_MS, type Interval } from "../types";
 import type { PoolClient } from "pg";
 import { PACK_BY_ID, PLANS, earliestStart, historyMonths, type CreditKind, type PackId, type Plan, type PlanId } from "../plans";
+import { translate, type Lang } from "../i18n";
 import { query, queryOne, transaction } from "./db";
 import type { SessionUser } from "./auth";
 import { UserError } from "./errors";
@@ -14,13 +15,19 @@ const AI_PER_MINUTE = 5;
 const AI_DAILY_CAP = Number(process.env.AI_DAILY_CAP) > 0 ? Number(process.env.AI_DAILY_CAP) : 200;
 
 export class QuotaError extends UserError {
-  constructor(
-    text: string,
-    values: readonly unknown[] = [],
-    /** The recharge that would lift this limit, offered next to the message. */
-    readonly recharge?: PackId,
-  ) {
+  /** The recharge that would lift this limit, offered next to the message. */
+  readonly recharge?: PackId;
+  /** The same message without the offer, for the phone app: nothing can be bought from inside it. */
+  readonly plain?: string;
+
+  constructor(text: string, values: readonly unknown[] = [], { recharge, plain }: { recharge?: PackId; plain?: string } = {}) {
     super(text, values);
+    this.recharge = recharge;
+    this.plain = plain;
+  }
+
+  inApp(lang: Lang) {
+    return translate(lang, this.plain ?? this.text, this.values);
   }
 }
 
@@ -98,9 +105,9 @@ export async function withUserLock<T>(user: SessionUser, fn: (run: Runner, clien
   });
 }
 
-function quotaSpent(text: string, count: number, u: Usage, pack: PackId) {
-  const p = PACK_BY_ID[pack];
-  return new QuotaError(text, [count, u.plan.label, u.resetsAt, p.label, p.price], pack);
+function quotaSpent(text: string, plain: string, count: number, u: Usage, recharge: PackId) {
+  const p = PACK_BY_ID[recharge];
+  return new QuotaError(text, [count, u.plan.label, u.resetsAt, p.label, p.price], { recharge, plain });
 }
 
 /**
@@ -111,18 +118,22 @@ function quotaSpent(text: string, count: number, u: Usage, pack: PackId) {
 export async function checkBacktestAllowed(user: SessionUser, interval: Interval, run: Runner = query, start?: number): Promise<{ useCredit: boolean }> {
   const u = await usageOf(user, run);
   if (INTERVAL_MS[interval] < INTERVAL_MS[u.plan.minInterval]) {
-    throw new QuotaError("L'offre {0:t} teste à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [u.plan.label, u.plan.minInterval, interval]);
+    throw new QuotaError("L'offre {0:t} teste à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [u.plan.label, u.plan.minInterval, interval], {
+      plain: "L'offre {0:t} teste à partir de l'unité {1}.",
+    });
   }
   const earliest = earliestStart(u.plan);
   if (start !== undefined && earliest !== null && start < earliest) {
-    throw new QuotaError("L'offre {0:t} teste les {1} derniers mois. Passe à l'offre Trader pour tout l'historique.", [u.plan.label, historyMonths(u.plan)]);
+    throw new QuotaError("L'offre {0:t} teste les {1} derniers mois. Passe à l'offre Trader pour tout l'historique.", [u.plan.label, historyMonths(u.plan)], {
+      plain: "L'offre {0:t} teste les {1} derniers mois.",
+    });
   }
   if (u.activeJobs >= u.plan.concurrentJobs) {
     throw new QuotaError(u.activeJobs > 1 ? "{0} backtests sont déjà en cours : attends qu'ils se terminent." : "1 backtest est déjà en cours : attends qu'il se termine.", [u.activeJobs]);
   }
   if (u.backtests < u.plan.backtestsPerMonth) return { useCredit: false };
   if (u.credits.backtest > 0) return { useCredit: true };
-  throw quotaSpent("Tu as utilisé tes {0} backtests du mois (offre {1:t}). Ils reviennent le {2:date}, ou recharge tout de suite : {3:t} pour {4:euros}.", u.plan.backtestsPerMonth, u, "bt100");
+  throw quotaSpent("Tu as utilisé tes {0} backtests du mois (offre {1:t}). Ils reviennent le {2:date}, ou recharge tout de suite : {3:t} pour {4:euros}.", "Tu as utilisé tes {0} backtests du mois (offre {1:t}). Ils reviennent le {2:date}.", u.plan.backtestsPerMonth, u, "bt100");
 }
 
 /** Records the use of one recharge credit (`reason` names what it paid for). */
@@ -152,7 +163,7 @@ export async function consumeAi(user: SessionUser): Promise<string> {
   return withUserLock(user, async (run) => {
     const u = await usageOf(user, run);
     const useCredit = u.ai >= u.plan.aiPerMonth;
-    if (useCredit && u.credits.ai === 0) throw quotaSpent("Tu as utilisé tes {0} traductions par l'IA du mois (offre {1:t}). Elles reviennent le {2:date}, ou recharge tout de suite : {3:t} pour {4:euros}.", u.plan.aiPerMonth, u, "ai50");
+    if (useCredit && u.credits.ai === 0) throw quotaSpent("Tu as utilisé tes {0} traductions par l'IA du mois (offre {1:t}). Elles reviennent le {2:date}, ou recharge tout de suite : {3:t} pour {4:euros}.", "Tu as utilisé tes {0} traductions par l'IA du mois (offre {1:t}). Elles reviennent le {2:date}.", u.plan.aiPerMonth, u, "ai50");
     const [recent] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'ai' AND created_at > now() - interval '1 minute'", [user.id]);
     if (Number(recent.n) >= AI_PER_MINUTE) throw new QuotaError("Trop de traductions d'affilée : attends une minute.");
     // The site-wide count runs under its own lock, so accounts translating at the same moment can't all slip under the cap.

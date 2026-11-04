@@ -90,3 +90,19 @@ describe("proxy (public address)", () => {
     expect(call("GET", "/tarifs", { host: render }).status).not.toBe(308);
   });
 });
+
+describe("proxy (phone app)", () => {
+  const APP = { "user-agent": "Mozilla/5.0 (Linux; Android 14) BacktestLabApp" };
+
+  it("keeps the offers out of the app, in its language", () => {
+    const res = call("GET", "/tarifs", APP);
+    expect(res.status).toBe(307);
+    expect(new URL(res.headers.get("location") as string).pathname).toBe("/");
+    expect(new URL(call("GET", "/en/questions?x=1", APP).headers.get("location") as string).pathname).toBe("/en");
+  });
+
+  it("leaves the app's other pages and every browser alone", () => {
+    expect(call("GET", "/strategies/new", APP).status).not.toBe(307);
+    expect(call("GET", "/tarifs", { "user-agent": "Mozilla/5.0 (Linux; Android 14) Chrome/130.0" }).status).not.toBe(307);
+  });
+});

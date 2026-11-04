@@ -42,7 +42,7 @@ function QuotaBanner({ usage }: { usage: NonNullable<Me["usage"]> }) {
           reset,
         ])}
       </span>
-      <Link href="/tarifs" className="font-medium text-accent hover:underline">
+      <Link href="/tarifs" className="web-only font-medium text-accent hover:underline">
         {tl("Voir les offres →")}</Link>
     </div>
   );

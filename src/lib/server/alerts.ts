@@ -88,7 +88,7 @@ export async function createAlert(user: SessionUser, strategyId: string): Promis
   const plan = await planOf(user);
   const strategy = await queryOne<{ json: Strategy }>("SELECT json FROM strategies WHERE id = $1 AND user_id = $2", [strategyId, user.id]);
   if (!strategy) throw new UserError("Stratégie introuvable.");
-  if (plan.alerts === 0) throw new QuotaError("L'offre {0:t} n'inclut pas d'alertes : passe à l'offre Trader pour en recevoir sur Telegram.", [plan.label]);
+  if (plan.alerts === 0) throw new QuotaError("L'offre {0:t} n'inclut pas d'alertes : passe à l'offre Trader pour en recevoir sur Telegram.", [plan.label], { plain: "L'offre {0:t} n'inclut pas d'alertes." });
   if (INTERVAL_MS[strategy.json.interval] < INTERVAL_MS[plan.minInterval]) {
     throw new QuotaError("L'offre {0:t} suit les stratégies à partir de l'unité {1}.", [plan.label, plan.minInterval]);
   }

@@ -80,14 +80,14 @@ export function Account() {
               ])}</p>
           )}
           {u.plan.id === "free" ? (
-            <p className="text-sm">
+            <p className="web-only text-sm">
               {tl("Plus de tests, le scalp dès 1 minute :")}{" "}
               <Link href="/tarifs" className="text-accent hover:underline">
                 {tl("voir les offres Trader et Pro →")}</Link>
             </p>
           ) : (
             (u.backtests >= u.plan.backtestsPerMonth * 0.8 || u.ai >= u.plan.aiPerMonth * 0.8) && (
-              <p className="text-sm">
+              <p className="web-only text-sm">
                 {tl("Bientôt au bout de ton quota ?")}{" "}
                 <Link href="/tarifs#recharges" className="text-accent hover:underline">
                   {tl("Ajouter une recharge →")}</Link>

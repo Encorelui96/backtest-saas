@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { isPhoneApp } from "@/lib/app-mode";
 import { DEFAULT_LANG, hasLang, translator, type Lang, type T } from "@/lib/i18n";
 
 /** The language of the page that sent the request: the x-lang header set by api(), else the referring page. */
@@ -21,6 +22,15 @@ export async function requestLang(): Promise<Lang> {
     return langOf(await headers());
   } catch {
     return DEFAULT_LANG;
+  }
+}
+
+/** Whether the request being handled comes from the phone app. */
+export async function requestInApp() {
+  try {
+    return isPhoneApp((await headers()).get("user-agent"));
+  } catch {
+    return false;
   }
 }
 

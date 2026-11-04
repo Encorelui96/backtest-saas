@@ -33,6 +33,11 @@ body {
   color: var(--fg);
 }
 
+/* Set by APP_MODE_SCRIPT in the phone app: what has no place there. */
+html[data-app] .web-only {
+  display: none;
+}
+
 input,
 select,
 textarea {

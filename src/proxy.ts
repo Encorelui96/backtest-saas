@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isPhoneApp } from "@/lib/app-mode";
 import { translatorOf } from "@/lib/server/lang";
 
 const SAFE = new Set(["GET", "HEAD", "OPTIONS"]);
@@ -52,6 +53,21 @@ function toPublicAddress(req: NextRequest) {
   return NextResponse.redirect(new URL(`${req.nextUrl.pathname}${req.nextUrl.search}`, publicUrl), 308);
 }
 
+/** Pages the phone app doesn't show: they present the offers, which can't be bought from inside it. */
+const WEB_ONLY_PAGES = ["/tarifs", "/questions"];
+
+function keepOutOfApp(req: NextRequest) {
+  if (!isPhoneApp(req.headers.get("user-agent"))) return null;
+  const { pathname } = req.nextUrl;
+  const english = pathname === "/en" || pathname.startsWith("/en/");
+  const page = english ? pathname.slice(3) : pathname;
+  if (!WEB_ONLY_PAGES.some((p) => page === p || page.startsWith(`${p}/`))) return null;
+  const url = req.nextUrl.clone();
+  url.pathname = english ? "/en" : "/";
+  url.search = "";
+  return NextResponse.redirect(url, 307);
+}
+
 /**
  * Pages live under app/[lang]. The French site keeps its addresses (/tarifs is served from /fr/tarifs);
  * the English one is under /en. /fr/… redirects to the address without it, so each page has one URL.
@@ -92,7 +108,7 @@ function routeLanguage(req: NextRequest) {
 
 export function proxy(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/")) return checkOrigin(req);
-  return toPublicAddress(req) ?? routeLanguage(req);
+  return toPublicAddress(req) ?? keepOutOfApp(req) ?? routeLanguage(req);
 }
 
 export const config = {

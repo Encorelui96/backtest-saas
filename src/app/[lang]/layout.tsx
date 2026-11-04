@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Nav, NavFallback } from "@/components/nav";
+import { APP_MODE_SCRIPT } from "@/lib/app-mode";
 import { SITE_NAME, SITE_URL } from "@/lib/site";
 import { LANGS, hasLang, localePath, translator } from "@/lib/i18n";
 import { LangProvider } from "@/lib/client/i18n";
@@ -13,8 +14,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const FOOTER_LINKS = [
-  { href: "/tarifs", label: "Tarifs" },
-  { href: "/questions", label: "Questions fréquentes" },
+  { href: "/tarifs", label: "Tarifs", web: true },
+  { href: "/questions", label: "Questions fréquentes", web: true },
   { href: "/nouveautes", label: "Nouveautés" },
   { href: "/apprendre", label: "Apprendre" },
   { href: "/mentions-legales", label: "Mentions légales" },
@@ -51,7 +52,11 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
   if (!hasLang(lang)) notFound();
   const t = translator(lang);
   return (
-    <html lang={lang} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    // The app's script marks <html> before React takes over.
+    <html lang={lang} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: APP_MODE_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         <LangProvider lang={lang}>
           <Suspense fallback={<NavFallback />}>
@@ -62,7 +67,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
           <footer className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-3 pt-6 pb-28 text-[11px] leading-relaxed text-muted sm:px-4 md:pb-6">
             <nav className="flex flex-wrap gap-x-4 gap-y-1" aria-label={t("Liens du pied de page")}>
               {FOOTER_LINKS.map((l) => (
-                <Link key={l.href} href={localePath(lang, l.href)} className="hover:text-fg">
+                <Link key={l.href} href={localePath(lang, l.href)} className={l.web ? "web-only hover:text-fg" : "hover:text-fg"}>
                   {t(l.label)}
                 </Link>
               ))}
