@@ -1335,6 +1335,7 @@ export const EN: Record<string, string> = {
   "Tu as utilisé tes {0} backtests du mois (offre {1:t}). Ils reviennent le {2:date}.": "You've used your {0} backtests for the month ({1:t} plan). They come back on {2:date}.",
   "Tu as utilisé tes {0} traductions par l'IA du mois (offre {1:t}). Elles reviennent le {2:date}.": "You've used your {0} AI translations for the month ({1:t} plan). They come back on {2:date}.",
   "L'offre {0:t} n'inclut pas d'alertes.": "The {0:t} plan doesn't include alerts.",
+  "Réseaux sociaux": "Social media",
   "Entreprise": "Enterprise",
   "Pour une équipe, une formation ou une société qui a besoin de plus que l'offre Pro.": "For a team, a training provider or a company that needs more than the Pro plan.",
   "L'offre Pro pour chaque membre de ton équipe": "The Pro plan for every member of your team",
