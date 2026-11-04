@@ -1,7 +1,9 @@
 # Signs the iPhone app and sends it to TestFlight. Started by hand from the Actions tab.
 # Secrets: APPLE_TEAM_ID, ASC_KEY_ID, ASC_ISSUER_ID and ASC_PRIVATE_KEY (the .p8 file's text).
 # The archive stays unsigned: at export, Xcode signs in the cloud with the API key, so no
-# certificate has to live on the runner. The app must already exist in App Store Connect.
+# certificate has to live on the runner. altool then uploads the .ipa with the same key,
+# because xcodebuild's own upload needs an Xcode account, which a runner doesn't have.
+# The app must already exist in App Store Connect.
 name: TestFlight
 
 on:
@@ -45,11 +47,12 @@ jobs:
           CURRENT_PROJECT_VERSION=${{ github.run_number }}
           DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
           CODE_SIGNING_ALLOWED=NO
-      - name: Sign and upload
+      - name: Sign
         env:
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
         run: |
-          KEY_PATH="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          mkdir -p "$HOME/.appstoreconnect/private_keys"
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8"
           (umask 077 && printf '%s' "$ASC_PRIVATE_KEY" > "$KEY_PATH")
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
@@ -59,13 +62,11 @@ jobs:
             <key>method</key>
             <string>app-store-connect</string>
             <key>destination</key>
-            <string>upload</string>
+            <string>export</string>
             <key>signingStyle</key>
             <string>automatic</string>
             <key>teamID</key>
             <string>$APPLE_TEAM_ID</string>
-            <key>manageAppVersionAndBuildNumber</key>
-            <false/>
           </dict>
           </plist>
           PLIST
@@ -77,3 +78,9 @@ jobs:
             -authenticationKeyPath "$KEY_PATH" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+      - name: Upload
+        run: >
+          xcrun altool --upload-app --type ios
+          --file "$(ls "$RUNNER_TEMP"/export/*.ipa)"
+          --apiKey "$ASC_KEY_ID"
+          --apiIssuer "$ASC_ISSUER_ID"
