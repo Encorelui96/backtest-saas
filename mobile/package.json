@@ -2,10 +2,11 @@
   "name": "backtest-lab-mobile",
   "version": "0.1.0",
   "private": true,
-  "description": "The Android app: it shows backtestlab.fr, marked so the site adapts to it (src/lib/app-mode.ts).",
+  "description": "The phone app: it shows backtestlab.fr, marked so the site adapts to it (src/lib/app-mode.ts).",
   "dependencies": {
     "@capacitor/android": "^8.0.0",
-    "@capacitor/core": "^8.0.0"
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0"
   },
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
