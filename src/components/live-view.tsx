@@ -139,16 +139,19 @@ export function LiveView() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end gap-3">
-        <Field label={tl("Stratégie")}>
-          <select value={strategyId ?? ""} onChange={(e) => router.push(e.target.value ? `/live?strategy=${e.target.value}` : "/live")} className="min-w-56">
-            <option value="">{tl("Aucune (graphique seul)")}</option>
-            {strategies.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name} · {s.strategy.symbol} {s.strategy.interval}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {/* A fixed width: otherwise the longest strategy name pushes the page wider than a phone. */}
+        <div className="w-full min-w-0 sm:w-72">
+          <Field label={tl("Stratégie")}>
+            <select value={strategyId ?? ""} onChange={(e) => router.push(e.target.value ? `/live?strategy=${e.target.value}` : "/live")} className="w-full">
+              <option value="">{tl("Aucune (graphique seul)")}</option>
+              {strategies.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name} · {s.strategy.symbol} {s.strategy.interval}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
         {strategy && strategyId && <AlertButton strategyId={strategyId} />}
         {!strategy && (
           <>
