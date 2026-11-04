@@ -12,6 +12,7 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "Reprends n'importe quel test", text: "Modifier et relancer est maintenant disponible sur chaque test, même si sa stratégie a été supprimée : ses règles, sa période et ses frais reviennent dans l'éditeur." },
       { title: "Offre Entreprise", text: "Pour une équipe, une formation ou une société : un devis selon le nombre de personnes et le volume de tests, depuis la page Tarifs." },
       { title: "L'IA dès la première étape", text: "En mode Débutant, la case pour décrire ton idée en français est maintenant affichée dès la première étape." },
       { title: "Renomme et retrouve tes tests", text: "Donne à chaque backtest le nom que tu veux, et retrouve tes backtests et tes stratégies avec la recherche du tableau de bord." },

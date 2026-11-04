@@ -107,6 +107,18 @@ export function StrategyEditor({ id }: { id?: string }) {
           setConfig((c) => withDefaultPeriod(c, s.strategy));
         })
         .catch((e) => setError(e.message));
+      return;
+    }
+    // Reopening a test without a saved strategy: its rules and settings, saved as a new strategy at the next run.
+    const from = new URLSearchParams(window.location.search).get("from");
+    if (from) {
+      api<{ strategy: Strategy; config: BacktestConfig }>(`/api/backtests/${encodeURIComponent(from)}`)
+        .then((b) => {
+          setStrategy(b.strategy);
+          setConfig((c) => ({ ...c, ...b.config }));
+          setFees(null);
+        })
+        .catch((e) => setError(e.message));
     }
   }, [id]);
 
