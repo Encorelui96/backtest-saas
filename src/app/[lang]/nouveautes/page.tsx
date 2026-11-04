@@ -12,6 +12,8 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "L'IA dès la première étape", text: "En mode Débutant, la case pour décrire ton idée en français est maintenant affichée dès la première étape." },
+      { title: "Renomme et retrouve tes tests", text: "Donne à chaque backtest le nom que tu veux, et retrouve tes backtests et tes stratégies avec la recherche du tableau de bord." },
       {
         title: "Une offre gratuite plus large",
         text: "30 backtests et 5 traductions par l'IA par mois, à partir de l'unité 15 minutes, sur les 12 derniers mois. Les unités 1 et 5 minutes, tout l'historique, le détail de la robustesse, le comparatif des prop firms et le suivi Live passent aux offres Trader et Pro.",

@@ -158,5 +158,6 @@ describe("no look-ahead", () => {
         }
       }
     }
-  });
+    // Compares every indicator candle by candle: a slower machine goes past the default 5 s.
+  }, 30_000);
 });

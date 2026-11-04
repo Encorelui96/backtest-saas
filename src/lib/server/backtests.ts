@@ -8,6 +8,7 @@ import type { BacktestConfig, Strategy } from "../strategy/schema";
 import { normalizeStrategy } from "../strategy/schema";
 import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "../strategy/warmup";
 import { buildReport, type BacktestReport } from "../engine/report";
+import { BACKTEST_LIST_LIMIT, SEARCH_FROM, SEARCH_TO, cleanBacktestName, searchPatterns } from "../backtest-names";
 import { getCandles } from "./candles";
 import { newId, query, queryOne } from "./db";
 
@@ -88,6 +89,8 @@ export async function saveBacktest(
 
 export interface StoredBacktest {
   id: string;
+  /** The name the owner gave it, or its strategy's. */
+  name: string;
   strategyId: string | null;
   strategy: Strategy;
   config: BacktestConfig;
@@ -97,13 +100,14 @@ export interface StoredBacktest {
 }
 
 export async function getBacktest(userId: string, id: string): Promise<StoredBacktest | null> {
-  const r = await queryOne<{ id: string; strategy_id: string | null; strategy: Strategy; config: BacktestConfig; summary: BacktestSummary; report: Buffer; created_at: Date }>(
+  const r = await queryOne<{ id: string; name: string | null; strategy_id: string | null; strategy: Strategy; config: BacktestConfig; summary: BacktestSummary; report: Buffer; created_at: Date }>(
     "SELECT * FROM backtests WHERE id = $1 AND user_id = $2",
     [id, userId],
   );
   if (!r) return null;
   return {
     id: r.id,
+    name: r.name ?? r.strategy.name,
     strategyId: r.strategy_id,
     strategy: r.strategy,
     config: r.config,
@@ -113,16 +117,20 @@ export async function getBacktest(userId: string, id: string): Promise<StoredBac
   };
 }
 
-export async function listBacktests(userId: string, strategyId?: string, limit = 50) {
-  const rows = await query<{ id: string; strategy_id: string | null; strategy: Strategy; config: BacktestConfig; summary: BacktestSummary; created_at: Date }>(
-    `SELECT id, strategy_id, strategy, config, summary, created_at FROM backtests
-     WHERE user_id = $1 AND ($2::text IS NULL OR strategy_id = $2) ORDER BY created_at DESC LIMIT $3`,
-    [userId, strategyId ?? null, limit],
+/** What a search reads, folded like searchPatterns(). */
+const SEARCH_TEXT = `translate(lower(COALESCE(name, strategy->>'name') || ' ' || (strategy->>'symbol') || ' ' || (strategy->>'interval')), '${SEARCH_FROM}', '${SEARCH_TO}')`;
+
+export async function listBacktests(userId: string, { strategyId, search = "" }: { strategyId?: string; search?: string } = {}) {
+  const rows = await query<{ id: string; label: string; strategy_id: string | null; strategy: Strategy; config: BacktestConfig; summary: BacktestSummary; created_at: Date }>(
+    `SELECT id, COALESCE(name, strategy->>'name') AS label, strategy_id, strategy, config, summary, created_at FROM backtests
+     WHERE user_id = $1 AND ($2::text IS NULL OR strategy_id = $2) AND ${SEARCH_TEXT} LIKE ALL ($3::text[])
+     ORDER BY created_at DESC LIMIT $4`,
+    [userId, strategyId ?? null, searchPatterns(search), BACKTEST_LIST_LIMIT],
   );
   return rows.map((r) => ({
     id: r.id,
     strategyId: r.strategy_id,
-    name: r.strategy.name,
+    name: r.label,
     symbol: r.strategy.symbol,
     interval: r.strategy.interval,
     startDate: r.config.startDate,
@@ -130,6 +138,16 @@ export async function listBacktests(userId: string, strategyId?: string, limit =
     summary: r.summary,
     createdAt: r.created_at.getTime(),
   }));
+}
+
+/** Names a result, or gives it its strategy's name back. Returns the name to show, null if it isn't this user's. */
+export async function renameBacktest(userId: string, id: string, name: string) {
+  const r = await queryOne<{ label: string }>("UPDATE backtests SET name = $3 WHERE id = $1 AND user_id = $2 RETURNING COALESCE(name, strategy->>'name') AS label", [
+    id,
+    userId,
+    cleanBacktestName(name),
+  ]);
+  return r?.label ?? null;
 }
 
 export async function deleteBacktest(userId: string, id: string) {
