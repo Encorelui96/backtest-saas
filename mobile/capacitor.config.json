@@ -1,0 +1,13 @@
+{
+  "appId": "fr.backtestlab.app",
+  "appName": "Backtest Lab",
+  "webDir": "www",
+  "backgroundColor": "#0b0e14",
+  "server": {
+    "url": "https://backtestlab.fr",
+    "errorPath": "offline.html"
+  },
+  "android": {
+    "appendUserAgent": "BacktestLabApp"
+  }
+}
