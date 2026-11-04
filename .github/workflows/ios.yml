@@ -1,0 +1,35 @@
+# Checks that the iPhone app compiles, for the simulator. Installing on a real iPhone
+# needs an Apple Developer account and its signing certificates. No effect on the site.
+name: iOS
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/ios.yml"
+  pull_request:
+    paths:
+      - "mobile/**"
+      - ".github/workflows/ios.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  simulator:
+    runs-on: macos-26
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx cap add ios
+      - run: npx capacitor-assets generate --ios
+      - run: npx cap sync ios
+      - run: xcodebuild -project App.xcodeproj -scheme App -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
+        working-directory: mobile/ios/App

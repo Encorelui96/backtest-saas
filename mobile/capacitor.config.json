@@ -3,11 +3,9 @@
   "appName": "Backtest Lab",
   "webDir": "www",
   "backgroundColor": "#0b0e14",
+  "appendUserAgent": "BacktestLabApp",
   "server": {
     "url": "https://backtestlab.fr",
     "errorPath": "offline.html"
-  },
-  "android": {
-    "appendUserAgent": "BacktestLabApp"
   }
 }
