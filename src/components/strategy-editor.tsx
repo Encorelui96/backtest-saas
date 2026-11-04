@@ -567,7 +567,7 @@ export function StrategyEditor({ id }: { id?: string }) {
               <Alert tone="error">
                 {error}
                 {recharge && (
-                  <Link href="/tarifs#recharges" className="mt-1 block font-semibold underline">
+                  <Link href="/tarifs#recharges" className="web-only mt-1 block font-semibold underline">
                     {tl("Voir les recharges →")}</Link>
                 )}
               </Alert>
@@ -595,7 +595,7 @@ export function StrategyEditor({ id }: { id?: string }) {
           <p className="mb-1.5 line-clamp-3 text-xs text-down">
             {error}
             {recharge && (
-              <Link href="/tarifs#recharges" className="ml-1 font-semibold underline">
+              <Link href="/tarifs#recharges" className="web-only ml-1 font-semibold underline">
                 {tl("Recharger")}</Link>
             )}
           </p>

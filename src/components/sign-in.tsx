@@ -193,13 +193,14 @@ export function SignIn() {
                 <p className="text-[11px] text-muted">
                   {tl("Mot de passe oublié ? Écris à ")}<a href={`mailto:${EDITOR.email}`} className="underline hover:text-fg">{EDITOR.email}</a> {tl(" depuis l'adresse du compte pour récupérer ton accès.")}</p>
               ))}
-            {(google || (emailLinks && mode === "signin")) && <div className="text-center text-xs text-muted">{tl("ou")}</div>}
+            {/* In the phone app only the password: Google refuses its browser, and an e-mail link would open outside it. */}
+            {(google || (emailLinks && mode === "signin")) && <div className="web-only text-center text-xs text-muted">{tl("ou")}</div>}
             {emailLinks && mode === "signin" && (
-              <Button type="button" variant="ghost" disabled={busy || !email} onClick={sendLink}>
+              <Button type="button" variant="ghost" className="web-only" disabled={busy || !email} onClick={sendLink}>
                 {tl("Recevoir un lien par e-mail")}</Button>
             )}
             {google && (
-              <Button type="button" variant="light" onClick={() => authClient.signIn.social({ provider: "google", callbackURL: back, errorCallbackURL: signInPage })}>
+              <Button type="button" variant="light" className="web-only" onClick={() => authClient.signIn.social({ provider: "google", callbackURL: back, errorCallbackURL: signInPage })}>
                 {tl("Continuer avec Google")}</Button>
             )}
           </form>

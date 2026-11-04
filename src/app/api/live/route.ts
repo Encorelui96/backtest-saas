@@ -40,7 +40,9 @@ export async function POST(req: Request) {
     if (!plan.live) throw new QuotaError("Le suivi en direct des stratégies est réservé aux offres Trader et Pro.");
     const ms = INTERVAL_MS[strategy.interval];
     if (ms < INTERVAL_MS[plan.minInterval]) {
-      throw new QuotaError("L'offre {0:t} suit les stratégies à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [plan.label, plan.minInterval, strategy.interval]);
+      throw new QuotaError("L'offre {0:t} suit les stratégies à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [plan.label, plan.minInterval, strategy.interval], {
+        plain: "L'offre {0:t} suit les stratégies à partir de l'unité {1}.",
+      });
     }
     const display = body.display ?? 300;
     const warmBars = Math.min(4000, Math.ceil(warmupMs(strategy) / ms) + 10);

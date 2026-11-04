@@ -13,6 +13,9 @@ const LINKS = [
   { href: "/compte", label: "Mon compte", short: "Compte", icon: "M12 12a4 4 0 100-8 4 4 0 000 8zM4 21a8 8 0 0116 0" },
 ];
 
+/** The offers stay out of the phone app. */
+const webOnly = (href: string) => (href === "/tarifs" ? "web-only " : "");
+
 function active(path: string, href: string) {
   if (href === "/") return path === "/" || path.startsWith("/backtests");
   if (href === "/strategies/new") return path.startsWith("/strategies");
@@ -29,15 +32,16 @@ export function Nav() {
   if (!isPending && !session) {
     return (
       <header className="sticky top-0 z-20 border-b border-line bg-panel/95 backdrop-blur">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 text-sm">
+        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4">
           <Link href="/" className="font-semibold text-fg">
             {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
           </Link>
-          <div className="flex items-center gap-3 sm:gap-4">
-            <Link href="/apprendre" className={path.startsWith("/apprendre") ? "text-fg" : "text-muted hover:text-fg"}>
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Too wide for a small phone, where the footer has it too. */}
+            <Link href="/apprendre" className={`hidden min-[420px]:inline ${path.startsWith("/apprendre") ? "text-fg" : "text-muted hover:text-fg"}`}>
               {t("Apprendre")}
             </Link>
-            <Link href="/tarifs" className={path.startsWith("/tarifs") ? "text-fg" : "text-muted hover:text-fg"}>
+            <Link href="/tarifs" className={`web-only ${path.startsWith("/tarifs") ? "text-fg" : "text-muted hover:text-fg"}`}>
               {t("Tarifs")}
             </Link>
             <LanguageSwitch />
@@ -59,7 +63,7 @@ export function Nav() {
             {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
           </Link>
           {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className={`hidden md:block ${active(path, l.href) ? "text-fg" : "text-muted hover:text-fg"}`}>
+            <Link key={l.href} href={l.href} className={`${webOnly(l.href)}hidden md:block ${active(path, l.href) ? "text-fg" : "text-muted hover:text-fg"}`}>
               {t(l.label)}
             </Link>
           ))}
@@ -71,9 +75,9 @@ export function Nav() {
         </nav>
       </header>
       <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-panel/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden">
-        <div className="grid grid-cols-6">
+        <div className="flex">
           {LINKS.map((l) => (
-            <Link key={l.href} href={l.href} className={`flex flex-col items-center gap-0.5 py-2 text-[11px] ${active(path, l.href) ? "text-accent" : "text-muted"}`}>
+            <Link key={l.href} href={l.href} className={`${webOnly(l.href)}flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${active(path, l.href) ? "text-accent" : "text-muted"}`}>
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d={l.icon} />
               </svg>

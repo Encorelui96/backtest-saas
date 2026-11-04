@@ -7,7 +7,7 @@ import { AuthError } from "./auth";
 import { QuotaError } from "./quotas";
 import { TelegramError } from "./telegram";
 import { translate } from "@/lib/i18n";
-import { requestLang } from "./lang";
+import { requestInApp, requestLang } from "./lang";
 
 /**
  * Turns thrown errors into JSON responses with a message the UI can show as is.
@@ -34,7 +34,10 @@ async function settle(fn: () => Promise<Response>): Promise<Response> {
     const lang = await requestLang();
     const t = (fr: string, values?: readonly unknown[]) => translate(lang, fr, values);
     if (e instanceof AuthError) return Response.json({ error: t(e.message), auth: true }, { status: 401 });
-    if (e instanceof QuotaError) return Response.json({ error: e.in(lang), quota: true, recharge: e.recharge ?? null }, { status: 429 });
+    if (e instanceof QuotaError) {
+      const app = await requestInApp();
+      return Response.json({ error: app ? e.inApp(lang) : e.in(lang), quota: true, recharge: app ? null : (e.recharge ?? null) }, { status: 429 });
+    }
     if (e instanceof UserError) return Response.json({ error: e.in(lang) }, { status: 400 });
     if (e instanceof TelegramError) {
       console.error(e.message);

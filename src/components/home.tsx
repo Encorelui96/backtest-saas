@@ -118,7 +118,7 @@ export function Home() {
           </div>
         ))}
       </div>
-      <p className="text-center text-sm text-muted">
+      <p className="web-only text-center text-sm text-muted">
         {tl("Des questions ?")}{" "}
         <Link href="/questions" className="text-accent hover:underline">
           {tl("Ce que fait Backtest Lab, pour qui, à quel prix")}</Link>{" "}

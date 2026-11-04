@@ -10,7 +10,7 @@ export function PlanLock({ children }: { children: ReactNode }) {
     <p className="rounded-md border border-accent/30 bg-accent/10 px-3 py-2 text-sm">
       <span aria-hidden>🔒 </span>
       {children}{" "}
-      <Link href="/tarifs" className="font-medium text-accent hover:underline">
+      <Link href="/tarifs" className="web-only font-medium text-accent hover:underline">
         {tl("Voir les offres →")}</Link>
     </p>
   );

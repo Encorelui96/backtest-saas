@@ -66,6 +66,14 @@ describe("recharges", () => {
     expect(err.message).toContain("+100 backtests pour 5 €");
   });
 
+  it("sells nothing in the phone app's message", async () => {
+    db.backtests = 100;
+    const err = await checkBacktestAllowed(user, "1h", sql).catch((e) => e);
+    expect(err.inApp("fr")).toMatch(/^Tu as utilisé tes \d+ backtests du mois \(offre .+\)\. Ils reviennent le .+\.$/);
+    expect(err.inApp("fr")).not.toMatch(/recharge|€/);
+    expect(err.inApp("en")).not.toMatch(/top up|€/i);
+  });
+
   it("spends one AI credit per translation past the quota, never within it", async () => {
     db.ai = 10;
     await consumeAi(user);
