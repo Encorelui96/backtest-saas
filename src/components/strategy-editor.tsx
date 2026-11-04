@@ -242,7 +242,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 onChange={(e) => setText(e.target.value)}
                 placeholder={
                   beginner
-                    ? tl("Ex. : J'achète quand le prix passe au-dessus de sa moyenne des 50 dernières bougies, et je vends quand il repasse en dessous.")
+                    ? tl("Ex. : J'achète quand le prix passe au-dessus de sa moyenne sur 50 bougies, je vends en dessous.")
                     : tl("Ex. : En 4 heures sur ETHUSDT, j'achète quand la MME 20 croise au-dessus de la MME 50. Stop à 2 ATR, objectif 3R.")
                 }
                 aria-label={tl("Ta stratégie en français")}

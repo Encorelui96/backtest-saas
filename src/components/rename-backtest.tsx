@@ -48,7 +48,7 @@ export function RenameBacktest({ id, name, onDone, onCancel }: { id: string; nam
 
   return (
     <form onSubmit={save} onClick={(e) => e.stopPropagation()} className="flex w-full flex-col gap-2">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <input
           autoFocus
           value={value}
@@ -58,7 +58,7 @@ export function RenameBacktest({ id, name, onDone, onCancel }: { id: string; nam
           onKeyDown={(e) => e.key === "Escape" && onCancel()}
           placeholder={tl("Vide : nom de la stratégie")}
           aria-label={tl("Nom du backtest")}
-          className="min-w-0 flex-1"
+          className="min-w-0 flex-1 basis-60"
         />
         <Button type="submit" disabled={busy}>
           {tl("Enregistrer")}</Button>

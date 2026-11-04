@@ -191,7 +191,7 @@ export function Dashboard() {
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={tl("Rechercher un backtest ou une stratégie")}
+            placeholder={tl("Rechercher un nom, un marché…")}
             aria-label={tl("Rechercher un backtest ou une stratégie")}
             className="w-full"
             style={{ padding: "8px 12px 8px 36px" }}
