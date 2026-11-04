@@ -28,6 +28,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Check the API key
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+        run: node ../.github/scripts/check-asc-key.mjs
       - run: npm install
       - run: npx cap add ios
       - run: npx capacitor-assets generate --ios
@@ -53,7 +57,7 @@ jobs:
         run: |
           mkdir -p "$HOME/.appstoreconnect/private_keys"
           KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_$ASC_KEY_ID.p8"
-          (umask 077 && printf '%s' "$ASC_PRIVATE_KEY" > "$KEY_PATH")
+          (umask 077 && printf '%s\n' "$ASC_PRIVATE_KEY" | tr -d '\r' > "$KEY_PATH")
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -84,3 +88,12 @@ jobs:
           --file "$(ls "$RUNNER_TEMP"/export/*.ipa)"
           --apiKey "$ASC_KEY_ID"
           --apiIssuer "$ASC_ISSUER_ID"
+      # This log is public: only matching lines, without addresses or tokens.
+      - name: Explain a failed export
+        if: failure()
+        run: |
+          find "$(getconf DARWIN_USER_TEMP_DIR)" -path '*.xcdistributionlogs/*' -type f 2>/dev/null | while read -r log; do
+            echo "== $(basename "$log")"
+            grep -iE 'error|denied|forbidden|unauthori|no account|listTeams|cloud' "$log" | tail -40 | cut -c1-300 |
+              sed -E 's/[[:alnum:]._%+-]+@[[:alnum:].-]+/[email]/g; s/eyJ[[:alnum:]._-]+/[token]/g'
+          done
