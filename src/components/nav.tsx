@@ -31,7 +31,7 @@ export function Nav() {
   // Visitors only see the sign-in link: the app's pages need an account.
   if (!isPending && !session) {
     return (
-      <header className="sticky top-0 z-20 border-b border-line bg-panel/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-line bg-panel/95 pt-[env(safe-area-inset-top)] backdrop-blur">
         <nav className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4">
           <Link href="/" className="font-semibold text-fg">
             {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
@@ -57,7 +57,7 @@ export function Nav() {
   }
   return (
     <>
-      <header className="sticky top-0 z-20 border-b border-line bg-panel/95 backdrop-blur">
+      <header className="sticky top-0 z-20 border-b border-line bg-panel/95 pt-[env(safe-area-inset-top)] backdrop-blur">
         <nav className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 text-sm">
           <Link href="/" className="font-semibold text-fg">
             {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
@@ -93,7 +93,7 @@ export function Nav() {
 export function NavFallback() {
   const tl = useT();
   return (
-    <header className="sticky top-0 z-20 border-b border-line bg-panel">
+    <header className="sticky top-0 z-20 border-b border-line bg-panel pt-[env(safe-area-inset-top)]">
       <nav className="mx-auto flex max-w-7xl items-center px-4 py-3 text-sm font-semibold">
         {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
       </nav>
