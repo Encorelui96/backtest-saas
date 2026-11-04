@@ -84,6 +84,26 @@ export const PLANS: Record<PlanId, Plan> = {
 
 export const PAID_PLANS = [PLANS.trader, PLANS.pro];
 
+/**
+ * The offer priced on request. Not a plan: it has no quota of its own, the
+ * accounts it covers stay on the plans above.
+ */
+export const ENTERPRISE = {
+  label: "Entreprise",
+  pitch: "Pour une équipe, une formation ou une société qui a besoin de plus que l'offre Pro.",
+  perks: [
+    "L'offre Pro pour chaque membre de ton équipe",
+    "Des quotas adaptés à ton volume de tests",
+    "Un seul devis et une seule facture pour ta société",
+    "Un interlocuteur direct pour la prise en main",
+  ],
+};
+
+/** A pre-filled e-mail asking for a quote. */
+export function quoteHref(email: string, subject: string, lines: string[]) {
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join("\n"))}`;
+}
+
 const DAY = 86_400_000;
 
 /**

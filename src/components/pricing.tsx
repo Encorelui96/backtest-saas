@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { Link, useT } from "@/lib/client/i18n";
 import { authClient } from "@/lib/client/auth-client";
 import { api } from "@/lib/client/api";
-import { PACKS, PLANS, euros, historyMonths, type Billing, type PackId, type Plan, type PlanId } from "@/lib/plans";
+import { ENTERPRISE, PACKS, PLANS, euros, historyMonths, quoteHref, type Billing, type PackId, type Plan, type PlanId } from "@/lib/plans";
+import { EDITOR } from "@/lib/legal";
 import { Alert } from "./ui";
 import { num } from "@/lib/client/format";
 
@@ -25,7 +26,7 @@ function features(p: Plan) {
   ];
 }
 
-/** Three offers, the middle one highlighted; paid offers record interest until online payment opens. */
+/** Three offers, the middle one highlighted, then the one on quote; paid offers record interest until online payment opens. */
 export function Pricing() {
   const tl = useT();
   const { data: session } = authClient.useSession();
@@ -141,6 +142,33 @@ export function Pricing() {
           );
         })}
       </div>
+
+      <section id="entreprise" className="flex scroll-mt-20 flex-col gap-4 rounded-xl border border-line bg-panel p-4 sm:p-5 md:flex-row md:items-center md:gap-8">
+        <div className="md:w-72 md:shrink-0">
+          <h2 className="text-lg font-semibold">{tl(ENTERPRISE.label)}</h2>
+          <p className="mt-1 text-sm text-muted">{tl(ENTERPRISE.pitch)}</p>
+          <div className="mt-3 text-3xl font-semibold">{tl("Sur devis")}</div>
+          <p className="text-xs text-muted">{tl("Le prix dépend du nombre de personnes et du volume de tests.")}</p>
+        </div>
+        <ul className="flex flex-1 flex-col gap-2 text-sm">
+          {ENTERPRISE.perks.map((perk) => (
+            <li key={perk} className="flex gap-2">
+              <span className="text-up" aria-hidden>
+                ✓
+              </span>
+              {tl(perk)}
+            </li>
+          ))}
+        </ul>
+        <div className="md:w-52 md:shrink-0">
+          <a
+            href={quoteHref(EDITOR.email, tl("Devis offre Entreprise Backtest Lab"), [tl("Société :"), tl("Nombre de personnes :"), tl("Ton besoin :")])}
+            className="block rounded-md border border-line px-4 py-2 text-center font-medium hover:border-accent"
+          >
+            {tl("Demander un devis")}</a>
+          <p className="mt-2 text-center text-xs text-muted">{tl("ou écris à {0}", [EDITOR.email])}</p>
+        </div>
+      </section>
 
       <section id="recharges" className="mt-4 scroll-mt-20 rounded-xl border border-line bg-panel p-4 sm:p-5">
         <h2 className="text-lg font-semibold">{tl("Recharges")}</h2>
