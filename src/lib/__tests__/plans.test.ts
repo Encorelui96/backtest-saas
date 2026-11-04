@@ -1,7 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { PLANS, clampStartDate, earliestStart, historyMonths } from "../plans";
+import { ENTERPRISE, PLANS, clampStartDate, earliestStart, historyMonths, quoteHref } from "../plans";
 
 const NOW = Date.parse("2026-11-03T16:30:00Z");
+
+describe("enterprise offer", () => {
+  it("stays outside the plans, so quotas and billing never see it", () => {
+    expect(Object.keys(PLANS)).toEqual(["free", "trader", "pro"]);
+    expect(ENTERPRISE).not.toHaveProperty("monthly");
+  });
+
+  it("prepares an e-mail with its subject and lines encoded", () => {
+    const href = quoteHref("a@b.fr", "Devis & co", ["Société :", "Besoin :"]);
+    const url = new URL(href);
+    expect(url.protocol).toBe("mailto:");
+    expect(url.pathname).toBe("a@b.fr");
+    expect(url.searchParams.get("subject")).toBe("Devis & co");
+    expect(url.searchParams.get("body")).toBe("Société :\nBesoin :");
+  });
+});
 
 describe("free plan", () => {
   it("allows 30 backtests and 5 AI translations a month, from 15 minutes", () => {
