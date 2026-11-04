@@ -13,7 +13,7 @@ export async function GET(req: Request) {
       query("SELECT plan, updated_at FROM plans WHERE user_id = $1", [user.id]),
       query("SELECT name, json AS rules, source_text AS description, created_at, updated_at FROM strategies WHERE user_id = $1 ORDER BY created_at", [user.id]),
       // The full reports can weigh several MB each and are recomputable: the export keeps the settings and the results summary.
-      query("SELECT strategy, config, summary, created_at FROM backtests WHERE user_id = $1 ORDER BY created_at", [user.id]),
+      query("SELECT name, strategy, config, summary, created_at FROM backtests WHERE user_id = $1 ORDER BY created_at", [user.id]),
       query("SELECT kind, created_at FROM usage_events WHERE user_id = $1 ORDER BY created_at", [user.id]),
       query(`SELECT "createdAt" AS created_at, "expiresAt" AS expires_at, "ipAddress" AS ip_address, "userAgent" AS user_agent FROM session WHERE "userId" = $1`, [user.id]),
       query("SELECT kind, answer, comment, created_at FROM feedback WHERE user_id = $1", [user.id]),

@@ -19,12 +19,15 @@ import { EXIT_LABELS, tradeEvents } from "@/lib/engine/insights";
 import { EVENT_KINDS, type EventKind } from "@/lib/engine/calendar";
 import { PlanLock } from "./plan-lock";
 import { PropFirmPanel } from "./prop-firm-panel";
+import { RenameBacktest, RenameButton } from "./rename-backtest";
 import { SharePanel } from "./share-panel";
 import { AnalysisPanel, RiskPanel } from "./trade-insights";
 import { Alert, Button, Card, Stat, Tabs } from "./ui";
 
 interface Stored {
   id: string;
+  /** The owner's name for it (absent from shared views, which show the strategy's). */
+  name?: string;
   strategyId: string | null;
   strategy: Strategy;
   config: BacktestConfig;
@@ -52,6 +55,7 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
   // The first render shows "loading" on the server and in the browser alike, so reading the address here can't mismatch.
   const [tab, setTab] = useState<Tab>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("tab") === "prop" ? "prop" : "overview"));
   const [selected, setSelected] = useState<number | null>(null);
+  const [renaming, setRenaming] = useState(false);
   const beginner = useBeginner();
   const plan = usePlan();
   // A shared report stays whole: it is the public example of what the site does.
@@ -73,6 +77,7 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
   const { report, strategy, config } = data;
   const m = report.metrics;
   const hasR = m.avgR !== null;
+  const name = data.name ?? strategy.name;
 
   return (
     <div className="flex flex-col gap-4">
@@ -86,8 +91,23 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
         </div>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold">{strategy.name}</h1>
+        <div className={renaming ? "w-full" : "min-w-0"}>
+          {renaming ? (
+            <RenameBacktest
+              id={id}
+              name={name}
+              onCancel={() => setRenaming(false)}
+              onDone={(renamed) => {
+                setData({ ...data, name: renamed });
+                setRenaming(false);
+              }}
+            />
+          ) : (
+            <div className="flex items-center gap-1">
+              <h1 className="text-xl font-semibold">{name}</h1>
+              {!shared && <RenameButton onClick={() => setRenaming(true)} />}
+            </div>
+          )}
           <p className="text-sm text-muted">
             {strategy.symbol} · {strategy.interval} · {date(report.period.from, false)} → {date(report.period.to, false)} {tl(" · capital {0} · frais {1} % / côté", [money(config.initialCapital), config.feePercent])}</p>
         </div>

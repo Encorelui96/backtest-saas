@@ -32,6 +32,8 @@ CREATE TABLE IF NOT EXISTS backtests (
 );
 CREATE INDEX IF NOT EXISTS backtests_by_user ON backtests (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS backtests_by_strategy ON backtests (strategy_id, created_at DESC);
+-- The name the owner gave this result. Empty, it shows its strategy's name. Private: shared reports don't show it.
+ALTER TABLE backtests ADD COLUMN IF NOT EXISTS name text;
 
 -- Work queue: the web server only enqueues, the worker process computes.
 CREATE TABLE IF NOT EXISTS jobs (

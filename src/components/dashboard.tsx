@@ -5,6 +5,7 @@ import { Link, useRouter, useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { stepSeen, welcomeDone } from "@/lib/client/preferences";
+import { BACKTEST_LIST_LIMIT, matchesSearch } from "@/lib/backtest-names";
 import { firstStepsDone } from "@/lib/next-step";
 import { date, num, pct, r, tone, formatLocale } from "@/lib/client/format";
 import type { Strategy } from "@/lib/strategy/schema";
@@ -14,6 +15,7 @@ import { CandleHero } from "./candle-hero";
 import { TickerTape } from "./ticker-tape";
 import { useBeginner } from "./learn";
 import { PmfSurvey } from "./pmf-survey";
+import { RenameBacktest, RenameButton } from "./rename-backtest";
 import { Welcome } from "./welcome";
 
 interface Me {
@@ -108,6 +110,9 @@ export function Dashboard() {
   const [strategies, setStrategies] = useState<{ id: string; name: string; strategy: Strategy; updatedAt: number }[] | null>(null);
   const [backtests, setBacktests] = useState<BacktestRow[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
+  const [search, setSearch] = useState("");
+  const [found, setFound] = useState<{ query: string; rows: BacktestRow[] } | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
   // The dashboard only renders in the browser (after the session check), so storage can be read here.
   const [welcome, setWelcome] = useState(() => !welcomeDone());
 
@@ -116,6 +121,33 @@ export function Dashboard() {
     api<BacktestRow[]>("/api/backtests").then(setBacktests).catch(() => setBacktests([]));
     api<Me>("/api/me").then(setMe).catch(() => {});
   }, []);
+
+  // The list holds the latest backtests only: the server searches them all, once the typing pauses.
+  const query = search.trim();
+  useEffect(() => {
+    if (!query) return;
+    let current = true;
+    const timer = setTimeout(() => {
+      api<BacktestRow[]>(`/api/backtests?q=${encodeURIComponent(query)}`)
+        .then((rows) => current && setFound({ query, rows }))
+        .catch(() => current && setFound({ query, rows: [] }));
+    }, 250);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [query]);
+
+  const shown = !query ? backtests : found?.query === query ? found.rows : null;
+  const shownStrategies = strategies?.filter((s) => matchesSearch(`${s.name} ${s.strategy.symbol} ${s.strategy.interval}`, query)) ?? null;
+
+  const renamed = (id: string, name: string) => {
+    const apply = (rows: BacktestRow[]) => rows.map((b) => (b.id === id ? { ...b, name } : b));
+    setBacktests((rows) => rows && apply(rows));
+    setFound((f) => f && { ...f, rows: apply(f.rows) });
+    setRenaming(null);
+  };
+  const renameForm = (b: BacktestRow) => <RenameBacktest id={b.id} name={b.name} onDone={(name) => renamed(b.id, name)} onCancel={() => setRenaming(null)} />;
 
   const remove = async (id: string) => {
     if (!confirm(tl("Supprimer cette stratégie ? Ses backtests restent consultables."))) return;
@@ -148,22 +180,44 @@ export function Dashboard() {
       )}
       {me && !me.surveyAnswered && backtests !== null && backtests.length >= 3 && <PmfSurvey />}
 
+      {backtests !== null && backtests.length > 0 && (
+        <div className="relative">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden>
+            <circle cx="7" cy="7" r="4.5" />
+            <path d="M10.5 10.5L14 14" />
+          </svg>
+          {/* Inline: the site's input padding sits outside Tailwind's layers and would win over a class. */}
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder={tl("Rechercher un backtest ou une stratégie")}
+            aria-label={tl("Rechercher un backtest ou une stratégie")}
+            className="w-full"
+            style={{ padding: "8px 12px 8px 36px" }}
+          />
+        </div>
+      )}
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <Card title={beginner ? tl("Mes tests") : tl("Derniers backtests")}>
-          {backtests === null ? (
-            <p className="text-sm text-muted">{tl("Chargement…")}</p>
-          ) : backtests.length === 0 ? (
+          {shown === null ? (
+            <p className="text-sm text-muted">{query ? tl("Recherche…") : tl("Chargement…")}</p>
+          ) : shown.length === 0 && query ? (
+            <p className="text-sm text-muted">{tl("Aucun résultat pour « {0} ».", [query])}</p>
+          ) : shown.length === 0 ? (
             <div className="flex flex-col items-start gap-3 text-sm text-muted">
               <p>{tl("Aucun backtest pour l'instant. Décris une stratégie en français ou pars d'un modèle.")}</p>
               <Button onClick={() => router.push("/strategies/new")}>{tl("Créer ma première stratégie")}</Button>
             </div>
           ) : beginner ? (
             <ul className="-my-1 flex flex-col divide-y divide-line/50">
-              {backtests.map((b) => {
+              {shown.map((b) => {
                 const v = verdict(b.summary);
+                if (renaming === b.id) return <li key={b.id} className="py-3">{renameForm(b)}</li>;
                 return (
-                  <li key={b.id}>
-                    <Link href={`/backtests/${b.id}`} className="flex items-center gap-3 py-3">
+                  <li key={b.id} className="flex items-center gap-1">
+                    <Link href={`/backtests/${b.id}`} className="flex min-w-0 flex-1 items-center gap-3 py-3">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{b.name}</div>
                         <div className="text-[11px] text-muted">
@@ -173,6 +227,7 @@ export function Dashboard() {
                       <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] ${v.style}`}>{v.label}</span>
                       <span className={`num w-16 shrink-0 text-right text-sm font-semibold ${tone(b.summary.totalReturnPercent)}`}>{pct(b.summary.totalReturnPercent)}</span>
                     </Link>
+                    <RenameButton onClick={() => setRenaming(b.id)} />
                   </li>
                 );
               })}
@@ -181,9 +236,11 @@ export function Dashboard() {
             <>
             {/* Phones: one card per backtest. */}
             <ul className="-my-1 flex flex-col divide-y divide-line/50 md:hidden">
-              {backtests.map((b) => (
-                <li key={b.id}>
-                  <Link href={`/backtests/${b.id}`} className="flex items-center gap-3 py-2.5">
+              {shown.map((b) => renaming === b.id ? (
+                <li key={b.id} className="py-2.5">{renameForm(b)}</li>
+              ) : (
+                <li key={b.id} className="flex items-center gap-1">
+                  <Link href={`/backtests/${b.id}`} className="flex min-w-0 flex-1 items-center gap-3 py-2.5">
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm">{b.name}</div>
                       <div className="text-[11px] text-muted">
@@ -195,6 +252,7 @@ export function Dashboard() {
                       <div className="text-[11px] text-down">{tl("{0} max", [pct(-b.summary.maxDrawdownPercent)])}</div>
                     </div>
                   </Link>
+                  <RenameButton onClick={() => setRenaming(b.id)} />
                 </li>
               ))}
             </ul>
@@ -214,10 +272,17 @@ export function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {backtests.map((b) => (
+                  {shown.map((b) => renaming === b.id ? (
+                    <tr key={b.id} className="border-t border-line/50">
+                      <td colSpan={9} className="py-2">{renameForm(b)}</td>
+                    </tr>
+                  ) : (
                     <tr key={b.id} onClick={() => router.push(`/backtests/${b.id}`)} className="cursor-pointer border-t border-line/50 hover:bg-panel-2">
                       <td className="py-1.5">
-                        {b.name}
+                        <div className="flex items-center gap-1">
+                          {b.name}
+                          <RenameButton onClick={() => setRenaming(b.id)} />
+                        </div>
                         <div className="text-[11px] text-muted">{date(b.createdAt)}</div>
                       </td>
                       <td>
@@ -239,6 +304,9 @@ export function Dashboard() {
             </div>
             </>
           )}
+          {query && shown?.length === BACKTEST_LIST_LIMIT && (
+            <p className="mt-2 text-xs text-muted">{tl("Seuls les {0} résultats les plus récents sont affichés : précise ta recherche.", [BACKTEST_LIST_LIMIT])}</p>
+          )}
         </Card>
         <Card
           title={tl("Mes stratégies")}
@@ -248,13 +316,13 @@ export function Dashboard() {
             </Link>
           }
         >
-          {strategies === null ? (
+          {shownStrategies === null ? (
             <p className="text-sm text-muted">{tl("Chargement…")}</p>
-          ) : strategies.length === 0 ? (
-            <p className="text-sm text-muted">{tl("Aucune stratégie enregistrée.")}</p>
+          ) : shownStrategies.length === 0 ? (
+            <p className="text-sm text-muted">{query ? tl("Aucune stratégie trouvée.") : tl("Aucune stratégie enregistrée.")}</p>
           ) : (
             <ul className="flex flex-col divide-y divide-line/50">
-              {strategies.map((s) => (
+              {shownStrategies.map((s) => (
                 <li key={s.id} className="flex items-center gap-2 py-2 text-sm">
                   <Link href={`/strategies/${s.id}`} className="flex-1 hover:text-accent">
                     {s.name}

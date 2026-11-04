@@ -10,7 +10,8 @@ export async function GET(req: NextRequest) {
   await connection();
   return handle(async () => {
     const user = await requireUser(req.headers);
-    return Response.json(await listBacktests(user.id, req.nextUrl.searchParams.get("strategyId") ?? undefined));
+    const params = req.nextUrl.searchParams;
+    return Response.json(await listBacktests(user.id, { strategyId: params.get("strategyId") ?? undefined, search: params.get("q") ?? undefined }));
   });
 }
 
