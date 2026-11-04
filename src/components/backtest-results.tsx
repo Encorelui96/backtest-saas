@@ -39,6 +39,9 @@ interface Stored {
 
 type Tab = "overview" | "trades" | "analysis" | "robustness" | "risk" | "prop";
 
+/** A test without a saved strategy (it was deleted, or never saved) reopens from its own copy of the rules. */
+const editHref = ({ id, strategyId }: Stored) => (strategyId ? `/strategies/${strategyId}` : `/strategies/new?from=${id}`);
+
 /** "3 ans", "8 mois": the length of a test period, rounded. */
 function spanLabel(ms: number) {
   const years = Math.round(ms / (365.25 * 86_400_000));
@@ -113,11 +116,9 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
         </div>
         {!shared && (
           <div className="flex flex-wrap gap-2">
-            {data.strategyId && (
-              <Link href={`/strategies/${data.strategyId}`}>
-                <Button variant="ghost">{tl("Modifier et relancer")}</Button>
-              </Link>
-            )}
+            <Link href={editHref(data)}>
+              <Button variant="ghost">{tl("Modifier et relancer")}</Button>
+            </Link>
             {data.strategyId && (
               <Link href={`/live?strategy=${data.strategyId}`}>
                 <Button variant="ghost">{tl("Suivre en direct")}</Button>
@@ -205,7 +206,7 @@ function NextStepCard({ data, shared, onOpen }: { data: Stored; shared: boolean;
   if (shared && !beginner) return null;
   const m = data.report.metrics;
   const step = nextStep(m.trades, m.totalReturnPercent, robustnessVerdict(data.report).tone === "info");
-  const edit = data.strategyId ? `/strategies/${data.strategyId}` : "/strategies/new";
+  const edit = shared ? "/strategies/new" : editHref(data);
   const card = {
     "few-trades": { tone: "meh", title: tl("Pas assez de trades pour juger."), advice: tl("Choisis une unité de temps plus courte ou assouplis tes règles pour dépasser 30 trades."), label: tl("Modifier la stratégie →"), href: edit, open: null },
     losing: { tone: "bad", title: tl("Cette stratégie perd de l'argent."), advice: tl("Essaie un autre modèle ou un autre marché."), label: tl("Essayer un autre modèle →"), href: "/strategies/new", open: null },

@@ -1352,4 +1352,6 @@ export const EN: Record<string, string> = {
   "Ton besoin :": "What you need:",
   "Offre Entreprise": "Enterprise plan",
   "Pour une équipe, une formation ou une société : un devis selon le nombre de personnes et le volume de tests, depuis la page Tarifs.": "For a team, a training provider or a company: a quote based on the number of people and the testing volume, from the Pricing page.",
+  "Reprends n'importe quel test": "Pick up any test",
+  "Modifier et relancer est maintenant disponible sur chaque test, même si sa stratégie a été supprimée : ses règles, sa période et ses frais reviennent dans l'éditeur.": "Edit and rerun now works on every test, even if its strategy was deleted: its rules, period and fees come back in the editor.",
 };
