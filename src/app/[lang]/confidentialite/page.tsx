@@ -58,6 +58,7 @@ function French() {
       <Section title="Pourquoi">
         <ul>
           <li>Faire fonctionner le service que tu demandes : ton compte, tes tests, tes rapports (exécution du contrat).</li>
+          <li>T&apos;écrire quand un test de plus de 2 minutes se termine ou échoue : tu peux le désactiver dans Compte (intérêt légitime).</li>
           <li>Protéger le service : limiter les tentatives de connexion et les abus, appliquer les quotas (intérêt légitime).</li>
           <li>
             L&apos;améliorer : des statistiques internes, comme la part des inscrits qui lancent un premier test, calculées sur l&apos;ensemble des comptes (intérêt
@@ -79,6 +80,9 @@ function French() {
             <strong>{HOST.name}</strong> héberge le site et la base de données, sur des serveurs à {HOST.dataLocation}.
           </li>
           <li>
+            <strong>Resend</strong> envoie les e-mails du service : il reçoit ton adresse et le contenu du message, comme les résultats clés d&apos;un test terminé.
+          </li>
+          <li>
             <strong>Anthropic</strong> (l&apos;IA Claude) reçoit le texte de stratégie que tu demandes de traduire, sans ton e-mail ni ton nom. D&apos;après ses conditions
             commerciales, Anthropic n&apos;utilise pas les données reçues par son API pour entraîner ses modèles. N&apos;écris pas d&apos;informations personnelles dans tes
             descriptions.
@@ -96,7 +100,7 @@ function French() {
           </li>
         </ul>
         <p>
-          {HOST.name} et Anthropic sont des sociétés américaines. Les transferts éventuels hors de l&apos;Union européenne sont encadrés par les garanties prévues par le
+          {HOST.name}, Resend et Anthropic sont des sociétés américaines. Les transferts éventuels hors de l&apos;Union européenne sont encadrés par les garanties prévues par le
           RGPD (clauses contractuelles types de la Commission européenne ou cadre de protection des données UE–États-Unis), selon les engagements de chaque prestataire.
         </p>
       </Section>
@@ -168,6 +172,7 @@ function English() {
       <Section title="Why">
         <ul>
           <li>Running the service you ask for: your account, your tests, your reports (performance of the contract).</li>
+          <li>Writing to you when a test of more than 2 minutes ends or fails: you can turn this off in Account (legitimate interest).</li>
           <li>Protecting the service: limiting sign-in attempts and abuse, applying quotas (legitimate interest).</li>
           <li>Improving it: internal statistics, such as the share of sign-ups who run a first test, computed over all accounts (legitimate interest).</li>
         </ul>
@@ -186,6 +191,9 @@ function English() {
             <strong>{HOST.name}</strong> hosts the site and the database, on servers in Frankfurt (Germany).
           </li>
           <li>
+            <strong>Resend</strong> sends the service&apos;s emails: it receives your address and the content of the message, such as the key results of a finished test.
+          </li>
+          <li>
             <strong>Anthropic</strong> (the Claude AI) receives the strategy text you ask to translate, without your email or your name. Under its commercial terms,
             Anthropic doesn&apos;t use data received through its API to train its models. Don&apos;t write personal information in your descriptions.
           </li>
@@ -202,7 +210,7 @@ function English() {
           </li>
         </ul>
         <p>
-          {HOST.name} and Anthropic are US companies. Any transfers outside the European Union are covered by the safeguards provided for by the GDPR (the European
+          {HOST.name}, Resend and Anthropic are US companies. Any transfers outside the European Union are covered by the safeguards provided for by the GDPR (the European
           Commission&apos;s standard contractual clauses or the EU–US Data Privacy Framework), according to each provider&apos;s commitments.
         </p>
       </Section>

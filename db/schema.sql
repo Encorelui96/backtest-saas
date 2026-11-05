@@ -104,6 +104,12 @@ CREATE TABLE IF NOT EXISTS market_requests (
   PRIMARY KEY (user_id, market)
 );
 
+-- Choices of an account. No row means the defaults.
+CREATE TABLE IF NOT EXISTS user_settings (
+  user_id text PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
+  test_emails boolean NOT NULL DEFAULT true
+);
+
 -- Candles shared by every user: one gzipped chunk per symbol, interval and UTC month.
 CREATE TABLE IF NOT EXISTS candle_chunks (
   symbol text NOT NULL,

@@ -57,6 +57,11 @@ services:
       # Same token as the web service: the worker reads the bot's messages and sends the alerts.
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+      # Same values as the web service: the e-mail at the end of a long test. Without them, it isn't sent.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
       # The site's address, for the "Voir en direct" link in the alerts.
       - key: SITE_HOST
         value: backtestlab.fr
