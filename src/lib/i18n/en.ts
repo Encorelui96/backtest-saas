@@ -452,7 +452,7 @@ export const EN: Record<string, string> = {
   ". Backtest Lab est un outil de simulation : aucun conseil en investissement.": ". Backtest Lab is a simulation tool: no investment advice.",
   "Stratégie enregistrée.": "Strategy saved.",
   "Le calcul a échoué.": "The calculation failed.",
-  "Backtest en cours…": "Backtest running…",
+  "En cours · tu peux quitter, le test continue": "Running · you can leave, the test continues",
   "Choisis un modèle, un marché, puis lance le test. Un ": "Pick a template, a market, then run the test. A ",
   "1. Stratégie": "1. Strategy",
   "Ou décris ton idée en français : l'IA la traduit en règles.": "Or describe your idea in plain words: the AI turns it into rules.",
