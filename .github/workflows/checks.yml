@@ -1,0 +1,42 @@
+# Tests, types, lint and build on every pull request and on main. No effect on the site,
+# which Render deploys from main. Needs no secret: the values below are for the build only.
+name: Checks
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push on the same branch replaces the run in progress.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DATABASE_URL: postgres://checks:checks@127.0.0.1:5999/checks
+  BETTER_AUTH_SECRET: value-for-the-checks-only-0123456789
+  BETTER_AUTH_URL: http://localhost:3000
+  SITE_URL: http://localhost:3000
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx next typegen
+      - run: npm test
+      - run: npx tsc --noEmit
+      - run: npx eslint src
+      - run: npx next build
