@@ -1,5 +1,6 @@
 import { BacktestPayload, claimNext, failJob, finishJob, reportProgress, type Job } from "../lib/server/jobs";
 import { UserError, computeBacktest, saveBacktest } from "../lib/server/backtests";
+import { notifyFailed, notifyFinished } from "../lib/server/backtest-notice";
 import { pool } from "../lib/server/db";
 import { startTelegram } from "./telegram";
 
@@ -24,6 +25,7 @@ async function runBacktestJob(job: Job) {
   const { strategy, report, summary } = await computeBacktest(payload.strategy, payload.config, onProgress);
   const id = await saveBacktest(job.userId, payload.strategyId, strategy, payload.config, summary, report);
   await finishJob(job.id, id);
+  await notifyFinished(job, payload, id, summary);
 }
 
 async function loop() {
@@ -48,6 +50,8 @@ async function loop() {
       // Stored as text and values, so the page shows it in its own language.
       const error = e instanceof UserError ? { text: e.text, values: e.values } : { text: "Le calcul a échoué (réf. {0}).", values: [ref] };
       await failJob(job.id, JSON.stringify(error)).catch(() => {});
+      const payload = BacktestPayload.safeParse(job.payload);
+      if (payload.success) await notifyFailed(job, payload.data, error);
     }
   }
 }

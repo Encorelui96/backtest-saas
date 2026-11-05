@@ -2,7 +2,7 @@
 
 import { Link, rich, useLang, useRouter, useT } from "@/lib/client/i18n";
 import { date } from "@/lib/client/format";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { setSignedInHint } from "@/lib/signed-in-hint";
@@ -13,6 +13,7 @@ interface Me {
   user: { id: string; email: string; name: string } | null;
   hasPassword: boolean;
   isAdmin: boolean;
+  testEmails: boolean;
   usage: {
     plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number; minInterval: string; historyDays: number | null; alerts: number };
     backtests: number;
@@ -102,6 +103,7 @@ export function Account() {
           {tl("Pilotage : activation, rétention, coût de l'IA →")}</Link>
       )}
       <AlertsPanel />
+      <EmailsCard enabled={me.testEmails} />
       <PasswordCard hasPassword={me.hasPassword} onSet={() => setMe({ ...me, hasPassword: true })} />
       <DataCard hasPassword={me.hasPassword} />
       <Button
@@ -113,6 +115,48 @@ export function Account() {
         }}
       >
         {tl("Se déconnecter")}</Button>
+    </div>
+  );
+}
+
+/** The e-mail at the end of a long test. Its "Désactiver" link opens this card, which loads after the page. */
+function EmailsCard({ enabled }: { enabled: boolean }) {
+  const tl = useT();
+  const [on, setOn] = useState(enabled);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const card = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (window.location.hash === "#emails") card.current?.scrollIntoView();
+  }, []);
+
+  const toggle = async (next: boolean) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/me/test-emails", { json: { enabled: next } });
+      setOn(next);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div ref={card} id="emails" className="scroll-mt-20">
+      <Card title={tl("E-mails")}>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={on} disabled={busy} onChange={(e) => toggle(e.target.checked)} className="h-auto w-auto" />
+          {tl("Me prévenir quand un test de plus de 2 minutes se termine ou échoue")}
+        </label>
+        {error && (
+          <div className="mt-2">
+            <Alert tone="error">{error}</Alert>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }

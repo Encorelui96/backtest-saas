@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   await connection();
   return handle(async () => {
     const user = await requireUser(req.headers);
-    const [account, plan, strategies, backtests, usage, sessions, feedback, interest, marketRequests, telegram, alerts, credits] = await Promise.all([
+    const [account, plan, strategies, backtests, usage, sessions, feedback, interest, marketRequests, settings, telegram, alerts, credits] = await Promise.all([
       query(`SELECT email, name, "createdAt" AS created_at FROM "user" WHERE id = $1`, [user.id]),
       query("SELECT plan, updated_at FROM plans WHERE user_id = $1", [user.id]),
       query("SELECT name, json AS rules, source_text AS description, created_at, updated_at FROM strategies WHERE user_id = $1 ORDER BY created_at", [user.id]),
@@ -19,6 +19,7 @@ export async function GET(req: Request) {
       query("SELECT kind, answer, comment, created_at FROM feedback WHERE user_id = $1", [user.id]),
       query("SELECT plan, billing, created_at FROM plan_interest WHERE user_id = $1", [user.id]),
       query("SELECT market, created_at FROM market_requests WHERE user_id = $1 ORDER BY created_at", [user.id]),
+      query("SELECT test_emails FROM user_settings WHERE user_id = $1", [user.id]),
       query("SELECT chat_id, username, linked_at FROM telegram_links WHERE user_id = $1", [user.id]),
       query(
         `SELECT s.name AS strategy, a.enabled, a.last_signal_at, a.created_at FROM alerts a JOIN strategies s ON s.id = a.strategy_id
@@ -38,6 +39,7 @@ export async function GET(req: Request) {
       feedback,
       planInterest: interest,
       marketRequests,
+      settings: settings[0] ?? { test_emails: true },
       telegram: telegram[0] ?? null,
       alerts,
       credits,

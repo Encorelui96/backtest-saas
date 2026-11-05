@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { LANGS } from "../i18n";
 import { BacktestConfigSchema, StrategySchema } from "../strategy/schema";
 import type { PoolClient } from "pg";
 import { newId, query, queryOne } from "./db";
@@ -14,6 +15,8 @@ export const BacktestPayload = z.object({
   strategy: StrategySchema,
   config: BacktestConfigSchema,
   strategyId: z.string().nullable(),
+  /** The language of the page that asked, for the e-mail at the end of a long test. */
+  lang: z.enum(LANGS).optional(),
 });
 export type BacktestPayload = z.infer<typeof BacktestPayload>;
 
