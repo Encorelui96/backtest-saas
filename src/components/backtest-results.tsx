@@ -39,8 +39,8 @@ interface Stored {
 
 type Tab = "overview" | "trades" | "analysis" | "robustness" | "risk" | "prop";
 
-/** A test without a saved strategy (it was deleted, or never saved) reopens from its own copy of the rules. */
-const editHref = ({ id, strategyId }: Stored) => (strategyId ? `/strategies/${strategyId}` : `/strategies/new?from=${id}`);
+/** Reopens the test's own copy of the rules: its strategy changes with each later run, and may be gone. */
+const editHref = ({ id, strategyId }: Stored) => `/strategies/${strategyId ?? "new"}?from=${id}`;
 
 /** "3 ans", "8 mois": the length of a test period, rounded. */
 function spanLabel(ms: number) {
