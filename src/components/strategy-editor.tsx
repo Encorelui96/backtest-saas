@@ -98,18 +98,7 @@ export function StrategyEditor({ id }: { id?: string }) {
   useEffect(() => {
     challengeGoal.current = new URLSearchParams(window.location.search).get("goal") === "prop";
     api<Meta>("/api/meta").then(setMeta).catch((e) => setError(e.message));
-    if (id) {
-      api<{ strategy: Strategy; sourceText: string | null }>(`/api/strategies/${id}`)
-        .then((s) => {
-          setStrategy(s.strategy);
-          setText(s.sourceText ?? "");
-          // A saved strategy reopens with the usual test length for its interval, not a single year.
-          setConfig((c) => withDefaultPeriod(c, s.strategy));
-        })
-        .catch((e) => setError(e.message));
-      return;
-    }
-    // Reopening a test without a saved strategy: its rules and settings, saved as a new strategy at the next run.
+    // Reopening a test: its own rules and settings, since its strategy may have changed. The next run saves them.
     const from = new URLSearchParams(window.location.search).get("from");
     if (from) {
       api<{ strategy: Strategy; config: BacktestConfig }>(`/api/backtests/${encodeURIComponent(from)}`)
@@ -117,6 +106,15 @@ export function StrategyEditor({ id }: { id?: string }) {
           setStrategy(b.strategy);
           setConfig((c) => ({ ...c, ...b.config }));
           setFees(null);
+        })
+        .catch((e) => setError(e.message));
+    } else if (id) {
+      api<{ strategy: Strategy; sourceText: string | null }>(`/api/strategies/${id}`)
+        .then((s) => {
+          setStrategy(s.strategy);
+          setText(s.sourceText ?? "");
+          // A saved strategy reopens with the usual test length for its interval, not a single year.
+          setConfig((c) => withDefaultPeriod(c, s.strategy));
         })
         .catch((e) => setError(e.message));
     }
