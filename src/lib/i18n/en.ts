@@ -1368,4 +1368,6 @@ export const EN: Record<string, string> = {
   "Personne n'a encore demandé de paire depuis le choix du marché.": "Nobody has requested a pair from the market picker yet.",
   "Demande une paire": "Request a pair",
   "Il te manque un marché ? Demande-le depuis le choix du marché : les demandes aident à décider quoi ajouter en premier.": "Missing a market? Request it from the market picker: requests help decide what to add first.",
+  "Un accueil plus court": "A shorter home page",
+  "L'accueil affiche tes 5 derniers tests et tes 5 dernières stratégies. Voir plus ouvre le reste.": "The home page shows your last 5 tests and your last 5 strategies. Show more opens the rest.",
 };

@@ -103,6 +103,19 @@ function FirstSteps({ strategies, backtests }: { strategies: number; backtests: 
   );
 }
 
+/** The home page starts with the latest rows of each list. */
+const SHORT_LIST = 5;
+
+function MoreButton({ total, open, onClick }: { total: number; open: boolean; onClick: () => void }) {
+  const tl = useT();
+  if (total <= SHORT_LIST) return null;
+  return (
+    <button type="button" onClick={onClick} aria-expanded={open} className="mt-2 text-xs font-medium text-accent hover:underline">
+      {open ? tl("Voir moins") : tl("Voir plus ({0})", [total - SHORT_LIST])}
+    </button>
+  );
+}
+
 export function Dashboard() {
   const tl = useT();
   const router = useRouter();
@@ -113,6 +126,8 @@ export function Dashboard() {
   const [search, setSearch] = useState("");
   const [found, setFound] = useState<{ query: string; rows: BacktestRow[] } | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [moreTests, setMoreTests] = useState(false);
+  const [moreStrategies, setMoreStrategies] = useState(false);
   // The dashboard only renders in the browser (after the session check), so storage can be read here.
   const [welcome, setWelcome] = useState(() => !welcomeDone());
 
@@ -140,6 +155,8 @@ export function Dashboard() {
 
   const shown = !query ? backtests : found?.query === query ? found.rows : null;
   const shownStrategies = strategies?.filter((s) => matchesSearch(`${s.name} ${s.strategy.symbol} ${s.strategy.interval}`, query)) ?? null;
+  // Both lists come newest first. A search shows every match.
+  const latest = <T,>(rows: T[], more: boolean) => (more || query ? rows : rows.slice(0, SHORT_LIST));
 
   const renamed = (id: string, name: string) => {
     const apply = (rows: BacktestRow[]) => rows.map((b) => (b.id === id ? { ...b, name } : b));
@@ -212,7 +229,7 @@ export function Dashboard() {
             </div>
           ) : beginner ? (
             <ul className="-my-1 flex flex-col divide-y divide-line/50">
-              {shown.map((b) => {
+              {latest(shown, moreTests).map((b) => {
                 const v = verdict(b.summary);
                 if (renaming === b.id) return <li key={b.id} className="py-3">{renameForm(b)}</li>;
                 return (
@@ -236,7 +253,7 @@ export function Dashboard() {
             <>
             {/* Phones: one card per backtest. */}
             <ul className="-my-1 flex flex-col divide-y divide-line/50 md:hidden">
-              {shown.map((b) => renaming === b.id ? (
+              {latest(shown, moreTests).map((b) => renaming === b.id ? (
                 <li key={b.id} className="py-2.5">{renameForm(b)}</li>
               ) : (
                 <li key={b.id} className="flex items-center gap-1">
@@ -272,7 +289,7 @@ export function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {shown.map((b) => renaming === b.id ? (
+                  {latest(shown, moreTests).map((b) => renaming === b.id ? (
                     <tr key={b.id} className="border-t border-line/50">
                       <td colSpan={9} className="py-2">{renameForm(b)}</td>
                     </tr>
@@ -304,6 +321,7 @@ export function Dashboard() {
             </div>
             </>
           )}
+          {!query && shown && <MoreButton total={shown.length} open={moreTests} onClick={() => setMoreTests(!moreTests)} />}
           {query && shown?.length === BACKTEST_LIST_LIMIT && (
             <p className="mt-2 text-xs text-muted">{tl("Seuls les {0} résultats les plus récents sont affichés : précise ta recherche.", [BACKTEST_LIST_LIMIT])}</p>
           )}
@@ -322,7 +340,7 @@ export function Dashboard() {
             <p className="text-sm text-muted">{query ? tl("Aucune stratégie trouvée.") : tl("Aucune stratégie enregistrée.")}</p>
           ) : (
             <ul className="flex flex-col divide-y divide-line/50">
-              {shownStrategies.map((s) => (
+              {latest(shownStrategies, moreStrategies).map((s) => (
                 <li key={s.id} className="flex items-center gap-2 py-2 text-sm">
                   <Link href={`/strategies/${s.id}`} className="flex-1 hover:text-accent">
                     {s.name}
@@ -340,6 +358,7 @@ export function Dashboard() {
               ))}
             </ul>
           )}
+          {!query && shownStrategies && <MoreButton total={shownStrategies.length} open={moreStrategies} onClick={() => setMoreStrategies(!moreStrategies)} />}
         </Card>
       </div>
     </div>

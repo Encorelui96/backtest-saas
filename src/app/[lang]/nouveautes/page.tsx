@@ -12,6 +12,7 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "Un accueil plus court", text: "L'accueil affiche tes 5 derniers tests et tes 5 dernières stratégies. Voir plus ouvre le reste." },
       { title: "Demande une paire", text: "Il te manque un marché ? Demande-le depuis le choix du marché : les demandes aident à décider quoi ajouter en premier." },
       { title: "NAS100 en différé", text: "Le Live et les alertes du NAS100 indiquent maintenant clairement que leurs données ont plusieurs heures de retard. Les tests ne sont pas concernés." },
       { title: "Suis exactement ce test", text: "Suivre en direct reprend les règles du test que tu regardes, même si sa stratégie a changé depuis. Le bouton est disponible sur chaque test." },
