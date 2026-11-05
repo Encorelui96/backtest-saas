@@ -586,7 +586,7 @@ export function StrategyEditor({ id }: { id?: string }) {
             <div className="hidden flex-col gap-2 md:flex">
               {job && <JobProgress job={job} />}
               <Button onClick={run} disabled={busy !== null} className="py-2">
-                {busy === "run" ? tl("Backtest en cours…") : tl("Lancer le backtest")}
+                {busy === "run" ? tl("En cours · tu peux quitter, le test continue") : tl("Lancer le backtest")}
               </Button>
             </div>
             <Button variant="ghost" onClick={onSave} disabled={busy !== null}>
@@ -616,7 +616,7 @@ export function StrategyEditor({ id }: { id?: string }) {
           </div>
         )}
         <Button onClick={run} disabled={busy !== null} className="w-full py-2.5">
-          {busy === "run" ? tl("Backtest en cours…") : tl("Lancer le backtest · {0} {1} · {2} an{3}", [strategy.symbol, strategy.interval, Math.round(years), Math.round(years) > 1 ? "s" : ""])}
+          {busy === "run" ? tl("En cours · tu peux quitter, le test continue") : tl("Lancer le backtest · {0} {1} · {2} an{3}", [strategy.symbol, strategy.interval, Math.round(years), Math.round(years) > 1 ? "s" : ""])}
         </Button>
       </div>
     </div>
