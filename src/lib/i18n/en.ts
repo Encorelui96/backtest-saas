@@ -707,8 +707,6 @@ export const EN: Record<string, string> = {
   "Les unités 1 et 5 minutes, tout l'historique au lieu des 12 derniers mois, le détail des contrôles de robustesse (Monte Carlo, réglages voisins), le comparatif côte à côte des prop firms et le suivi Live de tes stratégies. Le verdict reste lisible avec l'offre gratuite.": "The 1 and 5 minute timeframes, the full history instead of the last 12 months, the detail of the robustness checks (Monte Carlo, neighbouring settings), the side-by-side prop firm comparison and Live tracking of your strategies. The verdict stays readable on the free plan.",
   "Une offre gratuite plus large": "A broader free plan",
   "30 backtests et 5 traductions par l'IA par mois, à partir de l'unité 15 minutes, sur les 12 derniers mois. Les unités 1 et 5 minutes, tout l'historique, le détail de la robustesse, le comparatif des prop firms et le suivi Live passent aux offres Trader et Pro.": "30 backtests and 5 AI translations a month, from the 15-minute timeframe, on the last 12 months. The 1 and 5 minute timeframes, the full history, the robustness detail, the prop firm comparison and Live tracking move to the Trader and Pro plans.",
-  "{0} backtests en parallèle": "{0} backtests in parallel",
-  "1 backtest à la fois": "1 backtest at a time",
   "{0} alertes Telegram": "{0} Telegram alerts",
   "/ mois": "/ month",
   "Recharges": "Top-ups",

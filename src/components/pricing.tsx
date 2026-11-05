@@ -21,7 +21,6 @@ function features(p: Plan) {
     tr("Crypto, forex, or et Nasdaq"),
     p.advanced ? tr("Robustesse détaillée et comparatif des prop firms") : tr("Verdict de robustesse et challenge prop firm"),
     ...(p.live ? [tr("Suivi Live des stratégies")] : []),
-    p.concurrentJobs > 1 ? tr("{0} backtests en parallèle", [p.concurrentJobs]) : tr("1 backtest à la fois"),
     ...(p.alerts ? [tr("{0} alertes Telegram", [p.alerts])] : []),
   ];
 }
