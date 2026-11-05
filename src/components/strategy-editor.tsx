@@ -499,7 +499,8 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {tl("Période")}<Help id="periode-test" />
               </div>
               <div className="flex gap-1.5">
-                {PERIODS.map((p) => {
+                {/* A period over the limit of the unit would only repeat Max. */}
+                {PERIODS.filter((p) => p.days <= MAX_HISTORY_DAYS[strategy.interval] || p.label === "Max").map((p) => {
                   const span = Math.min(p.days, MAX_HISTORY_DAYS[strategy.interval]);
                   const on = Math.abs(years * 365.25 - span) < 3;
                   const reserved = plan?.historyDays != null && p.days > plan.historyDays;
