@@ -8,6 +8,7 @@ import { PROP_FIRMS_CHECKED } from "@/lib/prop-firms";
 import { SHOWCASE as S } from "@/lib/showcase";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
+import { setSignedInHint } from "@/lib/signed-in-hint";
 import { CandleHero } from "./candle-hero";
 import { Dashboard } from "./dashboard";
 
@@ -49,15 +50,20 @@ function Showcase() {
   return (
     <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
       <h2 className="text-lg font-semibold">{tl("Un exemple réel, sans filtre")}</h2>
-      <p className="mt-1 text-sm text-muted">
+      {/* The page is prerendered: browsers can write dates and numbers slightly differently from the server. */}
+      <p className="mt-1 text-sm text-muted" suppressHydrationWarning>
         {tl(S.strategy)} · {S.market} · {S.interval} · {date(S.from, false)} → {date(S.to, false)}
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
         {stats.map((s) => (
           <div key={s.label} className="rounded-md border border-line px-3 py-2">
             <div className="text-xs text-muted">{s.label}</div>
-            <div className="num text-lg font-semibold">{s.value}</div>
-            <div className="text-xs text-muted">{s.hint}</div>
+            <div className="num text-lg font-semibold" suppressHydrationWarning>
+              {s.value}
+            </div>
+            <div className="text-xs text-muted" suppressHydrationWarning>
+              {s.hint}
+            </div>
           </div>
         ))}
       </div>
@@ -75,8 +81,23 @@ function Showcase() {
 export function Home() {
   const tl = useT();
   const { data: session, isPending } = authClient.useSession();
-  if (isPending) return <p className="text-muted">{tl("Chargement…")}</p>;
+  useEffect(() => {
+    if (!isPending) setSignedInHint(Boolean(session));
+  }, [isPending, session]);
   if (session) return <Dashboard />;
+  // Visitors get the page without waiting for the session; it's also what search engines read.
+  return (
+    <>
+      {isPending && <p className="signed-in-only text-muted">{tl("Chargement…")}</p>}
+      <div className={isPending ? "signed-out-only" : undefined}>
+        <Landing />
+      </div>
+    </>
+  );
+}
+
+function Landing() {
+  const tl = useT();
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-6 sm:gap-10 sm:pb-12">
       {/* Phones: the chart runs edge to edge; larger screens: a rounded panel. */}

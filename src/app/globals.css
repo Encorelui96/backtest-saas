@@ -38,6 +38,12 @@ html[data-app] .web-only {
   display: none;
 }
 
+/* Set by SIGNED_IN_SCRIPT. Only while the session loads: see Home. */
+html[data-signed-in] .signed-out-only,
+html:not([data-signed-in]) .signed-in-only {
+  display: none;
+}
+
 input,
 select,
 textarea {
