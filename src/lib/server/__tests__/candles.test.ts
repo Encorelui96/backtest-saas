@@ -62,6 +62,12 @@ describe("getCandles", () => {
     expect(db.query).not.toHaveBeenCalled();
     expect(binance.fetchKlines).not.toHaveBeenCalled();
   });
+
+  it("reports the share of months loaded", async () => {
+    const shares: number[] = [];
+    await getCandles("BTCUSDT", "1d", Date.UTC(2026, 6, 1), Date.UTC(2026, 9, 31), { onProgress: (d) => void shares.push(d) });
+    expect(shares).toEqual([0.25, 0.5, 0.75, 1]);
+  });
 });
 
 describe("isKnownSymbol", () => {

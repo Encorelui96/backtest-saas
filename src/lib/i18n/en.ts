@@ -1370,4 +1370,8 @@ export const EN: Record<string, string> = {
   "Il te manque un marché ? Demande-le depuis le choix du marché : les demandes aident à décider quoi ajouter en premier.": "Missing a market? Request it from the market picker: requests help decide what to add first.",
   "Un accueil plus court": "A shorter home page",
   "L'accueil affiche tes 5 derniers tests et tes 5 dernières stratégies. Voir plus ouvre le reste.": "The home page shows your last 5 tests and your last 5 strategies. Show more opens the rest.",
+  "Démarrage": "Starting",
+  "Un test long peut prendre plusieurs minutes. Tu peux quitter cette page : il continue et arrivera sur ton accueil.": "A long test can take several minutes. You can leave this page: it keeps running and will reach your home page.",
+  "Un chrono pendant les tests": "A timer during tests",
+  "Pendant un backtest, tu vois l'étape en cours, la progression et le temps écoulé. Tu peux aussi quitter la page : le test continue et arrive sur ton accueil.": "During a backtest you see the current step, the progress and the time spent. You can also leave the page: the test keeps running and reaches your home page.",
 };
