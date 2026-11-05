@@ -150,6 +150,10 @@ export async function renameBacktest(userId: string, id: string, name: string) {
   return r?.label ?? null;
 }
 
+export async function linkBacktest(userId: string, id: string, strategyId: string) {
+  await query("UPDATE backtests SET strategy_id = $3 WHERE id = $1 AND user_id = $2", [id, userId, strategyId]);
+}
+
 export async function deleteBacktest(userId: string, id: string) {
   await query("DELETE FROM backtests WHERE id = $1 AND user_id = $2", [id, userId]);
 }

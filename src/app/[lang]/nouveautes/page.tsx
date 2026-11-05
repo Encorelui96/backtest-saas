@@ -12,6 +12,7 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "Suis exactement ce test", text: "Suivre en direct reprend les règles du test que tu regardes, même si sa stratégie a changé depuis. Le bouton est disponible sur chaque test." },
       { title: "Reprends n'importe quel test", text: "Modifier et relancer est maintenant disponible sur chaque test, même si sa stratégie a été supprimée : ses règles, sa période et ses frais reviennent dans l'éditeur." },
       { title: "Offre Entreprise", text: "Pour une équipe, une formation ou une société : un devis selon le nombre de personnes et le volume de tests, depuis la page Tarifs." },
       { title: "L'IA dès la première étape", text: "En mode Débutant, la case pour décrire ton idée en français est maintenant affichée dès la première étape." },
