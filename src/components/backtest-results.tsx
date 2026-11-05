@@ -2,7 +2,7 @@
 
 import { tr } from "@/lib/i18n";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, rich, useT, useText } from "@/lib/client/i18n";
+import { Link, rich, useRouter, useT, useText } from "@/lib/client/i18n";
 import { usePlan } from "@/lib/client/plan";
 import { setStepSeen } from "@/lib/client/preferences";
 import { BEGINNER_TABS, nextStep } from "@/lib/next-step";
@@ -29,6 +29,8 @@ interface Stored {
   /** The owner's name for it (absent from shared views, which show the strategy's). */
   name?: string;
   strategyId: string | null;
+  /** Whether the saved strategy still has this test's rules: each later run changes it (absent from shared views). */
+  strategyCurrent?: boolean;
   strategy: Strategy;
   config: BacktestConfig;
   report: BacktestReport;
@@ -39,8 +41,35 @@ interface Stored {
 
 type Tab = "overview" | "trades" | "analysis" | "robustness" | "risk" | "prop";
 
-/** Reopens the test's own copy of the rules: its strategy changes with each later run, and may be gone. */
-const editHref = ({ id, strategyId }: Stored) => `/strategies/${strategyId ?? "new"}?from=${id}`;
+/** Reopens the test's own rules. Under a strategy that has since changed, a run would change its alerts too: they start a new one. */
+const editHref = ({ id, strategyId, strategyCurrent }: Stored) => `/strategies/${strategyCurrent ? strategyId : "new"}?from=${id}`;
+
+/** Follows this test's rules: when its strategy no longer has them, the test first gets its own. */
+function FollowLive({ data }: { data: Stored }) {
+  const tl = useT();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const follow = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const { id } = await api<{ id: string }>(`/api/backtests/${data.id}/strategy`, { method: "POST" });
+      router.push(`/live?strategy=${id}`);
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Button variant="ghost" disabled={busy} onClick={follow}>
+        {tl("Suivre en direct")}
+      </Button>
+      {error && <span className="self-center text-xs text-down">{error}</span>}
+    </>
+  );
+}
 
 /** "3 ans", "8 mois": the length of a test period, rounded. */
 function spanLabel(ms: number) {
@@ -119,11 +148,7 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
             <Link href={editHref(data)}>
               <Button variant="ghost">{tl("Modifier et relancer")}</Button>
             </Link>
-            {data.strategyId && (
-              <Link href={`/live?strategy=${data.strategyId}`}>
-                <Button variant="ghost">{tl("Suivre en direct")}</Button>
-              </Link>
-            )}
+            <FollowLive data={data} />
             <SharePanel backtestId={id} initial={data.share ?? null} />
           </div>
         )}

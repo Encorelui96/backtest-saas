@@ -101,9 +101,10 @@ export function StrategyEditor({ id }: { id?: string }) {
     // Reopening a test: its own rules and settings, since its strategy may have changed. The next run saves them.
     const from = new URLSearchParams(window.location.search).get("from");
     if (from) {
-      api<{ strategy: Strategy; config: BacktestConfig }>(`/api/backtests/${encodeURIComponent(from)}`)
+      api<{ name: string; strategy: Strategy; config: BacktestConfig }>(`/api/backtests/${encodeURIComponent(from)}`)
         .then((b) => {
-          setStrategy(b.strategy);
+          // Without a strategy to update, the next run starts one under the test's name.
+          setStrategy(id ? b.strategy : { ...b.strategy, name: b.name });
           setConfig((c) => ({ ...c, ...b.config }));
           setFees(null);
         })
