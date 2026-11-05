@@ -37,6 +37,11 @@ export function market(symbol: string): Market | undefined {
   return BY_SYMBOL.get(symbol.toUpperCase());
 }
 
+/** "gbp/nzd", "GBP NZD" and "GBP-NZD" count as one request. */
+export function requestedMarket(text: string) {
+  return text.trim().toUpperCase().replace(/[\s/_-]+/g, "");
+}
+
 const NEW_YORK = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hourCycle: "h23" });
 
 /**

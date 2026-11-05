@@ -4,6 +4,7 @@ import { useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { MARKETS, market } from "@/lib/markets";
+import { Alert, Button } from "./ui";
 
 /**
  * Picks a market by family: big tappable cards that scroll sideways on phones
@@ -149,6 +150,66 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
           {tl("NAS100 : le future Nasdaq (vers 28 000), presque 24h/24 en semaine, avec plusieurs heures de retard dans le Live et les alertes. QQQ : le fonds qui suit le Nasdaq, coté seulement de 15h30 à 22h à Paris.")}</p>
       )}
       {family !== "crypto" && family !== "index" && <p className="text-[11px] text-muted">{tl("Fermé du vendredi soir au dimanche soir.")}</p>}
+      <RequestMarket />
     </div>
+  );
+}
+
+/** "This pair is missing": the requests are counted on the admin page, to choose which ones to add first. */
+function RequestMarket() {
+  const tl = useT();
+  const [open, setOpen] = useState(false);
+  const [wanted, setWanted] = useState("");
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <div>
+        <button type="button" onClick={() => setOpen(true)} className="text-xs font-medium text-accent hover:underline">
+          {tl("Il te manque une paire ? Demande-la")}
+        </button>
+      </div>
+    );
+  }
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/api/market-requests", { json: { market: wanted } });
+      setWanted("");
+      setSent(true);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={send} className="flex flex-col gap-1.5">
+      <div className="flex gap-2">
+        <input
+          value={wanted}
+          onChange={(e) => {
+            setWanted(e.target.value);
+            setSent(false);
+          }}
+          maxLength={40}
+          placeholder={tl("Ex. : NZD/USD, pétrole, S&P 500")}
+          aria-label={tl("Paire ou marché que tu voudrais")}
+          className="min-w-0 flex-1"
+          autoFocus
+        />
+        <Button type="submit" disabled={busy || wanted.trim().length < 2}>
+          {tl("Envoyer")}
+        </Button>
+      </div>
+      {sent && <p className="text-[11px] text-up">{tl("Merci, c'est noté. Tu peux en demander une autre.")}</p>}
+      {error && <Alert tone="error">{error}</Alert>}
+    </form>
   );
 }

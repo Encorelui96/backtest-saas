@@ -162,6 +162,21 @@ export function AdminDashboard() {
         <p className="mt-2 text-xs text-muted">{tl("Un clic ne vaut pas un paiement, mais c'est le signal qui dit quand ouvrir le paiement en ligne.")}</p>
       </Card>
 
+      <Card title={tl("Paires demandées")}>
+        {m.marketRequests.length === 0 ? (
+          <p className="text-sm text-muted">{tl("Personne n'a encore demandé de paire depuis le choix du marché.")}</p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-line/50 text-sm">
+            {m.marketRequests.map((r) => (
+              <li key={r.market} className="flex justify-between gap-3 py-1.5">
+                <span className="min-w-0 truncate">{r.market}</span>
+                <span className="num font-semibold">{r.n}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <GrantCredits />
     </div>
   );

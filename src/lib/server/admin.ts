@@ -16,7 +16,7 @@ const time = (d: Date | null) => (d ? d.getTime() : null);
 export async function adminMetrics(): Promise<AdminMetrics> {
   const since = monthStart();
   const now = Date.now();
-  const [users, ai, feedback, interest] = await Promise.all([
+  const [users, ai, feedback, interest, marketRequests] = await Promise.all([
     query<{ id: string; email: string; email_verified: boolean; created_at: Date; first_backtest: Date | null; last_activity: Date | null; plan: PlanId; backtests_month: string; ai_month: string }>(
       `SELECT u.id, u.email, u."emailVerified" AS email_verified, u."createdAt" AS created_at,
          (SELECT min(b.created_at) FROM backtests b WHERE b.user_id = u.id) AS first_backtest,
@@ -39,6 +39,7 @@ export async function adminMetrics(): Promise<AdminMetrics> {
     ),
     query<{ answer: string; comment: string | null; created_at: Date }>("SELECT answer, comment, created_at FROM feedback WHERE kind = 'pmf' ORDER BY created_at DESC"),
     query<{ plan: PlanId; billing: string; n: string }>("SELECT plan, billing, count(*) AS n FROM plan_interest GROUP BY plan, billing ORDER BY plan, billing"),
+    query<{ market: string; n: string }>("SELECT market, count(*) AS n FROM market_requests GROUP BY market ORDER BY count(*) DESC, market LIMIT 30"),
   ]);
 
   const rows = users.map((u) => ({ createdAt: u.created_at.getTime(), firstBacktest: time(u.first_backtest), lastActivity: time(u.last_activity) }));
@@ -82,5 +83,6 @@ export async function adminMetrics(): Promise<AdminMetrics> {
       comments: feedback.filter((f) => f.comment).slice(0, 20).map((f) => ({ answer: f.answer, comment: f.comment!, createdAt: f.created_at.getTime() })),
     },
     interest: interest.map((i) => ({ plan: i.plan, billing: i.billing, n: Number(i.n) })),
+    marketRequests: marketRequests.map((r) => ({ market: r.market, n: Number(r.n) })),
   };
 }
