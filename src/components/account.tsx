@@ -5,6 +5,7 @@ import { date } from "@/lib/client/format";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
+import { setSignedInHint } from "@/lib/signed-in-hint";
 import { Alert, Button, Card, Field } from "./ui";
 import { AlertsPanel } from "./alerts-panel";
 
@@ -107,6 +108,7 @@ export function Account() {
         variant="ghost"
         onClick={async () => {
           await authClient.signOut();
+          setSignedInHint(false);
           window.location.assign(lang === "en" ? "/en" : "/");
         }}
       >

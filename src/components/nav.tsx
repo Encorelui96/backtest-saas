@@ -1,7 +1,9 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { LanguageSwitch, Link, useBarePath, useT } from "@/lib/client/i18n";
 import { authClient } from "@/lib/client/auth-client";
+import { signedInHint } from "@/lib/signed-in-hint";
 import { LevelToggle } from "./learn";
 
 const LINKS = [
@@ -22,17 +24,20 @@ function active(path: string, href: string) {
   return path.startsWith(href);
 }
 
+const neverChanges = () => () => {};
+
 /** Top bar on desktop; on phones a slim top bar and a bottom tab bar within thumb reach. */
 export function Nav() {
   const tl = useT();
   const path = useBarePath();
   const t = useT();
   const { data: session, isPending } = authClient.useSession();
+  const hinted = useSyncExternalStore(neverChanges, signedInHint, () => false);
   // Visitors only see the sign-in link: the app's pages need an account.
-  if (!isPending && !session) {
+  if (!session && !(isPending && hinted)) {
     return (
       <header className="sticky top-0 z-20 border-b border-line bg-panel/95 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4">
+        <nav className="mx-auto flex min-h-14 max-w-7xl items-center justify-between gap-2 px-3 py-3 text-sm sm:px-4">
           <Link href="/" className="font-semibold text-fg">
             {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
           </Link>
@@ -58,7 +63,7 @@ export function Nav() {
   return (
     <>
       <header className="sticky top-0 z-20 border-b border-line bg-panel/95 pt-[env(safe-area-inset-top)] backdrop-blur">
-        <nav className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-3 text-sm">
+        <nav className="mx-auto flex min-h-14 max-w-7xl items-center gap-6 px-4 py-3 text-sm">
           <Link href="/" className="font-semibold text-fg">
             {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
           </Link>
@@ -94,7 +99,7 @@ export function NavFallback() {
   const tl = useT();
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-panel pt-[env(safe-area-inset-top)]">
-      <nav className="mx-auto flex max-w-7xl items-center px-4 py-3 text-sm font-semibold">
+      <nav className="mx-auto flex min-h-14 max-w-7xl items-center px-4 py-3 text-sm font-semibold">
         {tl("Backtest")}<span className="text-accent">{tl("Lab")}</span>
       </nav>
     </header>

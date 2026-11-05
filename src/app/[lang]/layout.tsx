@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Nav, NavFallback } from "@/components/nav";
 import { APP_MODE_SCRIPT } from "@/lib/app-mode";
+import { SIGNED_IN_SCRIPT } from "@/lib/signed-in-hint";
 import { SITE_NAME, SITE_URL, SOCIAL_LINKS } from "@/lib/site";
 import { LANGS, hasLang, localePath, translator } from "@/lib/i18n";
 import { LangProvider } from "@/lib/client/i18n";
@@ -55,7 +56,7 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
     // The app's script marks <html> before React takes over.
     <html lang={lang} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: APP_MODE_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: APP_MODE_SCRIPT + ";" + SIGNED_IN_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
         <LangProvider lang={lang}>
