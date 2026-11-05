@@ -195,8 +195,15 @@ async function monthRows(symbol: string, interval: Interval, month: string, need
 /**
  * Every closed candle in [from, to]. Months load a few at a time to stay gentle with the sources.
  * `metered`: a page is asking (chart, Live), so downloads count against DOWNLOAD_BARS_PER_MINUTE.
+ * `onProgress` gets the share of months loaded, from 0 to 1.
  */
-export async function getCandles(symbol: string, interval: Interval, from: number, to: number, opts: { metered?: boolean } = {}): Promise<Candles> {
+export async function getCandles(
+  symbol: string,
+  interval: Interval,
+  from: number,
+  to: number,
+  opts: { metered?: boolean; onProgress?: (share: number) => void | Promise<void> } = {},
+): Promise<Candles> {
   // Each month of the range gets a row in candle_chunks: never one after today or before the data starts.
   to = Math.min(to, Date.now());
   from = Math.max(from, EARLIEST);
@@ -206,10 +213,12 @@ export async function getCandles(symbol: string, interval: Interval, from: numbe
   if (market(symbol)) await prefillMonths(symbol, interval, months, to, metered);
   const parts: CandleRow[][] = new Array(months.length);
   let next = 0;
+  let loaded = 0;
   const worker = async () => {
     while (next < months.length) {
       const k = next++;
       parts[k] = await monthRows(symbol, interval, months[k], to, metered);
+      await opts.onProgress?.(++loaded / months.length);
     }
   };
   await Promise.all(Array.from({ length: Math.min(3, months.length) }, worker));

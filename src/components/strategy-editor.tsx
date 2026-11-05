@@ -213,8 +213,6 @@ export function StrategyEditor({ id }: { id?: string }) {
     }
   };
 
-  const runLabel = job ? jobLabel(job) : tl("Backtest en cours…");
-
   const applyTemplate = (t: Template) => {
     // With a market chosen in the welcome questions, a template brings its rules but keeps that market.
     const s = preferredMarket() ? { ...t.strategy, symbol: strategy.symbol } : t.strategy;
@@ -585,9 +583,9 @@ export function StrategyEditor({ id }: { id?: string }) {
             )}
             {notice && <Alert tone="info">{notice}</Alert>}
             <div className="hidden flex-col gap-2 md:flex">
-              {job && <ProgressBar job={job} />}
+              {job && <JobProgress job={job} />}
               <Button onClick={run} disabled={busy !== null} className="py-2">
-                {busy === "run" ? runLabel : tl("Lancer le backtest")}
+                {busy === "run" ? tl("Backtest en cours…") : tl("Lancer le backtest")}
               </Button>
             </div>
             <Button variant="ghost" onClick={onSave} disabled={busy !== null}>
@@ -611,9 +609,13 @@ export function StrategyEditor({ id }: { id?: string }) {
             )}
           </p>
         )}
-        {job && <ProgressBar job={job} />}
+        {job && (
+          <div className="mb-2">
+            <JobProgress job={job} />
+          </div>
+        )}
         <Button onClick={run} disabled={busy !== null} className="w-full py-2.5">
-          {busy === "run" ? runLabel : tl("Lancer le backtest · {0} {1} · {2} an{3}", [strategy.symbol, strategy.interval, Math.round(years), Math.round(years) > 1 ? "s" : ""])}
+          {busy === "run" ? tl("Backtest en cours…") : tl("Lancer le backtest · {0} {1} · {2} an{3}", [strategy.symbol, strategy.interval, Math.round(years), Math.round(years) > 1 ? "s" : ""])}
         </Button>
       </div>
     </div>
@@ -742,10 +744,32 @@ function jobLabel(job: JobState) {
   return `${job.message ?? tr("Calcul")} · ${job.progress} %`;
 }
 
-function ProgressBar({ job }: { job: JobState }) {
+/** Seconds since the component appeared, counted from the clock so a phone that pauses the page stays right. */
+function useElapsed() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    const timer = setInterval(() => setSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return seconds;
+}
+
+/** The current step, how far along it is and the time spent: a test in 1 minute can take several minutes. */
+function JobProgress({ job }: { job: JobState }) {
+  const tl = useT();
+  const seconds = useElapsed();
+  const clock = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
   return (
-    <div className="mb-1.5 h-1.5 overflow-hidden rounded-full bg-panel-2">
-      <div className="h-full rounded-full bg-accent transition-all duration-500" style={{ width: `${Math.max(3, job.progress)}%` }} />
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-baseline justify-between gap-3 text-xs">
+        <span className="min-w-0 truncate">{jobLabel(job)}</span>
+        <span className="num shrink-0 text-muted">{clock}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-panel-2">
+        <div className="h-full animate-pulse rounded-full bg-accent transition-all duration-500" style={{ width: `${Math.max(3, job.progress)}%` }} />
+      </div>
+      {seconds >= 10 && <p className="text-[11px] text-muted">{tl("Un test long peut prendre plusieurs minutes. Tu peux quitter cette page : il continue et arrivera sur ton accueil.")}</p>}
     </div>
   );
 }

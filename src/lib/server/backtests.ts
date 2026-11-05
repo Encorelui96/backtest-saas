@@ -40,7 +40,10 @@ export function validateBacktest(input: Strategy, config: BacktestConfig) {
 export async function computeBacktest(input: Strategy, config: BacktestConfig, onProgress: (share: number, label: string) => Promise<void>) {
   const { strategy, problems, start, end } = validateBacktest(input, config);
   await onProgress(0.02, "Chargement des cours");
-  const candles = await getCandles(strategy.symbol, strategy.interval, start - warmupMs(strategy), end);
+  const candles = await getCandles(strategy.symbol, strategy.interval, start - warmupMs(strategy), end, {
+    // A first test in 1 minute spends most of its time here: the bar moves with each month of data.
+    onProgress: (d) => onProgress(0.02 + d * 0.18, "Chargement des cours"),
+  });
   let startIndex = candles.t.findIndex((t) => t >= start);
   if (candles.t.length === 0 || startIndex === -1) {
     throw new UserError("Aucune donnée pour {0} en {1} sur cette période. Vérifie le symbole (ex. BTCUSDT).", [strategy.symbol, strategy.interval]);
