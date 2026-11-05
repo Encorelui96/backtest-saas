@@ -47,7 +47,7 @@ function French() {
             consommé.
           </li>
           <li>
-            <strong>Tes réponses</strong>, si tu en donnes : la question de satisfaction et les offres qui t&apos;intéressent dans la page Tarifs.
+            <strong>Tes réponses</strong>, si tu en donnes : la question de satisfaction, les offres qui t&apos;intéressent dans la page Tarifs et les paires que tu demandes.
           </li>
         </ul>
         <p>
@@ -159,7 +159,7 @@ function English() {
             <strong>Your usage</strong>: the number of backtests and AI translations, to apply the limits of your plan, and what each translation consumed.
           </li>
           <li>
-            <strong>Your answers</strong>, if you give any: the satisfaction question and the plans you&apos;re interested in on the Pricing page.
+            <strong>Your answers</strong>, if you give any: the satisfaction question, the plans you&apos;re interested in on the Pricing page and the pairs you request.
           </li>
         </ul>
         <p>The Beginner / Expert choice is kept in your browser and is never sent to the server.</p>

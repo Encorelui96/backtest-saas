@@ -9,7 +9,7 @@ import { date, num, pct, price, r, tone } from "@/lib/client/format";
 import type { Trade } from "@/lib/engine/backtest";
 import type { Strategy } from "@/lib/strategy/schema";
 import { INTERVALS, INTERVAL_MS, type CandleRow, type Interval } from "@/lib/types";
-import { isCrypto } from "@/lib/markets";
+import { isCrypto, market } from "@/lib/markets";
 import { MarketPicker } from "./market-picker";
 import { PlanLock } from "./plan-lock";
 import { PriceChart, type ChartMarker, type PriceChartHandle } from "./charts";
@@ -88,6 +88,7 @@ export function LiveView() {
   }, [refresh, strategyId, strategies.length]);
 
   const crypto = isCrypto(sym);
+  const delayed = market(sym)?.delayed ?? false;
 
   // Forex, gold and the Nasdaq have no stream the browser can open, and a small daily quota: poll every 5 minutes.
   useEffect(() => {
@@ -172,13 +173,14 @@ export function LiveView() {
               <span className={connected ? "text-up" : "text-down"}>{connected ? tl("● en direct") : tl("● déconnecté")}</span>
             ) : (
               <span className="text-warn" title={tl("Forex, or et Nasdaq : actualisé toutes les 5 minutes.")}>
-                {tl("● toutes les 5 min")}{lastBar ? tl(" (dernière bougie : {0})", [date(lastBar.t)]) : ""}
+                {delayed ? tl("● données différées") : tl("● toutes les 5 min")}{lastBar ? tl(" (dernière bougie : {0})", [date(lastBar.t)]) : ""}
               </span>
             )}
             {change !== null && <span className={`ml-2 ${tone(change)}`}>{pct(change, 2)} {tl(" sur l'écran")}</span>}
           </div>
         </div>
       </div>
+      {delayed && <Alert>{tl("Données différées : le NAS100 a plusieurs heures de retard ici, et ses alertes aussi. Ne t'en sers pas pour décider d'un trade en direct.")}</Alert>}
       {!strategy && (
         <Card>
           <MarketPicker value={symbol} onChange={setSymbol} />

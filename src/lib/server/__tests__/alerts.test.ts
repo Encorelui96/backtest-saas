@@ -116,6 +116,11 @@ describe("runAlertChecks", () => {
 });
 
 describe("alertMessage", () => {
+  it("warns when the market's data runs late", () => {
+    expect(alertMessage({ ...strategy, symbol: "NAS100" }, "s1", ["long"], START, 28_000)).toContain("Données différées");
+    expect(alertMessage({ ...strategy, symbol: "QQQ" }, "s1", ["long"], START, 650)).not.toContain("Données différées");
+  });
+
   it("escapes the strategy name and says it is a simulation", () => {
     const text = alertMessage(strategy, "s1", ["long"], START + 13 * H, 64250.5);
     expect(text).toContain("Cassure &lt;test&gt; &amp; co");

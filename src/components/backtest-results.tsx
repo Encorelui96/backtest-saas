@@ -750,29 +750,22 @@ function Robustness({ report, hasR }: { report: BacktestReport; hasR: boolean })
       </div>
       <Card title={tl("Réglages voisins : {0} des variantes restent gagnantes", [pct(sensitivity.profitableShare, 0, false)])}>
         {sensitivity.rows.length ? (
-          <div className="-mx-3 overflow-x-auto px-3 sm:mx-0 sm:px-0">
-            <table className="num w-full min-w-[520px] whitespace-nowrap text-sm">
-              <thead className="text-xs text-muted">
-                <tr>
-                  <th className="text-left font-normal">{tl("Réglage")}</th>
-                  <th className="text-left font-normal" colSpan={5}>
-                    {tl("Rendement total selon la valeur (la valeur testée est en gras)")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sensitivity.rows.map((row, i) => (
-                  <tr key={i} className="border-t border-line/50">
-                    <td className="py-1.5 pr-3">{tx(row.label)}</td>
-                    {row.variants.map((v) => (
-                      <td key={v.value} className={`px-2 text-right ${tone(v.returnPercent)} ${v.value === row.base ? "font-bold" : ""}`}>
-                        <div className="text-[11px] text-muted">{v.value}</div>
-                        {pct(v.returnPercent, 0)}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="text-sm">
+            <p className="text-xs text-muted">{tl("Rendement total selon la valeur (la valeur testée est en gras)")}</p>
+            {/* On phones the setting takes its own line, so all the values fit without scrolling sideways. */}
+            {sensitivity.rows.map((row, i) => (
+              <div key={i} className="mt-1.5 border-t border-line/50 pt-1.5 sm:flex sm:items-center sm:gap-3">
+                <div className="sm:w-52 sm:shrink-0">{tx(row.label)}</div>
+                <div className="num mt-0.5 flex flex-1 whitespace-nowrap text-xs sm:mt-0 sm:text-sm">
+                  {row.variants.map((v) => (
+                    <div key={v.value} className={`flex-1 text-right ${tone(v.returnPercent)} ${v.value === row.base ? "font-bold" : ""}`}>
+                      <div className="text-[11px] text-muted">{v.value}</div>
+                      {pct(v.returnPercent, 0)}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <p className="text-sm text-muted">{tl("Aucun réglage numérique à faire varier.")}</p>

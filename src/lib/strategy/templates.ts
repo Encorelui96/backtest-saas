@@ -5,6 +5,8 @@ export interface Template {
   label: string;
   prompt: string;
   strategy: Strategy;
+  /** In the short list, before "Voir plus": a mix of swing, day and scalp. */
+  featured?: boolean;
 }
 
 function make(over: Partial<Strategy>): Strategy {
@@ -14,6 +16,7 @@ function make(over: Partial<Strategy>): Strategy {
 export const TEMPLATES: Template[] = [
   {
     id: "rsi2-swing",
+    featured: true,
     label: "Swing · Rebond RSI(2) en tendance haussière",
     prompt:
       "En journalier sur BTCUSDT, j'achète quand le RSI 2 passe sous 10 et que le prix est au-dessus de sa moyenne mobile 200. Je revends quand la clôture repasse au-dessus de la moyenne mobile 5. Stop de sécurité à 3 ATR, sortie au plus tard après 10 jours.",
@@ -71,6 +74,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "turtle-swing",
+    featured: true,
     label: "Swing · Tortues : cassure des plus hauts de 20 jours",
     prompt:
       "En journalier sur BTCUSDT, long et short. J'achète quand la clôture dépasse le plus haut des 20 jours précédents, je vends à découvert sous le plus bas des 20 jours précédents. Je sors d'un achat sous le plus bas des 10 jours précédents, d'une vente au-dessus du plus haut des 10 jours précédents. Stop à 2 ATR(20).",
@@ -170,6 +174,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "orb-day",
+    featured: true,
     label: "Day · Cassure de la plage d'ouverture (15 min)",
     prompt:
       "En 5 minutes sur le Nasdaq 100, à l'heure de New York. Je repère le plus haut et le plus bas de 9h30 à 9h45. J'achète quand la clôture casse le haut de cette plage, je vends à découvert quand elle casse le bas, jusqu'à 11h30. Stop au-delà de l'extrême des 6 dernières bougies, objectif 2R, tout est fermé à 15h45.",
@@ -301,6 +306,7 @@ export const TEMPLATES: Template[] = [
   },
   {
     id: "ema-scalp",
+    featured: true,
     label: "Scalp · Croisement MME 9/21 dans le sens de la tendance",
     prompt:
       "En 5 minutes sur BTCUSDT, j'achète quand la MME 9 croise au-dessus de la MME 21 et que le prix est au-dessus de la MME 200 en 1 heure. Stop 0,4 %, objectif 0,6 %, je sors après 12 bougies si rien ne se passe. Seulement entre 14h et 22h.",

@@ -128,4 +128,6 @@ export interface AdminMetrics {
   };
   /** A plan id, or "pack:<id>" for a recharge. */
   interest: { plan: string; billing: string; n: number }[];
+  /** Most requested first. */
+  marketRequests: { market: string; n: number }[];
 }

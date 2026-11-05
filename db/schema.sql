@@ -96,6 +96,14 @@ CREATE TABLE IF NOT EXISTS plan_interest (
   PRIMARY KEY (user_id, plan)
 );
 
+-- Markets people would like on the site: one line per account and market.
+CREATE TABLE IF NOT EXISTS market_requests (
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  market text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, market)
+);
+
 -- Candles shared by every user: one gzipped chunk per symbol, interval and UTC month.
 CREATE TABLE IF NOT EXISTS candle_chunks (
   symbol text NOT NULL,

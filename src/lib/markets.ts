@@ -11,6 +11,8 @@ export interface Market {
   source: "twelvedata" | "databento";
   /** Symbol at the source. */
   feed: string;
+  /** The source publishes this market hours late: fine for tests, not for following it live. */
+  delayed?: boolean;
 }
 
 export const MARKETS: Market[] = [
@@ -25,7 +27,7 @@ export const MARKETS: Market[] = [
   { symbol: "GBPJPY", label: "Livre / Yen", kind: "forex", source: "twelvedata", feed: "GBP/JPY" },
   { symbol: "XAUUSD", label: "Or (once en dollars)", kind: "metal", source: "twelvedata", feed: "XAU/USD" },
   // The CME future, front month rolled over continuously: the ~28 000 level, trading nearly 24 hours a day.
-  { symbol: "NAS100", label: "Nasdaq 100 (future NQ, presque 24h/24)", kind: "index", source: "databento", feed: "NQ.c.0" },
+  { symbol: "NAS100", label: "Nasdaq 100 (future NQ, presque 24h/24)", kind: "index", source: "databento", feed: "NQ.c.0", delayed: true },
   { symbol: "QQQ", label: "Nasdaq 100 via QQQ (heures de bourse US : 15h30-22h à Paris)", kind: "index", source: "twelvedata", feed: "QQQ" },
 ];
 
@@ -33,6 +35,11 @@ const BY_SYMBOL = new Map(MARKETS.map((m) => [m.symbol, m]));
 
 export function market(symbol: string): Market | undefined {
   return BY_SYMBOL.get(symbol.toUpperCase());
+}
+
+/** "gbp/nzd", "GBP NZD" and "GBP-NZD" count as one request. */
+export function requestedMarket(text: string) {
+  return text.trim().toUpperCase().replace(/[\s/_-]+/g, "");
 }
 
 const NEW_YORK = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "numeric", hourCycle: "h23" });

@@ -620,38 +620,49 @@ export function StrategyEditor({ id }: { id?: string }) {
   );
 }
 
-/** Starting points: cards with a one-line pitch for beginners, compact chips for experts. */
+/** Starting points: cards with a one-line pitch for beginners, compact chips for experts. A short list first, which keeps the one in use. */
 function Templates({ templates, current, onPick, beginner }: { templates: Template[]; current: string; onPick: (t: Template) => void; beginner: boolean }) {
   const tl = useT();
+  const [all, setAll] = useState(false);
+  const shown = all ? templates : templates.filter((t) => t.featured || t.strategy.name === current);
+  const toggle = (
+    <button type="button" onClick={() => setAll(!all)} aria-expanded={all} className="text-xs font-medium text-accent hover:underline">
+      {all ? tl("Voir moins") : tl("Voir plus ({0})", [templates.length - shown.length])}
+    </button>
+  );
   if (!beginner) {
     return (
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-xs text-muted">{tl("Modèles :")}</span>
-        {templates.map((t) => (
+        {shown.map((t) => (
           <button key={t.id} onClick={() => onPick(t)} className="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted hover:border-accent hover:text-fg">
             {t.label}
           </button>
         ))}
+        {toggle}
       </div>
     );
   }
   return (
-    <div className="no-scrollbar -mx-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-3">
-      {templates.map((t) => {
-        const [style, name] = t.label.split(" · ");
-        const selected = t.strategy.name === current;
-        return (
-          <button
-            key={t.id}
-            onClick={() => onPick(t)}
-            className={`w-60 shrink-0 snap-start rounded-lg border p-3 text-left transition sm:w-auto ${selected ? "border-accent bg-accent/10" : "border-line bg-panel-2/50 hover:border-accent/60"}`}
-          >
-            <div className="text-[11px] uppercase tracking-wide text-accent">{style}</div>
-            <div className="mt-0.5 text-sm font-semibold leading-snug">{name ?? t.label}</div>
-            <div className="mt-1 line-clamp-2 text-xs text-muted">{t.prompt}</div>
-          </button>
-        );
-      })}
+    <div className="flex flex-col gap-2">
+      <div className="no-scrollbar -mx-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-3">
+        {shown.map((t) => {
+          const [style, name] = t.label.split(" · ");
+          const selected = t.strategy.name === current;
+          return (
+            <button
+              key={t.id}
+              onClick={() => onPick(t)}
+              className={`w-60 shrink-0 snap-start rounded-lg border p-3 text-left transition sm:w-auto ${selected ? "border-accent bg-accent/10" : "border-line bg-panel-2/50 hover:border-accent/60"}`}
+            >
+              <div className="text-[11px] uppercase tracking-wide text-accent">{style}</div>
+              <div className="mt-0.5 text-sm font-semibold leading-snug">{name ?? t.label}</div>
+              <div className="mt-1 line-clamp-2 text-xs text-muted">{t.prompt}</div>
+            </button>
+          );
+        })}
+      </div>
+      <div>{toggle}</div>
     </div>
   );
 }
