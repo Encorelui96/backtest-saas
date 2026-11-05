@@ -1,6 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import type { Strategy } from "../strategy/schema";
+import { market } from "../markets";
 import { normalizeStrategy } from "../strategy/schema";
 import { stopLabel, targetLabel } from "../strategy/describe";
 import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "../strategy/warmup";
@@ -142,6 +143,7 @@ export function alertMessage(strategy: Strategy, strategyId: string, signals: Si
     "",
     ...signals.map((s) => t(LABELS[s])),
     t("Prix de clôture : {0}", [formatPrice(closePrice, lang)]),
+    ...(market(strategy.symbol)?.delayed ? [t("⚠️ Données différées de plusieurs heures.")] : []),
   ];
   if (signals.some((s) => s === "long" || s === "short")) {
     lines.push(t("Stop prévu : {0} · Objectif : {1}", [escapeHtml(stopLabel(strategy, t)), escapeHtml(targetLabel(strategy, t))]));

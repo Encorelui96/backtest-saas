@@ -11,6 +11,8 @@ export interface Market {
   source: "twelvedata" | "databento";
   /** Symbol at the source. */
   feed: string;
+  /** The source publishes this market hours late: fine for tests, not for following it live. */
+  delayed?: boolean;
 }
 
 export const MARKETS: Market[] = [
@@ -25,7 +27,7 @@ export const MARKETS: Market[] = [
   { symbol: "GBPJPY", label: "Livre / Yen", kind: "forex", source: "twelvedata", feed: "GBP/JPY" },
   { symbol: "XAUUSD", label: "Or (once en dollars)", kind: "metal", source: "twelvedata", feed: "XAU/USD" },
   // The CME future, front month rolled over continuously: the ~28 000 level, trading nearly 24 hours a day.
-  { symbol: "NAS100", label: "Nasdaq 100 (future NQ, presque 24h/24)", kind: "index", source: "databento", feed: "NQ.c.0" },
+  { symbol: "NAS100", label: "Nasdaq 100 (future NQ, presque 24h/24)", kind: "index", source: "databento", feed: "NQ.c.0", delayed: true },
   { symbol: "QQQ", label: "Nasdaq 100 via QQQ (heures de bourse US : 15h30-22h à Paris)", kind: "index", source: "twelvedata", feed: "QQQ" },
 ];
 

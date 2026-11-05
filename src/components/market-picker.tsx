@@ -146,7 +146,7 @@ export function MarketPicker({ value, onChange }: { value: string; onChange: (sy
       )}
       {family === "index" && (
         <p className="text-[11px] text-muted">
-          {tl("NAS100 : le future Nasdaq (vers 28 000), presque 24h/24 en semaine. QQQ : le fonds qui suit le Nasdaq, coté seulement de 15h30 à 22h à Paris.")}</p>
+          {tl("NAS100 : le future Nasdaq (vers 28 000), presque 24h/24 en semaine, avec plusieurs heures de retard dans le Live et les alertes. QQQ : le fonds qui suit le Nasdaq, coté seulement de 15h30 à 22h à Paris.")}</p>
       )}
       {family !== "crypto" && family !== "index" && <p className="text-[11px] text-muted">{tl("Fermé du vendredi soir au dimanche soir.")}</p>}
     </div>
