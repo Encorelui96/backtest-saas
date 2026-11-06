@@ -12,6 +12,7 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "Alertes Telegram réparées", text: "Les alertes sur le forex, l'or et le QQQ ne partaient pas : elles arrivent maintenant environ une minute après la clôture de la bougie. Le Live de ces marchés montre aussi la dernière bougie plus tôt." },
       { title: "Un e-mail à la fin des longs tests", text: "Quand un test dure plus de 2 minutes, un e-mail te prévient à la fin, avec les chiffres clés et le lien vers le résultat. Tu peux le désactiver dans Compte." },
       { title: "Un chrono pendant les tests", text: "Pendant un backtest, tu vois l'étape en cours, la progression et le temps écoulé. Tu peux aussi quitter la page : le test continue et arrive sur ton accueil." },
       { title: "Un accueil plus court", text: "L'accueil affiche tes 5 derniers tests et tes 5 dernières stratégies. Voir plus ouvre le reste." },

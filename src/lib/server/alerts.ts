@@ -1,7 +1,7 @@
 import "server-only";
 import { randomBytes } from "node:crypto";
 import type { Strategy } from "../strategy/schema";
-import { market } from "../markets";
+import { lastPublishedOpen, market } from "../markets";
 import { normalizeStrategy } from "../strategy/schema";
 import { stopLabel, targetLabel } from "../strategy/describe";
 import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "../strategy/warmup";
@@ -168,27 +168,49 @@ interface DueAlert {
   rank: string;
 }
 
-/** Signals on the last closed candle of the strategy, with its open time and close price. */
-async function evaluateLastClose(strategy: Strategy, now: number) {
+/** Candles a check catches up on, when a long backtest held the worker or the source was late. */
+export const CATCH_UP_BARS = 12;
+/** While a candle is missing, look again at most this often, and for this long after its close. */
+const RETRY_MS = 60_000;
+const RETRY_FOR_MS = 10 * 60_000;
+/** Per alert, the candle looked for in vain and when: a late or closed market isn't read again every 20 seconds. */
+const missed = new Map<string, { open: number; at: number }>();
+
+/**
+ * The signals of each candle closed after `after` (an open time), oldest
+ * first, among the last CATCH_UP_BARS; and the open time of the newest
+ * closed candle the data has.
+ */
+async function evaluateCloses(strategy: Strategy, now: number, after: number) {
   const ms = INTERVAL_MS[strategy.interval];
   const warmBars = Math.min(4000, Math.ceil(warmupMs(strategy) / ms) + 10);
-  const rows = (await fetchRecent(strategy.symbol, strategy.interval, warmBars + 2)).filter((r) => r.t + ms <= now);
+  const rows = (await fetchRecent(strategy.symbol, strategy.interval, warmBars + CATCH_UP_BARS + 2)).filter((r) => r.t + ms <= now);
   if (rows.length < 10) throw new Error("Pas assez de cours récents pour ce marché.");
   const candles = rowsToCandles(rows);
   const ctx = new SeriesContext(candles, strategy.interval, strategy.timezone);
   for (const tf of higherTimeframes(strategy)) {
-    const bars = Math.min(1500, Math.ceil(higherTimeframeWarmupMs(strategy, tf) / INTERVAL_MS[tf]) + 3);
+    const bars = Math.min(1500, Math.ceil(higherTimeframeWarmupMs(strategy, tf) / INTERVAL_MS[tf]) + Math.ceil((CATCH_UP_BARS * ms) / INTERVAL_MS[tf]) + 3);
     const htf = (await fetchRecent(strategy.symbol, tf, bars)).filter((r) => r.t + INTERVAL_MS[tf] <= now);
     ctx.attachHigherTimeframe(tf, rowsToCandles(htf));
   }
-  const i = candles.t.length - 1;
-  return { signals: signalsAt(ctx, strategy, i), barTime: candles.t[i], close: candles.c[i] };
+  const last = candles.t.length - 1;
+  const closes: { signals: SignalKind[]; barTime: number; close: number }[] = [];
+  for (let i = Math.max(0, last - CATCH_UP_BARS + 1); i <= last; i++) {
+    if (candles.t[i] <= after) continue;
+    const signals = signalsAt(ctx, strategy, i);
+    if (signals.length) closes.push({ signals, barTime: candles.t[i], close: candles.c[i] });
+  }
+  return { lastBar: candles.t[last], closes };
 }
 
 /**
  * One pass over the enabled alerts whose candle has closed since their last
  * check. Plans are re-read each time, so a downgraded account keeps only the
  * alerts its new plan allows (the oldest ones).
+ *
+ * `last_bar` is the open time of the last candle the data had at the check,
+ * not the clock's: a source that publishes a little late (Twelve Data) gets
+ * its candle read when it arrives, instead of being skipped for good.
  */
 export async function runAlertChecks(now = Date.now()) {
   const due = await query<DueAlert>(
@@ -207,37 +229,37 @@ export async function runAlertChecks(now = Date.now()) {
     const { strategy } = normalizeStrategy(a.json);
     const ms = INTERVAL_MS[strategy.interval];
     if (Number(a.rank) > plan.alerts || ms < INTERVAL_MS[plan.minInterval]) continue;
-    // Open time of the candle that closed last; give the data source a few seconds to publish it.
-    const lastOpen = Math.floor((now - 5_000) / ms) * ms - ms;
+    // Open time of the candle that closed last, once its source has had time to publish it.
+    const lastOpen = lastPublishedOpen(strategy.symbol, strategy.interval, now);
     if (a.last_bar !== null && Number(a.last_bar) >= lastOpen) continue;
+    const miss = missed.get(a.id);
+    if (miss && miss.open === lastOpen && (now - miss.at < RETRY_MS || now - (lastOpen + ms) > RETRY_FOR_MS)) continue;
     try {
-      const { signals, barTime, close } = await evaluateLastClose(strategy, now);
+      const { lastBar, closes } = await evaluateCloses(strategy, now, a.last_bar === null ? Infinity : Number(a.last_bar));
+      // Late source or closed market (forex at the weekend): the candle isn't there yet.
+      if (lastBar < lastOpen) missed.set(a.id, { open: lastOpen, at: now });
+      else missed.delete(a.id);
       // A new alert starts from the current candle: an old signal must not arrive the minute it is created.
       if (a.last_bar === null) {
-        await query("UPDATE alerts SET last_bar = $2 WHERE id = $1", [a.id, Math.max(barTime, lastOpen)]);
+        await query("UPDATE alerts SET last_bar = $2 WHERE id = $1", [a.id, lastBar]);
         continue;
       }
-      // Markets that are closed (forex at the weekend) keep their last bar: don't alert twice on it.
-      if (Number(a.last_bar) >= barTime) {
-        await query("UPDATE alerts SET last_bar = $2 WHERE id = $1", [a.id, lastOpen]);
-        continue;
-      }
-      if (signals.length) {
-        await sendMessage(a.chat_id, alertMessage(strategy, a.strategy_id, signals, barTime + ms, close, hasLang(a.lang) ? a.lang : "fr"));
+      if (lastBar <= Number(a.last_bar)) continue;
+      for (const c of closes) {
+        await sendMessage(a.chat_id, alertMessage(strategy, a.strategy_id, c.signals, c.barTime + ms, c.close, hasLang(a.lang) ? a.lang : "fr"));
         sent++;
+        // Saved message by message: if the next one fails, this one isn't sent again.
+        await query("UPDATE alerts SET last_bar = $2, last_signal_at = now() WHERE id = $1", [a.id, c.barTime]);
       }
-      await query("UPDATE alerts SET last_bar = $2, last_error = NULL, last_signal_at = CASE WHEN $3 THEN now() ELSE last_signal_at END WHERE id = $1", [
-        a.id,
-        Math.max(barTime, lastOpen),
-        signals.length > 0,
-      ]);
+      await query("UPDATE alerts SET last_bar = $2, last_error = NULL WHERE id = $1", [a.id, lastBar]);
     } catch (e) {
       if (e instanceof TelegramError && e.chatGone) {
         await unlinkChat(Number(a.chat_id));
         continue;
       }
-      // Record it for the account page and try again at the next close.
-      await query("UPDATE alerts SET last_bar = $2, last_error = $3 WHERE id = $1", [a.id, lastOpen, e instanceof Error ? e.message.slice(0, 200) : "Erreur"]);
+      // Shown on the account page. The candle stays to check: tried again a minute later, while it is recent.
+      missed.set(a.id, { open: lastOpen, at: now });
+      await query("UPDATE alerts SET last_error = $2 WHERE id = $1", [a.id, e instanceof Error ? e.message.slice(0, 200) : "Erreur"]);
     }
   }
   return sent;

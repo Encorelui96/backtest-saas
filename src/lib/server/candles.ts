@@ -7,7 +7,7 @@ import { fetchKlines, listSymbols } from "./binance";
 import { fetchTwelveData } from "./twelvedata";
 import { fetchDatabento } from "./databento";
 import { QuotaError } from "./quotas";
-import { isWeekendClose, market, type Market } from "../markets";
+import { isWeekendClose, lastPublishedOpen, market, type Market } from "../markets";
 
 /** No market here has candles before 2000: an earlier start would only add empty months to the cache. */
 export const EARLIEST = Date.UTC(2000, 0, 1);
@@ -138,7 +138,7 @@ function saveMonth(symbol: string, interval: Interval, month: string, rows: Cand
  */
 async function prefillMonths(symbol: string, interval: Interval, months: string[], needUntil: number, metered: boolean) {
   const ms = INTERVAL_MS[interval];
-  const lastClosed = Math.floor((Date.now() - ms) / ms) * ms;
+  const lastClosed = lastPublishedOpen(symbol, interval);
   const cached = await query<{ month: string; filled_to: string; complete: boolean }>(
     "SELECT month, filled_to, complete FROM candle_chunks WHERE symbol = $1 AND interval = $2 AND month = ANY($3)",
     [symbol, interval, months],
@@ -160,6 +160,13 @@ async function prefillMonths(symbol: string, interval: Interval, months: string[
 
 const inflight = new Map<string, Promise<CandleRow[]>>();
 
+/** A candle still missing this long after its close isn't late any more: the market had no trade, or is closed. */
+const LATE_MS = 10 * 60_000;
+/** While a source is late for its newest candle, it is asked again at most this often. */
+const RETRY_LATE_MS = 45_000;
+/** Per month of the cache, when its source was last found late. */
+const lateSince = new Map<string, number>();
+
 /** One month of closed candles, from the shared cache or the market's source. */
 async function monthRows(symbol: string, interval: Interval, month: string, needUntil: number, metered: boolean): Promise<CandleRow[]> {
   const key = `${symbol}:${interval}:${month}`;
@@ -167,7 +174,8 @@ async function monthRows(symbol: string, interval: Interval, month: string, need
   if (running) return running;
   const job = (async () => {
     const ms = INTERVAL_MS[interval];
-    const lastClosed = Math.floor((Date.now() - ms) / ms) * ms;
+    const now = Date.now();
+    const lastClosed = lastPublishedOpen(symbol, interval, now);
     const { start, end } = monthBounds(month);
     const [cached] = await query<{ data: Buffer; filled_to: string; complete: boolean }>(
       "SELECT data, filled_to, complete FROM candle_chunks WHERE symbol = $1 AND interval = $2 AND month = $3",
@@ -177,11 +185,19 @@ async function monthRows(symbol: string, interval: Interval, month: string, need
     if (cached && (cached.complete || Number(cached.filled_to) >= wanted)) return decode(cached.data);
 
     const have = cached ? decode(cached.data) : [];
+    // The source was late a moment ago: give it time before asking again (Twelve Data counts every request).
+    if (cached && now - (lateSince.get(key) ?? -Infinity) < RETRY_LATE_MS) return have;
     const fetchFrom = have.length ? have[have.length - 1].t + ms : start;
     const fetchTo = Math.min(end - ms, lastClosed);
     const fresh = fetchTo >= fetchFrom ? (await fetchHistory(symbol, interval, fetchFrom, fetchTo, metered)).filter((r) => r.t <= lastClosed) : [];
     const rows = [...have, ...fresh];
-    await saveMonth(symbol, interval, month, rows, fetchTo, end - ms <= lastClosed);
+    // Only the newest candle missing, shortly after its close: the source hasn't published it yet.
+    // Filled up to the one before, so that a later call asks for it instead of waiting for the next candle.
+    const late =
+      rows.length > 0 && rows[rows.length - 1].t === fetchTo - ms && now < fetchTo + ms + LATE_MS && !(market(symbol) && isWeekendClose(fetchTo));
+    if (late) lateSince.set(key, now);
+    else lateSince.delete(key);
+    await saveMonth(symbol, interval, month, rows, late ? fetchTo - ms : fetchTo, !late && end - ms <= lastClosed);
     return rows;
   })();
   inflight.set(key, job);

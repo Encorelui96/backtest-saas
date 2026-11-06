@@ -1389,4 +1389,6 @@ export const EN: Record<string, string> = {
   "Me prévenir quand un test de plus de 2 minutes se termine ou échoue": "Tell me when a test of more than 2 minutes ends or fails",
   "Un e-mail à la fin des longs tests": "An email at the end of long tests",
   "Quand un test dure plus de 2 minutes, un e-mail te prévient à la fin, avec les chiffres clés et le lien vers le résultat. Tu peux le désactiver dans Compte.": "When a test takes more than 2 minutes, an email tells you when it ends, with the key figures and a link to the result. You can turn it off in Account.",
+  "Alertes Telegram réparées": "Telegram alerts fixed",
+  "Les alertes sur le forex, l'or et le QQQ ne partaient pas : elles arrivent maintenant environ une minute après la clôture de la bougie. Le Live de ces marchés montre aussi la dernière bougie plus tôt.": "Alerts on forex, gold and QQQ weren't going out: they now arrive about a minute after the candle closes. The Live page of these markets also shows the latest candle sooner.",
 };

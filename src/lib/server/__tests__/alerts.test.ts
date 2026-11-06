@@ -106,6 +106,33 @@ describe("runAlertChecks", () => {
     expect(store.updates).toHaveLength(0);
   });
 
+  it("reads a candle its source publishes late, instead of skipping it", async () => {
+    const now = START + 61 * H + 30_000;
+    // The candle of 60 h has closed, but the source still stops at 59 h.
+    market.rows = bars(60, 100);
+    store.due = [alertRow({ id: "late", last_bar: String(START + 59 * H) })];
+    await runAlertChecks(now);
+    expect(tg.sent).toHaveLength(0);
+    expect(store.updates).toHaveLength(0);
+
+    // It arrives: not read again before a minute, then sent.
+    market.rows = bars(61, 200);
+    await runAlertChecks(now + 20_000);
+    expect(tg.sent).toHaveLength(0);
+    await runAlertChecks(now + 61_000);
+    expect(tg.sent).toHaveLength(1);
+    expect(store.updates.at(-1)).toEqual(["late", START + 60 * H]);
+  });
+
+  it("catches up on the candles that closed while the worker was busy", async () => {
+    // Closes above 150 at 58 h and 60 h, below at 59 h; last checked at 57 h.
+    market.rows = bars(61, 200).map((r, i) => (i === 58 ? { ...r, c: 200, h: 200 } : r));
+    store.due = [alertRow({ id: "busy", last_bar: String(START + 57 * H) })];
+    await runAlertChecks(START + 61 * H + 30_000);
+    expect(tg.sent).toHaveLength(2);
+    expect(store.updates.at(-1)).toEqual(["busy", START + 60 * H]);
+  });
+
   it("unlinks a chat that blocked the bot", async () => {
     market.rows = bars(61, 200);
     tg.fail = new TelegramError("Forbidden: bot was blocked by the user", true);

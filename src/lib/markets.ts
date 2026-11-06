@@ -4,6 +4,8 @@
  * Nasdaq 100, from Twelve Data. Any other symbol is a Binance pair.
  */
 
+import { INTERVAL_MS, type Interval } from "./types";
+
 export interface Market {
   symbol: string;
   label: string;
@@ -35,6 +37,19 @@ const BY_SYMBOL = new Map(MARKETS.map((m) => [m.symbol, m]));
 
 export function market(symbol: string): Market | undefined {
   return BY_SYMBOL.get(symbol.toUpperCase());
+}
+
+/**
+ * How long a source may take to publish a candle once it has closed. Before
+ * that, the cache and the alerts don't count it as closed: asking at once
+ * comes back without it.
+ */
+const PUBLISH_DELAY_MS: Record<Market["source"] | "binance", number> = { binance: 5_000, twelvedata: 60_000, databento: 5_000 };
+
+/** Open time of the last candle its source has had time to publish. */
+export function lastPublishedOpen(symbol: string, interval: Interval, now = Date.now()) {
+  const ms = INTERVAL_MS[interval];
+  return Math.floor((now - PUBLISH_DELAY_MS[market(symbol)?.source ?? "binance"]) / ms) * ms - ms;
 }
 
 /** "gbp/nzd", "GBP NZD" and "GBP-NZD" count as one request. */
