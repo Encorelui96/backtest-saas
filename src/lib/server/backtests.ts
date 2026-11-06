@@ -30,7 +30,8 @@ export function validateBacktest(input: Strategy, config: BacktestConfig) {
   const end = Date.parse(`${config.endDate}T23:59:59Z`);
   if (!(start < end)) throw new UserError("La date de fin doit être après la date de début.");
   const maxDays = MAX_HISTORY_DAYS[strategy.interval];
-  if ((end - start) / 86_400_000 > maxDays) {
+  // Counted from date to date, like the period buttons: "Max" in 1m runs from 2 Oct to 6 Nov, 400 days.
+  if ((Date.parse(`${config.endDate}T00:00:00Z`) - start) / 86_400_000 > maxDays) {
     throw new UserError("En {0}, la période est limitée à {1} jours pour garder le test rapide.", [strategy.interval, maxDays]);
   }
   return { strategy, problems, start, end };
