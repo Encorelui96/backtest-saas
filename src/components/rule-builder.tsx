@@ -1,8 +1,8 @@
 "use client";
 
 import { useT } from "@/lib/client/i18n";
-import { useState } from "react";
-import { COMPARATORS, SOURCES, num, operand, type Comparator, type Condition, type Group, type IndicatorName, type Operand } from "@/lib/strategy/schema";
+import { createContext, useContext, useState } from "react";
+import { COMPARATORS, PRO_INDICATORS, SOURCES, num, operand, type Comparator, type Condition, type Group, type IndicatorName, type Operand } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, DEFAULT_PERIODS, FIELD_HINTS, INDICATOR_FIELDS, INDICATOR_LABELS } from "@/lib/strategy/describe";
 import { INTERVALS } from "@/lib/types";
 import { INDICATOR_TERMS } from "@/lib/learn/glossary";
@@ -18,9 +18,27 @@ const GROUPS: { label: string; items: IndicatorName[] }[] = [
   { label: "Prix", items: ["close", "open", "high", "low", "number"] },
   {
     label: "Tendance",
-    items: ["sma", "ema", "vwap", "adx", "macd", "macd_signal", "macd_hist", "supertrend", "psar", "ichimoku_tenkan", "ichimoku_kijun", "ichimoku_span_a", "ichimoku_span_b"],
+    items: [
+      "sma",
+      "ema",
+      "wma",
+      "hma",
+      "vwap",
+      "adx",
+      "plus_di",
+      "minus_di",
+      "macd",
+      "macd_signal",
+      "macd_hist",
+      "supertrend",
+      "psar",
+      "ichimoku_tenkan",
+      "ichimoku_kijun",
+      "ichimoku_span_a",
+      "ichimoku_span_b",
+    ],
   },
-  { label: "Oscillateurs", items: ["rsi", "stoch_k", "stoch_d", "roc", "ibs", "zscore"] },
+  { label: "Oscillateurs", items: ["rsi", "stoch_k", "stoch_d", "cci", "williams_r", "roc", "ibs", "zscore"] },
   {
     label: "Volatilité",
     items: ["atr", "atr_percent", "bb_upper", "bb_middle", "bb_lower", "bb_percent", "bb_width", "keltner_upper", "keltner_middle", "keltner_lower", "squeeze", "chop"],
@@ -33,7 +51,19 @@ const GROUPS: { label: string; items: IndicatorName[] }[] = [
   { label: "Pivots", items: ["pivot", "pivot_r1", "pivot_s1", "pivot_r2", "pivot_s2", "cam_r3", "cam_s3", "cam_r4", "cam_s4"] },
   { label: "Figures de bougies", items: ["inside_bar", "engulfing", "pin_bar", "narrow_range"] },
   { label: "Temps", items: ["hour", "minute", "weekday"] },
+  {
+    label: "Structure de marché (Pro)",
+    items: ["swing_high", "swing_low", "bos", "structure", "fvg", "fvg_bull_top", "fvg_bull_bottom", "fvg_bear_top", "fvg_bear_bottom"],
+  },
+  { label: "Heikin Ashi (Pro)", items: ["ha_open", "ha_high", "ha_low", "ha_close"] },
+  { label: "Divergences et plus (Pro)", items: ["rsi_divergence", "macd_divergence", "stoch_rsi_k", "stoch_rsi_d", "aroon_up", "aroon_down", "cmf"] },
 ];
+
+/** Labels of the averaged prices; the plain ones show as they are. */
+const SOURCE_LABELS: Partial<Record<(typeof SOURCES)[number], string>> = { hl2: "hl2 (h+l)/2", hlc3: "hlc3 (h+l+c)/3", ohlc4: "ohlc4 (o+h+l+c)/4" };
+
+/** True when the signed-in plan doesn't include the Pro indicators: they show greyed out in the lists. */
+export const ProIndicatorsLocked = createContext(false);
 
 const FIELD_LABELS = { period: "Période", period2: "Période 2", period3: "Période 3", multiplier: "Écart-type", value: "Valeur" } as const;
 
@@ -41,6 +71,7 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
   const tl = useT();
   const fields = INDICATOR_FIELDS[value.indicator];
   const [advanced, setAdvanced] = useState(value.timeframe !== null || value.offset > 0);
+  const locked = useContext(ProIndicatorsLocked);
   const setIndicator = (indicator: IndicatorName) => onChange({ ...operand(indicator, DEFAULT_PERIODS[indicator] ?? {}), offset: value.offset, timeframe: value.timeframe });
   return (
     <div className="flex flex-wrap items-center gap-1.5">
@@ -48,7 +79,7 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
         {GROUPS.map((g) => (
           <optgroup key={g.label} label={tl(g.label)}>
             {g.items.map((i) => (
-              <option key={i} value={i}>
+              <option key={i} value={i} disabled={locked && PRO_INDICATORS.has(i) && i !== value.indicator}>
                 {tl(INDICATOR_LABELS[i])}
               </option>
             ))}
@@ -59,14 +90,17 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
       {fields.map((f) => {
         if (f === "source")
           return (
-            <select key={f} title={tl("Source")} value={value.source ?? ""} onChange={(e) => onChange({ ...value, source: (e.target.value || null) as Operand["source"] })}>
-              <option value="">{value.indicator === "highest" ? tl("haut") : value.indicator === "lowest" ? tl("bas") : tl("clôture")}</option>
+            <span key={f} className="flex items-center">
+            <select title={tl("Source")} value={value.source ?? ""} onChange={(e) => onChange({ ...value, source: (e.target.value || null) as Operand["source"] })}>
+              <option value="">{value.indicator === "highest" ? tl("haut") : value.indicator === "lowest" ? tl("bas") : value.indicator === "cci" ? "hlc3" : tl("clôture")}</option>
               {SOURCES.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {SOURCE_LABELS[s] ?? s}
                 </option>
               ))}
             </select>
+            <Why id="source" />
+            </span>
           );
         if (f === "window") {
           const w = value.window ?? { start: "00:00", end: "08:00" };

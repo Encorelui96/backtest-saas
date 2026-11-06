@@ -1,5 +1,7 @@
 import "server-only";
-import { INTERVAL_MS, type Interval } from "../types";
+import { INTERVAL_MS } from "../types";
+import { proIndicatorsIn, type Strategy } from "../strategy/schema";
+import { INDICATOR_LABELS } from "../strategy/describe";
 import type { PoolClient } from "pg";
 import { PACK_BY_ID, PLANS, earliestStart, historyMonths, type CreditKind, type PackId, type Plan, type PlanId } from "../plans";
 import { translate, type Lang } from "../i18n";
@@ -110,18 +112,31 @@ function quotaSpent(text: string, plain: string, count: number, u: Usage, rechar
   return new QuotaError(text, [count, u.plan.label, u.resetsAt, p.label, p.price], { recharge, plain });
 }
 
+/** Throws when the strategy reads an indicator reserved to the Pro plan and the plan doesn't include it. */
+export function checkIndicators(plan: Plan, strategy: Pick<Strategy, "direction" | "entryLong" | "entryShort" | "exitLong" | "exitShort">) {
+  if (plan.proIndicators) return;
+  const [first] = proIndicatorsIn(strategy);
+  if (first) {
+    throw new QuotaError("L'indicateur {0:t} est réservé à l'offre Pro. Passe à l'offre Pro pour tester cette stratégie.", [INDICATOR_LABELS[first]], {
+      plain: "L'indicateur {0:t} est réservé à l'offre Pro.",
+    });
+  }
+}
+
 /**
  * Throws a QuotaError with a message for the user when a new backtest isn't
  * allowed. Past the monthly quota, a recharge credit pays for it: `useCredit`
  * then tells the caller to record it with spendCredit once the job exists.
  */
-export async function checkBacktestAllowed(user: SessionUser, interval: Interval, run: Runner = query, start?: number): Promise<{ useCredit: boolean }> {
+export async function checkBacktestAllowed(user: SessionUser, strategy: Strategy, run: Runner = query, start?: number): Promise<{ useCredit: boolean }> {
   const u = await usageOf(user, run);
+  const interval = strategy.interval;
   if (INTERVAL_MS[interval] < INTERVAL_MS[u.plan.minInterval]) {
     throw new QuotaError("L'offre {0:t} teste à partir de l'unité {1}. Passe à l'offre Trader pour le scalp en {2}.", [u.plan.label, u.plan.minInterval, interval], {
       plain: "L'offre {0:t} teste à partir de l'unité {1}.",
     });
   }
+  checkIndicators(u.plan, strategy);
   const earliest = earliestStart(u.plan);
   if (start !== undefined && earliest !== null && start < earliest) {
     throw new QuotaError("L'offre {0:t} teste les {1} derniers mois. Passe à l'offre Trader pour tout l'historique.", [u.plan.label, historyMonths(u.plan)], {

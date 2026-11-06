@@ -8,7 +8,8 @@ import { usePlan } from "@/lib/client/plan";
 import { clampStartDate, earliestStart, historyMonths } from "@/lib/plans";
 import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
-import { defaultConfig, defaultStrategy, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
+import { defaultConfig, defaultStrategy, proIndicatorsIn, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
+import { INDICATOR_LABELS } from "@/lib/strategy/describe";
 import type { Template } from "@/lib/strategy/templates";
 import { INTERVALS, INTERVAL_MS, MAX_HISTORY_DAYS } from "@/lib/types";
 import { isCrypto } from "@/lib/markets";
@@ -16,7 +17,7 @@ import { date } from "@/lib/client/format";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { Help, useBeginner } from "./learn";
 import { MarketPicker } from "./market-picker";
-import { GroupsEditor } from "./rule-builder";
+import { GroupsEditor, ProIndicatorsLocked } from "./rule-builder";
 import { Alert, Button, Card, Field } from "./ui";
 
 interface Meta {
@@ -93,6 +94,8 @@ export function StrategyEditor({ id }: { id?: string }) {
   const firstEarliest = plan ? earliestStart(plan) : null;
   const firstDay = firstEarliest === null ? undefined : new Date(firstEarliest).toISOString().slice(0, 10);
   const reservedInterval = (i: Strategy["interval"]) => plan !== null && INTERVAL_MS[i] < INTERVAL_MS[plan.minInterval];
+  const proLocked = plan !== null && !plan.proIndicators;
+  const proUsed = proLocked ? proIndicatorsIn(strategy) : [];
   // Came from the home page's main button: the report opens on the challenge. Read once, saving rewrites the address.
   const challengeGoal = useRef(false);
 
@@ -340,6 +343,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {tl("Modifier les règles →")}</button>
             </div>
           ) : (
+          <ProIndicatorsLocked.Provider value={proLocked}>
           <div className="flex flex-col gap-5">
             {strategy.direction !== "short" && (
               <RuleSection title={tl("Quand acheter")} color="text-up">
@@ -366,6 +370,16 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {tl("Règles évaluées à la clôture de chaque bougie, ordre à l'ouverture suivante. Stop et objectif surveillés dans la bougie ; si les deux sont touchés, le stop compte en premier.")}</p>
             )}
           </div>
+          </ProIndicatorsLocked.Provider>
+          )}
+          {proUsed.length > 0 && (
+            <div className="mt-3">
+              <Alert tone="warn">
+                {tl("{0} est réservé à l'offre Pro : le backtest sera refusé tant que la règle l'utilise.", [tl(INDICATOR_LABELS[proUsed[0]])])}
+                <Link href="/tarifs" className="web-only mt-1 block font-semibold underline">
+                  {tl("Voir l'offre Pro →")}</Link>
+              </Alert>
+            </div>
           )}
         </Card>
 

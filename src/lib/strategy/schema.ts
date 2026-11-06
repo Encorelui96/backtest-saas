@@ -50,6 +50,12 @@ export const INDICATORS = [
   "obv",
   "mfi",
   "zscore",
+  "wma",
+  "hma",
+  "cci",
+  "williams_r",
+  "plus_di",
+  "minus_di",
   // Candle patterns: 1 bullish, −1 bearish, 0 none
   "inside_bar",
   "engulfing",
@@ -77,10 +83,55 @@ export const INDICATORS = [
   "hour",
   "minute",
   "weekday",
+  // Pro plan: market structure, Heikin Ashi, divergences and more
+  "swing_high",
+  "swing_low",
+  "bos",
+  "structure",
+  "fvg",
+  "fvg_bull_top",
+  "fvg_bull_bottom",
+  "fvg_bear_top",
+  "fvg_bear_bottom",
+  "ha_open",
+  "ha_high",
+  "ha_low",
+  "ha_close",
+  "rsi_divergence",
+  "macd_divergence",
+  "stoch_rsi_k",
+  "stoch_rsi_d",
+  "aroon_up",
+  "aroon_down",
+  "cmf",
 ] as const;
 export type IndicatorName = (typeof INDICATORS)[number];
 
-export const SOURCES = ["close", "open", "high", "low", "volume"] as const;
+/** Indicators reserved to the plans with `proIndicators` (the Pro plan). */
+export const PRO_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>([
+  "swing_high",
+  "swing_low",
+  "bos",
+  "structure",
+  "fvg",
+  "fvg_bull_top",
+  "fvg_bull_bottom",
+  "fvg_bear_top",
+  "fvg_bear_bottom",
+  "ha_open",
+  "ha_high",
+  "ha_low",
+  "ha_close",
+  "rsi_divergence",
+  "macd_divergence",
+  "stoch_rsi_k",
+  "stoch_rsi_d",
+  "aroon_up",
+  "aroon_down",
+  "cmf",
+]);
+
+export const SOURCES = ["close", "open", "high", "low", "volume", "hl2", "hlc3", "ohlc4"] as const;
 
 export const OperandSchema = z.object({
   indicator: z.enum(INDICATORS),
@@ -88,7 +139,10 @@ export const OperandSchema = z.object({
   period2: z.number().nullable().describe("MACD slow period, stochastic %K smoothing."),
   period3: z.number().nullable().describe("MACD signal period, stochastic %D smoothing."),
   multiplier: z.number().nullable().describe("Bollinger band standard deviation multiplier."),
-  source: z.enum(SOURCES).nullable().describe("Price series the indicator is computed on (default close; highest uses high, lowest uses low)."),
+  source: z
+    .enum(SOURCES)
+    .nullable()
+    .describe("Price series the indicator is computed on: hl2 = (high + low) / 2, hlc3 = (high + low + close) / 3, ohlc4 = average of the four prices. Default close; highest uses high, lowest uses low, cci uses hlc3."),
   value: z.number().nullable().describe("Constant value, only for indicator 'number'."),
   offset: z.number().describe("How many bars back to read the value (0 = current closed bar, 1 = previous bar)."),
   timeframe: z.enum(INTERVALS).nullable().describe("Higher timeframe to compute the indicator on (only completed higher-timeframe bars are used). null = strategy timeframe."),
@@ -166,6 +220,15 @@ export const StrategySchema = z.object({
   maxLeverage: z.number(),
 });
 export type Strategy = z.infer<typeof StrategySchema>;
+
+/** The Pro indicators read by the rules a strategy uses (a long-only strategy ignores its short rules), in order, each once. */
+export function proIndicatorsIn(s: Pick<Strategy, "direction" | "entryLong" | "entryShort" | "exitLong" | "exitShort">): IndicatorName[] {
+  const found = new Set<IndicatorName>();
+  const rules = [...(s.direction !== "short" ? [s.entryLong, s.exitLong] : []), ...(s.direction !== "long" ? [s.entryShort, s.exitShort] : [])];
+  for (const groups of rules)
+    for (const g of groups) for (const c of g.conditions) for (const o of [c.left, c.right]) if (PRO_INDICATORS.has(o.indicator)) found.add(o.indicator);
+  return [...found];
+}
 
 export const BacktestConfigSchema = z.object({
   startDate: z.string(),

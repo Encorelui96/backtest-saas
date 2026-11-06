@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { Strategy } from "../strategy/schema";
 import { lastPublishedOpen, market } from "../markets";
-import { normalizeStrategy } from "../strategy/schema";
+import { normalizeStrategy, proIndicatorsIn } from "../strategy/schema";
 import { stopLabel, targetLabel } from "../strategy/describe";
 import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "../strategy/warmup";
 import { INTERVAL_MS, rowsToCandles } from "../types";
@@ -11,7 +11,7 @@ import { signalsAt, type SignalKind } from "../engine/signals";
 import { localTime } from "../engine/time";
 import { fetchRecent } from "./candles";
 import { newId, query, queryOne } from "./db";
-import { PLANS, QuotaError, isAdmin, planOf, type PlanId } from "./quotas";
+import { PLANS, QuotaError, checkIndicators, isAdmin, planOf, type PlanId } from "./quotas";
 import type { SessionUser } from "./auth";
 import { UserError } from "./backtests";
 import { hasLang, localeTag, translator, type Lang } from "@/lib/i18n";
@@ -93,6 +93,7 @@ export async function createAlert(user: SessionUser, strategyId: string): Promis
   if (INTERVAL_MS[strategy.json.interval] < INTERVAL_MS[plan.minInterval]) {
     throw new QuotaError("L'offre {0:t} suit les stratégies à partir de l'unité {1}.", [plan.label, plan.minInterval]);
   }
+  checkIndicators(plan, strategy.json);
   const [{ n }] = await query<{ n: string }>("SELECT count(*) AS n FROM alerts WHERE user_id = $1", [user.id]);
   const existing = await queryOne("SELECT 1 FROM alerts WHERE user_id = $1 AND strategy_id = $2", [user.id, strategyId]);
   if (!existing && Number(n) >= plan.alerts) throw new QuotaError("Ton offre {0:t} permet {1} alerte{2} : supprime-en une avant d'en créer une autre.", [plan.label, plan.alerts, plan.alerts > 1 ? "s" : ""]);
@@ -228,7 +229,8 @@ export async function runAlertChecks(now = Date.now()) {
     const plan = isAdmin({ id: a.user_id, email: a.email, emailVerified: a.email_verified }) ? PLANS.pro : (PLANS[a.plan ?? "free"] ?? PLANS.free);
     const { strategy } = normalizeStrategy(a.json);
     const ms = INTERVAL_MS[strategy.interval];
-    if (Number(a.rank) > plan.alerts || ms < INTERVAL_MS[plan.minInterval]) continue;
+    // Past the plan's limits (after a downgrade, say), the alert waits instead of being deleted.
+    if (Number(a.rank) > plan.alerts || ms < INTERVAL_MS[plan.minInterval] || (!plan.proIndicators && proIndicatorsIn(strategy).length > 0)) continue;
     // Open time of the candle that closed last, once its source has had time to publish it.
     const lastOpen = lastPublishedOpen(strategy.symbol, strategy.interval, now);
     if (a.last_bar !== null && Number(a.last_bar) >= lastOpen) continue;

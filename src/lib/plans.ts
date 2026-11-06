@@ -28,6 +28,8 @@ export interface Plan {
   live: boolean;
   /** The detail of the robustness checks and the side-by-side prop firm comparison. */
   advanced: boolean;
+  /** Market structure, fair value gaps, Heikin Ashi, divergences and the other indicators of PRO_INDICATORS (strategy/schema). */
+  proIndicators: boolean;
   /** Backtests running or waiting at the same time. */
   concurrentJobs: number;
   alerts: number;
@@ -46,6 +48,7 @@ export const PLANS: Record<PlanId, Plan> = {
     historyDays: 365,
     live: false,
     advanced: false,
+    proIndicators: false,
     concurrentJobs: 1,
     alerts: 0,
   },
@@ -61,6 +64,7 @@ export const PLANS: Record<PlanId, Plan> = {
     historyDays: null,
     live: true,
     advanced: true,
+    proIndicators: false,
     concurrentJobs: 2,
     alerts: 3,
   },
@@ -77,6 +81,7 @@ export const PLANS: Record<PlanId, Plan> = {
     historyDays: null,
     live: true,
     advanced: true,
+    proIndicators: true,
     concurrentJobs: 3,
     alerts: 20,
   },
