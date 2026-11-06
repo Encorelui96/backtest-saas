@@ -61,9 +61,25 @@ export function LiveView() {
   const sym = strategy?.symbol ?? symbol;
   const ivl = strategy?.interval ?? interval;
 
+  // Strategy id → whether its Telegram alert is on. Those come first in the list.
+  const [alerts, setAlerts] = useState<Map<string, boolean>>(new Map());
+
   useEffect(() => {
     api<{ id: string; name: string; strategy: Strategy }[]>("/api/strategies").then(setStrategies).catch((e) => setError(e.message));
+    // Without the alerts, the list just isn't split: no error for that.
+    api<{ alerts: { strategyId: string; enabled: boolean }[] }>("/api/alerts")
+      .then((res) => setAlerts(new Map(res.alerts.map((a) => [a.strategyId, a.enabled]))))
+      .catch(() => {});
   }, []);
+
+  const withAlert = strategies.filter((s) => alerts.has(s.id));
+  const others = strategies.filter((s) => !alerts.has(s.id));
+  const option = (s: (typeof strategies)[number]) => (
+    <option key={s.id} value={s.id}>
+      {s.name} · {s.strategy.symbol} {s.strategy.interval}
+      {alerts.get(s.id) === false ? ` · ${tl("en pause")}` : ""}
+    </option>
+  );
 
   const refresh = useCallback(() => {
     const to = Date.now();
@@ -145,15 +161,20 @@ export function LiveView() {
           <Field label={tl("Stratégie")}>
             <select value={strategyId ?? ""} onChange={(e) => router.push(e.target.value ? `/live?strategy=${e.target.value}` : "/live")} className="w-full">
               <option value="">{tl("Aucune (graphique seul)")}</option>
-              {strategies.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name} · {s.strategy.symbol} {s.strategy.interval}
-                </option>
-              ))}
+              {withAlert.length > 0 ? (
+                <>
+                  <optgroup label={tl("Avec alerte Telegram")}>{withAlert.map(option)}</optgroup>
+                  {others.length > 0 && <optgroup label={tl("Autres stratégies")}>{others.map(option)}</optgroup>}
+                </>
+              ) : (
+                strategies.map(option)
+              )}
             </select>
           </Field>
         </div>
-        {strategy && strategyId && <AlertButton strategyId={strategyId} />}
+        {strategy && strategyId && (
+          <AlertButton key={strategyId} strategyId={strategyId} alert={alerts.get(strategyId)} onAdded={() => setAlerts((m) => new Map(m).set(strategyId, true))} />
+        )}
         {!strategy && (
           <>
             <Field label={tl("Unité de temps")}>
@@ -279,30 +300,33 @@ function fmt(x: number) {
 }
 
 /** Turns on the Telegram alert for the strategy followed here; the account page manages the link and the list. */
-function AlertButton({ strategyId }: { strategyId: string }) {
+/** `alert`: undefined without one, true when it's on, false when paused (it's resumed from the account page). */
+function AlertButton({ strategyId, alert, onAdded }: { strategyId: string; alert: boolean | undefined; onAdded: () => void }) {
   const tl = useT();
-  const [state, setState] = useState<"idle" | "busy" | "on" | "error">("idle");
+  const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const exists = alert !== undefined;
   return (
     <div className="flex flex-col gap-1">
       <button
-        disabled={state === "busy" || state === "on"}
+        disabled={busy || exists}
         onClick={async () => {
-          setState("busy");
+          setBusy(true);
           try {
             await api("/api/alerts", { json: { strategyId } });
-            setState("on");
+            onAdded();
             setMessage(null);
           } catch (e) {
-            setState("error");
             setMessage((e as Error).message);
+          } finally {
+            setBusy(false);
           }
         }}
         className="rounded-md border border-line px-3 py-1.5 text-sm hover:border-accent disabled:opacity-60"
       >
-        {state === "on" ? tl("🔔 Alerte Telegram activée") : state === "busy" ? "…" : tl("🔔 Recevoir les signaux sur Telegram")}
+        {alert === true ? tl("🔔 Alerte Telegram activée") : alert === false ? tl("🔔 Alerte Telegram en pause") : busy ? "…" : tl("🔔 Recevoir les signaux sur Telegram")}
       </button>
-      {state === "on" && (
+      {exists && (
         <Link href="/compte" className="text-[11px] text-accent hover:underline">
           {tl("Relier Telegram et gérer mes alertes →")}</Link>
       )}
