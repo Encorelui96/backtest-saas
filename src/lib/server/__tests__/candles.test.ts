@@ -63,6 +63,22 @@ describe("getCandles", () => {
     expect(binance.fetchKlines).not.toHaveBeenCalled();
   });
 
+  it("leaves a candle the source hasn't published yet to a later call", async () => {
+    const M = 5 * 60_000;
+    // At 12:00 the last candle published is 11:50 (5 s of delay for Binance); the source still stops at 11:45.
+    const upTo = (last: number) => Array.from({ length: (last - Date.UTC(2026, 10, 1)) / M + 1 }, (_, i) => ({ t: Date.UTC(2026, 10, 1) + i * M, o: 1, h: 1, l: 1, c: 1, v: 1 }));
+    binance.fetchKlines.mockResolvedValueOnce(upTo(Date.UTC(2026, 10, 1, 11, 45)) as never);
+    await getCandles("BTCUSDT", "5m", Date.UTC(2026, 10, 1), NOW);
+    const [saved] = db.query.mock.calls.filter(([text]) => String(text).startsWith("INSERT INTO candle_chunks"));
+    expect((saved[1] as unknown[])[5]).toBe(Date.UTC(2026, 10, 1, 11, 45));
+
+    db.query.mockClear();
+    binance.fetchKlines.mockResolvedValueOnce(upTo(Date.UTC(2026, 10, 1, 11, 50)) as never);
+    await getCandles("ETHUSDT", "5m", Date.UTC(2026, 10, 1), NOW);
+    const [complete] = db.query.mock.calls.filter(([text]) => String(text).startsWith("INSERT INTO candle_chunks"));
+    expect((complete[1] as unknown[])[5]).toBe(Date.UTC(2026, 10, 1, 11, 50));
+  });
+
   it("reports the share of months loaded", async () => {
     const shares: number[] = [];
     await getCandles("BTCUSDT", "1d", Date.UTC(2026, 6, 1), Date.UTC(2026, 9, 31), { onProgress: (d) => void shares.push(d) });
