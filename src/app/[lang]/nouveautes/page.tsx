@@ -12,6 +12,12 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      {
+        title: "Indicateurs avancés dans l'offre Pro",
+        text: "Structure de marché (sommets et creux de swing, cassure de structure), Fair Value Gaps, bougies Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon et CMF, utilisables dans les règles et compris par l'IA.",
+      },
+      { title: "Nouveaux indicateurs pour tous", text: "Moyennes WMA et de Hull, CCI, Williams %R, +DI et −DI, et trois nouvelles sources pour les moyennes : (haut + bas) / 2, (haut + bas + clôture) / 3 et la moyenne des quatre prix." },
+      { title: "Champs de nombres plus simples", text: "Les champs de nombres se vident normalement et acceptent la virgule : tu peux taper 0,5 % de risque sans que le 0 revienne." },
       { title: "Tes alertes en tête du Live", text: "Sur la page Live, les stratégies qui ont une alerte Telegram apparaissent en premier, et le bouton indique si l'alerte est déjà active." },
       { title: "Alertes Telegram réparées", text: "Les alertes sur le forex, l'or et le QQQ ne partaient pas : elles arrivent maintenant environ une minute après la clôture de la bougie. Le Live de ces marchés montre aussi la dernière bougie plus tôt." },
       { title: "Un e-mail à la fin des longs tests", text: "Quand un test dure plus de 2 minutes, un e-mail te prévient à la fin, avec les chiffres clés et le lien vers le résultat. Tu peux le désactiver dans Compte." },

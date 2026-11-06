@@ -12,7 +12,7 @@ import { requestT } from "@/lib/server/lang";
 import { translatorOf } from "@/lib/server/lang";
 import { requireUser } from "@/lib/server/auth";
 import { limitPerMinute } from "@/lib/server/rate-limit";
-import { QuotaError, planOf } from "@/lib/server/quotas";
+import { QuotaError, checkIndicators, planOf } from "@/lib/server/quotas";
 
 const Body = z.object({ strategy: StrategySchema, display: z.number().min(50).max(1000).optional() });
 /** The Live page refreshes at each closed candle (once a minute at most) and every 5 minutes. */
@@ -22,6 +22,7 @@ const OVERLAY = new Set<Operand["indicator"]>([
   "sma", "ema", "bb_upper", "bb_middle", "bb_lower", "vwap", "highest", "lowest", "day_open", "prev_day_high", "prev_day_low", "prev_day_close",
   "supertrend", "psar", "ichimoku_tenkan", "ichimoku_kijun", "ichimoku_span_a", "ichimoku_span_b", "keltner_upper", "keltner_middle", "keltner_lower",
   "prev_week_high", "prev_week_low", "range_high", "range_low", "pivot", "pivot_r1", "pivot_s1", "pivot_r2", "pivot_s2", "cam_r3", "cam_s3", "cam_r4", "cam_s4",
+  "wma", "hma", "swing_high", "swing_low", "fvg_bull_top", "fvg_bull_bottom", "fvg_bear_top", "fvg_bear_bottom",
 ]);
 
 /**
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
         plain: "L'offre {0:t} suit les stratégies à partir de l'unité {1}.",
       });
     }
+    checkIndicators(plan, strategy);
     const display = body.display ?? 300;
     const warmBars = Math.min(4000, Math.ceil(warmupMs(strategy) / ms) + 10);
     const rows = await fetchRecent(strategy.symbol, strategy.interval, display + warmBars + 1, { metered: true });

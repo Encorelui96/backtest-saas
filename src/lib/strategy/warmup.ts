@@ -11,8 +11,15 @@ function operands(s: Strategy): Operand[] {
 /** Bars an operand needs before its value is fully formed. EMA, RSI and ATR need a few times their period. */
 function barsNeeded(o: Operand) {
   const periods = [o.period, o.period2, o.period3].filter((p): p is number => p !== null);
-  // Ichimoku's cloud is drawn kijun bars after the span B period it covers.
-  const extra = o.indicator.startsWith("ichimoku_span") ? (o.period2 ?? 26) : 0;
+  // Ichimoku's cloud is drawn kijun bars after the span B period it covers; a divergence compares two swings up to 60 bars apart;
+  // the Stoch RSI stacks a stochastic and two averages on the RSI.
+  const extra = o.indicator.startsWith("ichimoku_span")
+    ? (o.period2 ?? 26)
+    : o.indicator.endsWith("_divergence")
+      ? 60
+      : o.indicator.startsWith("stoch_rsi")
+        ? (o.period2 ?? 14) + (o.period3 ?? 3) + 3
+        : 0;
   return (periods.length ? Math.max(...periods) : 1) * 3 + extra + o.offset + 2;
 }
 

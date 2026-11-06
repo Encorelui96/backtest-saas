@@ -155,7 +155,27 @@ const OPERAND_LABEL: Partial<Record<Operand["indicator"], string>> = {
   mfi: "MFI",
   zscore: "Score z",
   narrow_range: "NR",
+  wma: "WMA",
+  hma: "HMA",
+  cci: "CCI",
+  williams_r: "Williams %R",
+  plus_di: "+DI",
+  minus_di: "−DI",
+  swing_high: "Swing",
+  swing_low: "Swing",
+  bos: "BOS",
+  structure: "Structure",
+  rsi_divergence: "Divergence RSI",
+  macd_divergence: "Divergence MACD",
+  stoch_rsi_k: "Stoch RSI",
+  stoch_rsi_d: "Stoch RSI",
+  aroon_up: "Aroon",
+  aroon_down: "Aroon",
+  cmf: "CMF",
 };
+
+/** Yes/no or −1/0/1 signals: the numbers they are compared with are categories, not thresholds to wiggle. */
+const SIGNALS = new Set<Operand["indicator"]>(["hour", "minute", "weekday", "inside_bar", "engulfing", "pin_bar", "narrow_range", "squeeze", "bos", "structure", "fvg", "rsi_divergence", "macd_divergence"]);
 
 /** Every numeric setting worth wiggling: indicator periods, thresholds, stop and target sizes. */
 export function strategyKnobs(s: Strategy): Knob[] {
@@ -171,7 +191,7 @@ export function strategyKnobs(s: Strategy): Knob[] {
             const otherSide = side === "left" ? "right" : "left";
             const other = c[otherSide];
             // Times, days and yes/no signals (patterns, squeeze) have no neighbouring values worth testing.
-            if (["hour", "minute", "weekday", "inside_bar", "engulfing", "pin_bar", "narrow_range", "squeeze"].includes(other.indicator)) return;
+            if (SIGNALS.has(other.indicator)) return;
             // The same threshold used in several rules (e.g. ADX > 20 for longs and shorts) moves as one setting.
             const key = `v-${JSON.stringify(other)}-${c.op}-${o.value}`;
             if (seen.has(key)) return;

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     // Only link the result to a strategy the user owns.
     const strategyId = body.strategyId && (await getStrategy(user.id, body.strategyId)) ? body.strategyId : null;
     const job = await withUserLock(user, async (run, client) => {
-      const { useCredit } = await checkBacktestAllowed(user, strategy.interval, run, start);
+      const { useCredit } = await checkBacktestAllowed(user, strategy, run, start);
       const queued = await enqueue(user.id, "backtest", { strategy: body.strategy, config: body.config, strategyId, lang: langOf(req) }, client);
       // Past the monthly quota, the backtest uses a recharge credit; a failure gives it back (failJob).
       if (useCredit) await spendCredit(run, user.id, "backtest", `job:${queued.id}`);

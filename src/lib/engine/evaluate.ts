@@ -14,6 +14,8 @@ export class SeriesContext {
   private htf = new Map<Interval, { ctx: SeriesContext; map: Int32Array }>();
   private _local: LocalTime[] | null = null;
   private _closeLocal: LocalTime[] | null = null;
+  private fvg: ReturnType<typeof ind.fairValueGaps> | null = null;
+  private ha: ReturnType<typeof ind.heikinAshi> | null = null;
 
   constructor(
     readonly candles: Candles,
@@ -69,7 +71,7 @@ export class SeriesContext {
     return out;
   }
 
-  private src(name: Operand["source"], fallback: "close" | "high" | "low" = "close"): Float64Array {
+  private src(name: Operand["source"], fallback: "close" | "high" | "low" | "hlc3" = "close"): Float64Array {
     const c = this.candles;
     switch (name ?? fallback) {
       case "open":
@@ -80,6 +82,12 @@ export class SeriesContext {
         return c.l;
       case "volume":
         return c.v;
+      case "hl2":
+        return this.memo("src:hl2", () => c.h.map((h, i) => (h + c.l[i]) / 2));
+      case "hlc3":
+        return this.memo("src:hlc3", () => c.h.map((h, i) => (h + c.l[i] + c.c[i]) / 3));
+      case "ohlc4":
+        return this.memo("src:ohlc4", () => c.o.map((o, i) => (o + c.h[i] + c.l[i] + c.c[i]) / 4));
       default:
         return c.c;
     }
@@ -139,7 +147,69 @@ export class SeriesContext {
         return op.indicator === "stoch_k" ? s.k : s.d;
       }
       case "adx":
-        return ind.adx(c.h, c.l, c.c, p);
+      case "plus_di":
+      case "minus_di": {
+        const d = this.memo(`dmi:${p}`, () => {
+          const r = ind.dmi(c.h, c.l, c.c, p);
+          this.cache.set(`dmi:${p}:plus`, r.plus);
+          this.cache.set(`dmi:${p}:minus`, r.minus);
+          return r.adx;
+        });
+        return op.indicator === "adx" ? d : this.cache.get(`dmi:${p}:${op.indicator === "plus_di" ? "plus" : "minus"}`)!;
+      }
+      case "wma":
+        return ind.wma(this.src(op.source), op.period ?? 20);
+      case "hma":
+        return ind.hma(this.src(op.source), op.period ?? 20);
+      case "cci":
+        return ind.cci(this.src(op.source, "hlc3"), op.period ?? 20);
+      case "williams_r":
+        return ind.williamsR(c.h, c.l, c.c, p);
+      case "swing_high":
+      case "swing_low": {
+        const s = this.memo(`swings:${op.period ?? 5}:${op.period2 ?? 5}`, () => {
+          const r = ind.swings(c.h, c.l, op.period ?? 5, op.period2 ?? 5);
+          this.cache.set(`swings:${op.period ?? 5}:${op.period2 ?? 5}:low`, r.low);
+          return r.high;
+        });
+        return op.indicator === "swing_high" ? s : this.cache.get(`swings:${op.period ?? 5}:${op.period2 ?? 5}:low`)!;
+      }
+      case "bos":
+      case "structure": {
+        const r = ind.structure(c.h, c.l, c.c, op.period ?? 5, op.period2 ?? 5);
+        return op.indicator === "bos" ? r.bos : r.trend;
+      }
+      case "fvg":
+      case "fvg_bull_top":
+      case "fvg_bull_bottom":
+      case "fvg_bear_top":
+      case "fvg_bear_bottom": {
+        const g = this.fvg ?? (this.fvg = ind.fairValueGaps(c.h, c.l, c.c));
+        return { fvg: g.signal, fvg_bull_top: g.bullTop, fvg_bull_bottom: g.bullBottom, fvg_bear_top: g.bearTop, fvg_bear_bottom: g.bearBottom }[op.indicator];
+      }
+      case "ha_open":
+      case "ha_high":
+      case "ha_low":
+      case "ha_close": {
+        const k = this.ha ?? (this.ha = ind.heikinAshi(c.o, c.h, c.l, c.c));
+        return { ha_open: k.open, ha_high: k.high, ha_low: k.low, ha_close: k.close }[op.indicator];
+      }
+      case "rsi_divergence":
+        return ind.divergence(ind.rsi(this.src(op.source), p), c.h, c.l, op.period2 ?? 5);
+      case "macd_divergence":
+        return ind.divergence(ind.macd(this.src(op.source), op.period ?? 12, op.period2 ?? 26, 9).line, c.h, c.l, op.period3 ?? 5);
+      case "stoch_rsi_k":
+      case "stoch_rsi_d": {
+        const r = ind.stochRsi(this.src(op.source), p, op.period2 ?? 14, op.period3 ?? 3);
+        return op.indicator === "stoch_rsi_k" ? r.k : r.d;
+      }
+      case "aroon_up":
+      case "aroon_down": {
+        const r = ind.aroon(c.h, c.l, p);
+        return op.indicator === "aroon_up" ? r.up : r.down;
+      }
+      case "cmf":
+        return ind.cmf(c.h, c.l, c.c, c.v, op.period ?? 20);
       case "roc":
         return ind.roc(this.src(op.source), op.period ?? 10);
       case "highest":

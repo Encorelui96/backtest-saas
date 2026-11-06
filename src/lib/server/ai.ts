@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { StrategySchema, normalizeStrategy, type Strategy } from "../strategy/schema";
+import { PRO_INDICATORS, StrategySchema, normalizeStrategy, type Strategy } from "../strategy/schema";
 import type { AiUsage } from "./quotas";
 import { UserError } from "./backtests";
 import type { Lang } from "@/lib/i18n";
@@ -28,10 +28,13 @@ How the engine works:
 - Operand fields: indicator, period, period2, period3, multiplier, source, value, offset, timeframe, window. Set every field you don't use to null (offset to 0).
   - "number": a constant in value (e.g. RSI threshold 30).
   - close/open/high/low/volume: raw bar values.
-  - sma/ema(period, source), rsi(period, source), atr(period), atr_percent(period) = ATR as % of price.
+  - source: close (default), open, high, low, volume, hl2 = (high + low) / 2, hlc3 = (high + low + close) / 3, ohlc4 = average of open, high, low and close. "SMA of (h+l)/2" = sma with source hl2.
+  - sma/ema/wma(period, source): simple, exponential and linearly weighted moving averages. hma(period, source): Hull moving average.
+  - rsi(period, source), atr(period), atr_percent(period) = ATR as % of price.
   - bb_upper/bb_middle/bb_lower(period, multiplier).
   - macd/macd_signal/macd_hist(period = fast, period2 = slow, period3 = signal).
-  - stoch_k/stoch_d(period, period2 = %K smoothing, period3 = %D smoothing). adx(period). roc(period) in %.
+  - stoch_k/stoch_d(period, period2 = %K smoothing, period3 = %D smoothing). adx(period). plus_di / minus_di(period): +DI and −DI of the same DMI, "plus_di > minus_di" = buyers push harder. roc(period) in %.
+  - cci(period, source default hlc3): Commodity Channel Index, mostly between −100 and +100. williams_r(period): Williams %R from −100 (at the N-bar low) to 0 (at the high); below −80 = oversold, above −20 = overbought.
   - highest(period, source default high) and lowest(period, source default low) INCLUDE the current bar. For a breakout of the previous N bars, compare close with highest(N) at offset 1.
   - ibs = (close - low) / (high - low), between 0 and 1.
   - vwap: session VWAP reset every local day.
@@ -48,6 +51,15 @@ How the engine works:
   - range_high / range_low with window {start, end} (HH:MM, strategy timezone): high and low of a daily time window, available once the window is over, until the end of that day (or the next window when it spans midnight). Opening range of New York: timezone America/New_York, window 09:30–09:45. Asian range: e.g. window 00:00–08:00 Europe/Paris.
   - pivot, pivot_r1, pivot_s1, pivot_r2, pivot_s2: classic floor pivots; cam_r3, cam_s3, cam_r4, cam_s4: Camarilla levels. Both from the previous local day's high, low and close.
   - hour, minute, weekday (1 = Monday … 7 = Sunday): of the bar OPEN time, in the strategy timezone.
+  - Pro plan only (${[...PRO_INDICATORS].join(", ")}):
+    - swing_high / swing_low(period = bars before, period2 = bars after, default 5 and 5): level of the latest confirmed swing high / low, known period2 bars after it. "close crosses_above swing_high" = breakout of the last swing high.
+    - bos(period, period2): break of structure on the bar that just closed, 1 = close above the latest swing high, −1 = below the latest swing low, 0 = none; each swing breaks once. structure(period, period2): side of the last break, 1 bullish, −1 bearish, 0 before any. A change of character (CHoCH) = "bos == 1 and structure at offset 1 == −1".
+    - fvg: fair value gap formed by the bar that just closed (3 candles), 1 bullish (its low above the high two bars earlier), −1 bearish, 0. fvg_bull_top / fvg_bull_bottom: zone of the latest bullish gap, until a close goes below it (no value otherwise); fvg_bear_top / fvg_bear_bottom the same for bearish gaps. A retest of a bullish gap = "low <= fvg_bull_top" and "close > fvg_bull_bottom".
+    - ha_open, ha_high, ha_low, ha_close: Heikin Ashi candle. Green Heikin Ashi = "ha_close > ha_open".
+    - rsi_divergence(period = RSI period, period2 = bars each side of the RSI swing, default 14 and 5) and macd_divergence(period = fast, period2 = slow, period3 = swing bars, default 12, 26, 5): 1 = regular bullish divergence (lower low in price, higher low in the oscillator), −1 = regular bearish, 0 = none. Signalled when the second swing is confirmed, period2 (or period3) bars after it.
+    - stoch_rsi_k / stoch_rsi_d(period = RSI period, period2 = stochastic period, period3 = %K smoothing; default 14, 14, 3; %D = 3-bar average of %K): 0 to 100.
+    - aroon_up / aroon_down(period, default 14): 100 when the N-bar high (low) is on this bar, down to 0 when it is N bars old.
+    - cmf(period, default 20): Chaikin Money Flow, −1 to 1, above 0 = volume traded near the highs.
   - offset: bars back (0 = the bar that just closed).
   - timeframe: compute the operand on a higher timeframe (e.g. a daily 200 SMA trend filter on a 15m strategy: sma, period 200, timeframe "1d"). Only completed higher-timeframe bars are used. Leave null for the strategy timeframe.
 - Prefer tradingWindow (HH:MM–HH:MM on the signal bar close, local time) and tradingDays to express sessions, and exitAtTime to flatten intraday positions, rather than hour conditions.
@@ -92,7 +104,11 @@ function systemPrompt(lang: Lang) {
 }
 
 /** `usage` accumulates the tokens of every attempt, even when the translation fails. */
-export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage, lang: Lang = "fr"): Promise<ParseResult & { problems: string[] }> {
+/** Told to the AI when the user's plan doesn't include the Pro indicators. */
+const NO_PRO = `This user's plan does not include the Pro plan indicators: never use them. Approximate the idea with the other building blocks when you can, and say in assumptions which indicator you replaced and that it is reserved to the Pro plan.`;
+
+/** `usage` accumulates the tokens of every attempt, even when the translation fails. `pro`: the plan includes the Pro indicators. */
+export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage, lang: Lang = "fr", pro = true): Promise<ParseResult & { problems: string[] }> {
   const client = new Anthropic();
   const userContent = current
     ? lang === "en"
@@ -107,7 +123,7 @@ export async function parseStrategyText(text: string, current: Strategy | undefi
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "medium" },
-      system: systemPrompt(lang),
+      system: pro ? systemPrompt(lang) : `${systemPrompt(lang)}\n\n${NO_PRO}`,
       messages,
     });
     const u = response.usage;

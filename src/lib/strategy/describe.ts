@@ -67,6 +67,32 @@ export const INDICATOR_LABELS: Record<IndicatorName, string> = {
   hour: "Heure",
   minute: "Minute",
   weekday: "Jour de la semaine",
+  wma: "Moyenne mobile pondérée (WMA)",
+  hma: "Moyenne mobile de Hull (HMA)",
+  cci: "CCI",
+  williams_r: "Williams %R",
+  plus_di: "+DI (pression acheteuse)",
+  minus_di: "−DI (pression vendeuse)",
+  swing_high: "Dernier sommet de swing",
+  swing_low: "Dernier creux de swing",
+  bos: "Cassure de structure (BOS)",
+  structure: "Structure de marché (sens)",
+  fvg: "Fair Value Gap (nouveau)",
+  fvg_bull_top: "FVG haussier : haut de la zone",
+  fvg_bull_bottom: "FVG haussier : bas de la zone",
+  fvg_bear_top: "FVG baissier : haut de la zone",
+  fvg_bear_bottom: "FVG baissier : bas de la zone",
+  ha_open: "Heikin Ashi ouverture",
+  ha_high: "Heikin Ashi plus haut",
+  ha_low: "Heikin Ashi plus bas",
+  ha_close: "Heikin Ashi clôture",
+  rsi_divergence: "Divergence RSI",
+  macd_divergence: "Divergence MACD",
+  stoch_rsi_k: "Stoch RSI %K",
+  stoch_rsi_d: "Stoch RSI %D",
+  aroon_up: "Aroon haut",
+  aroon_down: "Aroon bas",
+  cmf: "CMF (Chaikin Money Flow)",
 };
 
 export type OperandField = "period" | "period2" | "period3" | "multiplier" | "source" | "value" | "window";
@@ -138,6 +164,32 @@ export const INDICATOR_FIELDS: Record<IndicatorName, OperandField[]> = {
   hour: [],
   minute: [],
   weekday: [],
+  wma: ["period", "source"],
+  hma: ["period", "source"],
+  cci: ["period", "source"],
+  williams_r: ["period"],
+  plus_di: ["period"],
+  minus_di: ["period"],
+  swing_high: ["period", "period2"],
+  swing_low: ["period", "period2"],
+  bos: ["period", "period2"],
+  structure: ["period", "period2"],
+  fvg: [],
+  fvg_bull_top: [],
+  fvg_bull_bottom: [],
+  fvg_bear_top: [],
+  fvg_bear_bottom: [],
+  ha_open: [],
+  ha_high: [],
+  ha_low: [],
+  ha_close: [],
+  rsi_divergence: ["period", "period2"],
+  macd_divergence: ["period", "period2", "period3"],
+  stoch_rsi_k: ["period", "period2", "period3"],
+  stoch_rsi_d: ["period", "period2", "period3"],
+  aroon_up: ["period"],
+  aroon_down: ["period"],
+  cmf: ["period"],
 };
 
 /** Placeholder of each numeric field, per indicator when the generic name says too little. */
@@ -152,6 +204,14 @@ export const FIELD_HINTS: Partial<Record<IndicatorName, Partial<Record<OperandFi
   keltner_middle: { period: "MME", period2: "ATR", multiplier: "× ATR" },
   keltner_lower: { period: "MME", period2: "ATR", multiplier: "× ATR" },
   squeeze: { multiplier: "× ATR Keltner" },
+  swing_high: { period: "Bougies avant", period2: "Bougies après" },
+  swing_low: { period: "Bougies avant", period2: "Bougies après" },
+  bos: { period: "Bougies avant", period2: "Bougies après" },
+  structure: { period: "Bougies avant", period2: "Bougies après" },
+  rsi_divergence: { period: "RSI", period2: "Bougies du creux" },
+  macd_divergence: { period: "Rapide", period2: "Lente", period3: "Bougies du creux" },
+  stoch_rsi_k: { period: "RSI", period2: "Stoch", period3: "Lissage %K" },
+  stoch_rsi_d: { period: "RSI", period2: "Stoch", period3: "Lissage %K" },
 };
 
 export const DEFAULT_PERIODS: Partial<Record<IndicatorName, Partial<Operand>>> = {
@@ -191,6 +251,23 @@ export const DEFAULT_PERIODS: Partial<Record<IndicatorName, Partial<Operand>>> =
   narrow_range: { period: 7 },
   range_high: { window: { start: "00:00", end: "08:00" } },
   range_low: { window: { start: "00:00", end: "08:00" } },
+  wma: { period: 20 },
+  hma: { period: 20 },
+  cci: { period: 20 },
+  williams_r: { period: 14 },
+  plus_di: { period: 14 },
+  minus_di: { period: 14 },
+  swing_high: { period: 5, period2: 5 },
+  swing_low: { period: 5, period2: 5 },
+  bos: { period: 5, period2: 5 },
+  structure: { period: 5, period2: 5 },
+  rsi_divergence: { period: 14, period2: 5 },
+  macd_divergence: { period: 12, period2: 26, period3: 5 },
+  stoch_rsi_k: { period: 14, period2: 14, period3: 3 },
+  stoch_rsi_d: { period: 14, period2: 14, period3: 3 },
+  aroon_up: { period: 14 },
+  aroon_down: { period: 14 },
+  cmf: { period: 20 },
 };
 
 export const COMPARATOR_LABELS: Record<Comparator, string> = {
@@ -268,7 +345,38 @@ const SHORT: Partial<Record<IndicatorName, string>> = {
   hour: "Heure",
   minute: "Minute",
   weekday: "Jour",
+  wma: "WMA",
+  hma: "HMA",
+  cci: "CCI",
+  williams_r: "Williams %R",
+  plus_di: "+DI",
+  minus_di: "−DI",
+  swing_high: "Sommet swing",
+  swing_low: "Creux swing",
+  bos: "BOS",
+  structure: "Structure",
+  fvg: "FVG",
+  fvg_bull_top: "FVG haussier haut",
+  fvg_bull_bottom: "FVG haussier bas",
+  fvg_bear_top: "FVG baissier haut",
+  fvg_bear_bottom: "FVG baissier bas",
+  ha_open: "HA ouverture",
+  ha_high: "HA haut",
+  ha_low: "HA bas",
+  ha_close: "HA clôture",
+  rsi_divergence: "Divergence RSI",
+  macd_divergence: "Divergence MACD",
+  stoch_rsi_k: "Stoch RSI %K",
+  stoch_rsi_d: "Stoch RSI %D",
+  aroon_up: "Aroon haut",
+  aroon_down: "Aroon bas",
+  cmf: "CMF",
 };
+
+/** The price an indicator reads when its source is left empty. */
+export function defaultSource(indicator: IndicatorName): NonNullable<Operand["source"]> {
+  return indicator === "highest" ? "high" : indicator === "lowest" ? "low" : indicator === "cci" ? "hlc3" : "close";
+}
 
 export function operandLabel(o: Operand, t: T = tr): string {
   if (o.indicator === "number") return String(o.value ?? 0);
@@ -278,7 +386,7 @@ export function operandLabel(o: Operand, t: T = tr): string {
   if (fields.includes("period2") && o.period2 !== null) args.push(String(o.period2));
   if (fields.includes("period3") && o.period3 !== null) args.push(String(o.period3));
   if (fields.includes("multiplier") && o.multiplier !== null) args.push(String(o.multiplier));
-  if (fields.includes("source") && o.source && o.source !== "close" && !(o.indicator === "highest" && o.source === "high") && !(o.indicator === "lowest" && o.source === "low")) args.push(o.source);
+  if (fields.includes("source") && o.source && o.source !== defaultSource(o.indicator)) args.push(o.source);
   if (fields.includes("window") && o.window) args.push(`${o.window.start}–${o.window.end}`);
   let s = t(SHORT[o.indicator] ?? o.indicator) + (args.length ? `(${args.join(", ")})` : "");
   if (o.timeframe) s += ` [${o.timeframe}]`;

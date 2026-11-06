@@ -188,7 +188,8 @@ export function stochastic(h: Arr, l: Arr, c: Arr, period: number, smoothK: numb
   return { k, d };
 }
 
-export function adx(h: Arr, l: Arr, c: Arr, period: number): Arr {
+/** Wilder's directional movement: +DI and −DI (0 to 100, which side pushes harder) and the ADX (how strong the trend is, whatever its side). */
+export function dmi(h: Arr, l: Arr, c: Arr, period: number) {
   const n = c.length;
   const plusDM = nanArray(n);
   const minusDM = nanArray(n);
@@ -203,15 +204,77 @@ export function adx(h: Arr, l: Arr, c: Arr, period: number): Arr {
   const trS = rma(tr, period);
   const pS = rma(plusDM, period);
   const mS = rma(minusDM, period);
+  const plus = nanArray(n);
+  const minus = nanArray(n);
   const dx = nanArray(n);
   for (let i = 0; i < n; i++) {
     if (!(trS[i] > 0)) continue;
-    const pdi = (100 * pS[i]) / trS[i];
-    const mdi = (100 * mS[i]) / trS[i];
-    const sum = pdi + mdi;
-    dx[i] = sum === 0 ? 0 : (100 * Math.abs(pdi - mdi)) / sum;
+    plus[i] = (100 * pS[i]) / trS[i];
+    minus[i] = (100 * mS[i]) / trS[i];
+    const sum = plus[i] + minus[i];
+    dx[i] = sum === 0 ? 0 : (100 * Math.abs(plus[i] - minus[i])) / sum;
   }
-  return rma(dx, period);
+  return { plus, minus, adx: rma(dx, period) };
+}
+
+export function adx(h: Arr, l: Arr, c: Arr, period: number): Arr {
+  return dmi(h, l, c, period).adx;
+}
+
+/** Linearly weighted moving average: the newest value weighs `period`, the oldest 1. */
+export function wma(src: Arr, period: number): Arr {
+  const out = nanArray(src.length);
+  let total = 0;
+  let weighted = 0;
+  let count = 0;
+  for (let i = 0; i < src.length; i++) {
+    const x = src[i];
+    if (Number.isNaN(x)) {
+      total = weighted = count = 0;
+      continue;
+    }
+    if (count < period) {
+      count++;
+      weighted += count * x;
+      total += x;
+    } else {
+      // Every weight drops by one (the oldest value's to zero) and the new value comes in at full weight.
+      weighted += period * x - total;
+      total += x - src[i - period];
+    }
+    if (count === period) out[i] = weighted / ((period * (period + 1)) / 2);
+  }
+  return out;
+}
+
+/** Hull moving average: WMA(2 × WMA(n/2) − WMA(n), √n). Smooth like a long average, with much less lag. */
+export function hma(src: Arr, period: number): Arr {
+  const half = wma(src, Math.max(1, Math.floor(period / 2)));
+  const full = wma(src, period);
+  const diff = half.map((x, i) => 2 * x - full[i]);
+  return wma(diff, Math.max(1, Math.round(Math.sqrt(period))));
+}
+
+/** Commodity Channel Index: distance of the price from its N-bar mean, in units of 1.5 % of the mean deviation. Mostly between −100 and +100. */
+export function cci(src: Arr, period: number): Arr {
+  const mean = sma(src, period);
+  const out = nanArray(src.length);
+  for (let i = period - 1; i < src.length; i++) {
+    const m = mean[i];
+    if (Number.isNaN(m)) continue;
+    let dev = 0;
+    for (let j = i - period + 1; j <= i; j++) dev += Math.abs(src[j] - m);
+    dev /= period;
+    out[i] = dev > 0 ? (src[i] - m) / (0.015 * dev) : 0;
+  }
+  return out;
+}
+
+/** Williams %R: where the close sits in the N-bar range, from −100 (at the low) to 0 (at the high). */
+export function williamsR(h: Arr, l: Arr, c: Arr, period: number): Arr {
+  const hh = highest(h, period);
+  const ll = lowest(l, period);
+  return c.map((x, i) => (Number.isNaN(hh[i]) ? NaN : hh[i] > ll[i] ? (-100 * (hh[i] - x)) / (hh[i] - ll[i]) : -50));
 }
 
 export function roc(src: Arr, period: number): Arr {
@@ -449,4 +512,192 @@ export function narrowRange(h: Arr, l: Arr, period: number): Arr {
   const range = h.map((x, i) => x - l[i]);
   const low = lowest(range, period);
   return low.map((x, i) => (Number.isNaN(x) ? NaN : range[i] <= x ? 1 : 0));
+}
+
+// Advanced indicators (Pro plan). Each value only uses bars already closed: a swing is known `right` bars after its top.
+
+/** Index of the bar `right` bars back when it is a pivot: strictly above (or below) the `left` bars before it, at least level with the `right` bars after. */
+function pivotAt(src: Arr, i: number, left: number, right: number, high: boolean): number {
+  const p = i - right;
+  if (p - left < 0) return -1;
+  const x = src[p];
+  if (Number.isNaN(x)) return -1;
+  for (let j = p - left; j < p; j++) if (Number.isNaN(src[j]) || (high ? src[j] >= x : src[j] <= x)) return -1;
+  for (let j = p + 1; j <= i; j++) if (Number.isNaN(src[j]) || (high ? src[j] > x : src[j] < x)) return -1;
+  return p;
+}
+
+/** Level of the latest confirmed swing high and swing low, NaN before the first one. */
+export function swings(h: Arr, l: Arr, left: number, right: number) {
+  const n = h.length;
+  const high = nanArray(n);
+  const low = nanArray(n);
+  let hi = NaN;
+  let lo = NaN;
+  for (let i = 0; i < n; i++) {
+    const ph = pivotAt(h, i, left, right, true);
+    if (ph >= 0) hi = h[ph];
+    const pl = pivotAt(l, i, left, right, false);
+    if (pl >= 0) lo = l[pl];
+    high[i] = hi;
+    low[i] = lo;
+  }
+  return { high, low };
+}
+
+/**
+ * Break of structure: 1 on the bar that closes above the latest swing high, −1 below the latest swing low, else 0.
+ * Each swing breaks once. `trend` holds the side of the last break: 1 bullish, −1 bearish, 0 before any.
+ */
+export function structure(h: Arr, l: Arr, c: Arr, left: number, right: number) {
+  const n = c.length;
+  const bos = new Float64Array(n);
+  const trend = new Float64Array(n);
+  let hi = NaN;
+  let lo = NaN;
+  let hiBroken = true;
+  let loBroken = true;
+  let side = 0;
+  for (let i = 0; i < n; i++) {
+    const ph = pivotAt(h, i, left, right, true);
+    if (ph >= 0) [hi, hiBroken] = [h[ph], false];
+    const pl = pivotAt(l, i, left, right, false);
+    if (pl >= 0) [lo, loBroken] = [l[pl], false];
+    if (!hiBroken && c[i] > hi) {
+      bos[i] = 1;
+      hiBroken = true;
+      side = 1;
+    } else if (!loBroken && c[i] < lo) {
+      bos[i] = -1;
+      loBroken = true;
+      side = -1;
+    }
+    trend[i] = side;
+  }
+  return { bos, trend };
+}
+
+/**
+ * Fair value gaps over three candles: 1 on the bar whose low leaves a gap above the high of two bars earlier, −1 for the gap below, else 0.
+ * Also the zone of the latest bullish and bearish gap, until a close goes through it (NaN when there is none).
+ */
+export function fairValueGaps(h: Arr, l: Arr, c: Arr) {
+  const n = c.length;
+  const signal = new Float64Array(n);
+  const bullTop = nanArray(n);
+  const bullBottom = nanArray(n);
+  const bearTop = nanArray(n);
+  const bearBottom = nanArray(n);
+  let [bt, bb, st, sb] = [NaN, NaN, NaN, NaN];
+  for (let i = 0; i < n; i++) {
+    if (c[i] < bb) bt = bb = NaN;
+    if (c[i] > st) st = sb = NaN;
+    if (i >= 2 && l[i] > h[i - 2]) {
+      signal[i] = 1;
+      [bt, bb] = [l[i], h[i - 2]];
+    } else if (i >= 2 && h[i] < l[i - 2]) {
+      signal[i] = -1;
+      [st, sb] = [l[i - 2], h[i]];
+    }
+    [bullTop[i], bullBottom[i], bearTop[i], bearBottom[i]] = [bt, bb, st, sb];
+  }
+  return { signal, bullTop, bullBottom, bearTop, bearBottom };
+}
+
+/** Heikin Ashi candles: each close is the bar's average price, each open the middle of the previous Heikin Ashi body. */
+export function heikinAshi(o: Arr, h: Arr, l: Arr, c: Arr) {
+  const n = c.length;
+  const ho = nanArray(n);
+  const hh = nanArray(n);
+  const hl = nanArray(n);
+  const hc = nanArray(n);
+  for (let i = 0; i < n; i++) {
+    hc[i] = (o[i] + h[i] + l[i] + c[i]) / 4;
+    ho[i] = i === 0 ? (o[0] + c[0]) / 2 : (ho[i - 1] + hc[i - 1]) / 2;
+    hh[i] = Math.max(h[i], ho[i], hc[i]);
+    hl[i] = Math.min(l[i], ho[i], hc[i]);
+  }
+  return { open: ho, high: hh, low: hl, close: hc };
+}
+
+/** Bars allowed between the two tops (or bottoms) of a divergence, as in TradingView's divergence indicator. */
+const DIVERGENCE_RANGE = [5, 60] as const;
+
+/**
+ * Regular divergence between the price and an oscillator, read on the oscillator's swings (`lookback` bars each side):
+ * 1 when the price makes a lower low but the oscillator a higher low, −1 when the price makes a higher high but the oscillator a lower high, else 0.
+ * Signalled on the bar that confirms the second swing, `lookback` bars after it.
+ */
+export function divergence(osc: Arr, h: Arr, l: Arr, lookback: number): Arr {
+  const n = osc.length;
+  const out = new Float64Array(n);
+  let lastLow = -1;
+  let lastHigh = -1;
+  const [minGap, maxGap] = DIVERGENCE_RANGE;
+  for (let i = 0; i < n; i++) {
+    const pl = pivotAt(osc, i, lookback, lookback, false);
+    if (pl >= 0) {
+      const gap = pl - lastLow;
+      if (lastLow >= 0 && gap >= minGap && gap <= maxGap && osc[pl] > osc[lastLow] && l[pl] < l[lastLow]) out[i] = 1;
+      lastLow = pl;
+    }
+    const ph = pivotAt(osc, i, lookback, lookback, true);
+    if (ph >= 0) {
+      const gap = ph - lastHigh;
+      if (lastHigh >= 0 && gap >= minGap && gap <= maxGap && osc[ph] < osc[lastHigh] && h[ph] > h[lastHigh]) out[i] = -1;
+      lastHigh = ph;
+    }
+  }
+  return out;
+}
+
+/** Stochastic of the RSI: where the RSI sits in its own N-bar range, 0 to 100. %K smoothed over `smoothK` bars, %D over 3. */
+export function stochRsi(src: Arr, rsiPeriod: number, stochPeriod: number, smoothK: number) {
+  const r = rsi(src, rsiPeriod);
+  const hh = highest(r, stochPeriod);
+  const ll = lowest(r, stochPeriod);
+  const raw = r.map((x, i) => (Number.isNaN(hh[i]) || Number.isNaN(ll[i]) ? NaN : hh[i] > ll[i] ? ((x - ll[i]) / (hh[i] - ll[i])) * 100 : 50));
+  const k = smoothK > 1 ? sma(raw, smoothK) : raw;
+  return { k, d: sma(k, 3) };
+}
+
+/** Aroon: 100 when the N-bar high (or low) is on this bar, falling to 0 as it gets N bars old. */
+export function aroon(h: Arr, l: Arr, period: number) {
+  const n = h.length;
+  const up = nanArray(n);
+  const down = nanArray(n);
+  for (let i = period; i < n; i++) {
+    let hiAt = i;
+    let loAt = i;
+    for (let j = i - 1; j >= i - period; j--) {
+      if (h[j] > h[hiAt]) hiAt = j;
+      if (l[j] < l[loAt]) loAt = j;
+    }
+    up[i] = (100 * (period - (i - hiAt))) / period;
+    down[i] = (100 * (period - (i - loAt))) / period;
+  }
+  return { up, down };
+}
+
+/** Chaikin Money Flow: the share of the N-bar volume traded near the highs (up to 1) or the lows (down to −1). */
+export function cmf(h: Arr, l: Arr, c: Arr, v: Arr, period: number): Arr {
+  const n = c.length;
+  const flow = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const range = h[i] - l[i];
+    flow[i] = range > 0 ? ((c[i] - l[i] - (h[i] - c[i])) / range) * v[i] : 0;
+  }
+  const out = nanArray(n);
+  let f = 0;
+  let vol = 0;
+  for (let i = 0; i < n; i++) {
+    f += flow[i];
+    vol += v[i];
+    if (i >= period) {
+      f -= flow[i - period];
+      vol -= v[i - period];
+    }
+    if (i >= period - 1) out[i] = vol > 0 ? f / vol : 0;
+  }
+  return out;
 }

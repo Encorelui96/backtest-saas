@@ -209,6 +209,64 @@ export const GLOSSARY_EN: Record<string, Pick<GlossaryEntry, "term" | "short" | 
     term: "Narrowest candle (NR7)",
     short: "Equals 1 when the candle has the smallest range of the last N (7 for NR7). Calm often comes before a move.",
   },
+  "wma-hma": {
+    term: "Weighted (WMA) and Hull (HMA) moving averages",
+    short: "The WMA gives more weight to the latest candles than a simple average. The HMA combines several WMAs: as smooth as a long average, with much less lag.",
+  },
+  source: {
+    term: "Indicator source",
+    short: "The price an indicator is computed on: the close by default, or hl2 = (high + low) / 2, hlc3 = (high + low + close) / 3, ohlc4 = the average of the four prices.",
+    example: "SMA 15 on hl2 = the average of the candle midpoints over the last 15 candles.",
+  },
+  cci: {
+    term: "CCI",
+    short: "Measures how far the price is from its average. It mostly moves between −100 and +100: beyond that, the move is unusually strong.",
+  },
+  "williams-r": {
+    term: "Williams %R",
+    short: "Places the close within the range of the last N candles, from −100 (at the low) to 0 (at the high). Below −80: oversold; above −20: overbought.",
+  },
+  dmi: {
+    term: "+DI and −DI",
+    short: "The two lines that come with the ADX. +DI above −DI: buyers push harder; the reverse: sellers. The ADX only says whether the trend is strong.",
+  },
+  swing: {
+    term: "Swing highs and lows",
+    short: "A swing high is a high surrounded by lower candles (5 before, 5 after by default). It's only known once the candles after it have closed: the test never looks ahead.",
+    example: "“close crosses above the last swing high” = breakout of the last high.",
+  },
+  bos: {
+    term: "Break of structure (BOS)",
+    short: "Equals 1 when a candle closes above the last swing high, −1 below the last swing low, 0 otherwise. “Structure” keeps the side of the last break: 1 bullish, −1 bearish.",
+    long: "A change of character (CHoCH) is a break against the structure: “BOS = 1” and “Structure 1 candle ago = −1”.",
+  },
+  fvg: {
+    term: "Fair Value Gap (FVG)",
+    short: "A gap left by a fast move over three candles: the third candle's low stays above the first one's high (bullish FVG), or the reverse.",
+    long: "“FVG” equals 1 or −1 on the candle that forms the gap. The top and bottom of the zone stay available until a close goes through it, to trade the price coming back into the zone.",
+  },
+  "heikin-ashi": {
+    term: "Heikin Ashi",
+    short: "Smoothed candles: the close is the average of the four prices, the open the middle of the previous body. Trends show as long runs of candles of the same color.",
+    example: "Green Heikin Ashi candle = “HA close > HA open”.",
+  },
+  divergence: {
+    term: "RSI or MACD divergence",
+    short: "The price makes a lower low but the oscillator a higher low (1, bullish), or the reverse on highs (−1, bearish): the move is running out of steam.",
+    long: "Both lows or highs are read on the oscillator, 5 to 60 candles apart. The signal comes when the second one is confirmed, a few candles after it.",
+  },
+  "stoch-rsi": {
+    term: "Stoch RSI",
+    short: "A stochastic applied to the RSI, from 0 to 100: quicker than the RSI. Below 20: the RSI is at the bottom of its recent range; above 80: at the top.",
+  },
+  aroon: {
+    term: "Aroon",
+    short: "Aroon up equals 100 when the high of the last N candles is on the current candle, and falls to 0 as it gets older. Aroon down does the same with the low.",
+  },
+  cmf: {
+    term: "CMF (Chaikin Money Flow)",
+    short: "From −1 to 1: above 0, volume traded mostly near the candles' highs (buying); below, near the lows (selling).",
+  },
   figures: {
     term: "Candle patterns",
     short: "Shapes of one or two candles that traders watch. On their own they predict little: they matter mostly on a key level and in the direction of the trend.",
@@ -503,4 +561,17 @@ export const USES_EN: Record<string, string> = {
   avalement: "Spot a quick reversal in the balance of power.",
   "pin-bar": "Spot a clear rejection of a level.",
   nr7: "Anticipate a breakout after a calm period.",
+  "wma-hma": "Follow the trend with less lag than a simple average.",
+  source: "Compute an average on the candle midpoints rather than the close, as on TradingView.",
+  cci: "Spot a price excess, or the momentum at the start of a move.",
+  "williams-r": "Spot a bounce from the bottom or top of the recent range.",
+  dmi: "Know which side a strong trend is pushing.",
+  swing: "Set breakout or stop levels on the latest highs and lows.",
+  bos: "Follow the market structure, as in Smart Money Concepts.",
+  fvg: "Wait for the price to come back into an imbalance to enter.",
+  "heikin-ashi": "Filter out noise and stay in the trend longer.",
+  divergence: "Spot a loss of momentum before a reversal.",
+  "stoch-rsi": "Time an entry in a pullback.",
+  aroon: "Tell whether a trend is starting or fading.",
+  cmf: "Check that volume confirms the direction.",
 };
