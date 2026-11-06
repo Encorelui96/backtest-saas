@@ -8,6 +8,7 @@ import { eventsBetween } from "@/lib/engine/calendar";
 import { PROP_PRESETS, simulatePropFirm, type PropResult, type PropRules, type PropSummary, type Run } from "@/lib/engine/propfirm";
 import { isCrypto, market } from "@/lib/markets";
 import { PROP_FIRMS, PROP_FIRMS_CHECKED, type AssetKind, type PropFirmOffer } from "@/lib/prop-firms";
+import { NumberInput } from "./number-input";
 import { PlanLock } from "./plan-lock";
 import type { Strategy } from "@/lib/strategy/schema";
 import { num, pct } from "@/lib/client/format";
@@ -77,7 +78,7 @@ export function PropFirmPanel({ trades, strategy, locked = false }: { trades: Tr
         actions={
           <label className="flex items-center gap-2 text-sm">
             <span className="text-muted">{hasStop ? tl("Risque par trade") : tl("Taille de position")}</span>
-            <input className="w-20" type="number" step="0.1" min="0.1" value={risk} onChange={(e) => setRisk(Number(e.target.value))} />
+            <NumberInput className="w-20" step={0.1} min={0.1} value={risk} onChange={setRisk} />
             <span className="text-muted">%</span>
           </label>
         }
@@ -146,19 +147,19 @@ export function PropFirmPanel({ trades, strategy, locked = false }: { trades: Tr
             {rules.phases.map((p, i) => (
               <div key={i} className="grid grid-cols-2 gap-2">
                 <Field label={tl("Objectif {0} (%)", [tl(p.name)])}>
-                  <input type="number" step="0.5" value={p.targetPercent} onChange={(e) => setPhase(i, { targetPercent: Number(e.target.value) })} />
+                  <NumberInput step={0.5} min={0} value={p.targetPercent} onChange={(v) => setPhase(i, { targetPercent: v })} />
                 </Field>
                 <Field label={tl("Jours max")} hint={tl("vide = illimité")}>
-                  <input type="number" value={p.maxDays ?? ""} onChange={(e) => setPhase(i, { maxDays: e.target.value ? Number(e.target.value) : null })} />
+                  <NumberInput nullable integer min={1} value={p.maxDays} onChange={(v) => setPhase(i, { maxDays: v })} />
                 </Field>
               </div>
             ))}
             <div className="grid grid-cols-2 gap-2">
               <Field label={tl("Perte max / jour (%)")}>
-                <input type="number" step="0.5" value={rules.maxDailyLossPercent} onChange={(e) => custom({ maxDailyLossPercent: Number(e.target.value) })} />
+                <NumberInput step={0.5} min={0} value={rules.maxDailyLossPercent} onChange={(v) => custom({ maxDailyLossPercent: v })} />
               </Field>
               <Field label={tl("Perte max totale (%)")}>
-                <input type="number" step="0.5" value={rules.maxTotalLossPercent} onChange={(e) => custom({ maxTotalLossPercent: Number(e.target.value) })} />
+                <NumberInput step={0.5} min={0} value={rules.maxTotalLossPercent} onChange={(v) => custom({ maxTotalLossPercent: v })} />
               </Field>
             </div>
             <Field label={tl("Perte max totale comptée depuis")}>
@@ -169,7 +170,7 @@ export function PropFirmPanel({ trades, strategy, locked = false }: { trades: Tr
             </Field>
             <div className="grid grid-cols-2 gap-2">
               <Field label={tl("Jours min / phase")}>
-                <input type="number" value={rules.minDays} onChange={(e) => custom({ minDays: Number(e.target.value) })} />
+                <NumberInput integer min={0} value={rules.minDays} onChange={(v) => custom({ minDays: v })} />
               </Field>
               <Field label={tl("Jours comptés")}>
                 <select value={rules.minDaysKind} onChange={(e) => custom({ minDaysKind: e.target.value as PropRules["minDaysKind"] })}>
@@ -180,10 +181,10 @@ export function PropFirmPanel({ trades, strategy, locked = false }: { trades: Tr
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Field label={tl("Meilleur jour max (% du gain)")} hint={tl("vide = pas de règle")}>
-                <input type="number" value={rules.bestDayPercent ?? ""} onChange={(e) => custom({ bestDayPercent: e.target.value ? Number(e.target.value) : null })} />
+                <NumberInput nullable step={5} min={0} value={rules.bestDayPercent} onChange={(v) => custom({ bestDayPercent: v })} />
               </Field>
               <Field label={tl("Jours sans trade max")} hint={tl("vide = pas de règle")}>
-                <input type="number" value={rules.maxInactiveDays ?? ""} onChange={(e) => custom({ maxInactiveDays: e.target.value ? Number(e.target.value) : null })} />
+                <NumberInput nullable integer min={1} value={rules.maxInactiveDays} onChange={(v) => custom({ maxInactiveDays: v })} />
               </Field>
             </div>
             <p className="text-[11px] text-muted">

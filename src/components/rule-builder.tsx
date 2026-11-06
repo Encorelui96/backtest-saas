@@ -7,6 +7,7 @@ import { COMPARATOR_LABELS, DEFAULT_PERIODS, FIELD_HINTS, INDICATOR_FIELDS, INDI
 import { INTERVALS } from "@/lib/types";
 import { INDICATOR_TERMS } from "@/lib/learn/glossary";
 import { Help } from "./learn";
+import { NumberInput } from "./number-input";
 
 /** A "?" that explains the indicator or comparison in beginner mode, nothing in expert mode. */
 function Why({ id }: { id: string | undefined }) {
@@ -78,16 +79,7 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
         }
         const label = tl(FIELD_HINTS[value.indicator]?.[f] ?? FIELD_LABELS[f]);
         return (
-          <input
-            key={f}
-            type="number"
-            step="any"
-            title={label}
-            placeholder={label}
-            className="w-20"
-            value={value[f] ?? ""}
-            onChange={(e) => onChange({ ...value, [f]: e.target.value === "" ? null : Number(e.target.value) })}
-          />
+          <NumberInput key={f} nullable title={label} placeholder={label} className="w-20" value={value[f]} onChange={(v) => onChange({ ...value, [f]: v })} />
         );
       })}
       {value.indicator !== "number" && !advanced && (
@@ -106,7 +98,7 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
             ))}
           </select>
           <label className="flex items-center gap-1 text-xs text-muted" title={tl("Lire la valeur N bougies en arrière")}>
-            {tl("décalage")}<input type="number" min={0} className="w-14" value={value.offset} onChange={(e) => onChange({ ...value, offset: Math.max(0, Number(e.target.value) || 0) })} />
+            {tl("décalage")}<NumberInput integer min={0} className="w-14" value={value.offset} onChange={(v) => onChange({ ...value, offset: Math.max(0, v) })} />
           </label>
         </>
       )}

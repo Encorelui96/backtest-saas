@@ -2,6 +2,7 @@
 
 import { tr } from "@/lib/i18n";
 import { Link, rich, useRouter, useT, useText } from "@/lib/client/i18n";
+import { NumberInput } from "./number-input";
 import { useEffect, useRef, useState } from "react";
 import { usePlan } from "@/lib/client/plan";
 import { clampStartDate, earliestStart, historyMonths } from "@/lib/plans";
@@ -129,9 +130,9 @@ export function StrategyEditor({ id }: { id?: string }) {
   };
 
   /** A cost typed by hand: the profile no longer applies. */
-  const setCost = (k: "feePercent" | "spreadPercent" | "slippagePercent" | "fundingPercentPer8h", v: string) => {
+  const setCost = (k: "feePercent" | "spreadPercent" | "slippagePercent" | "fundingPercentPer8h", v: number) => {
     setFees(null);
-    setConfig((c) => ({ ...c, [k]: Number(v) }));
+    setConfig((c) => ({ ...c, [k]: v }));
   };
 
   /** A new market family brings its own realistic costs: exchange fees for crypto, spreads at a CFD broker otherwise. */
@@ -384,7 +385,7 @@ export function StrategyEditor({ id }: { id?: string }) {
               </Field>
               {strategy.stop.type !== "none" ? (
                 <Field label={strategy.stop.type === "percent" ? "Distance (%)" : strategy.stop.type === "atr" ? tl("Multiple d'ATR") : tl("Nombre de bougies")} term={strategy.stop.type === "atr" ? "atr" : undefined}>
-                  <input type="number" step="any" inputMode="decimal" value={strategy.stop.value ?? ""} onChange={(e) => set("stop", { ...strategy.stop, value: numOrNull(e.target.value) })} />
+                  <NumberInput nullable step={0.1} min={0} value={strategy.stop.value} onChange={(v) => set("stop", { ...strategy.stop, value: v })} />
                 </Field>
               ) : (
                 beginner && <p className="self-end text-[11px] text-warn">{tl("Sans stop, une seule perte peut être énorme.")}</p>
@@ -404,17 +405,11 @@ export function StrategyEditor({ id }: { id?: string }) {
               </Field>
               {strategy.takeProfit.type !== "none" && (
                 <Field label={strategy.takeProfit.type === "r_multiple" ? tl("Objectif en R") : tl("Valeur de l'objectif")} term={strategy.takeProfit.type === "r_multiple" ? "r" : undefined}>
-                  <input
-                    type="number"
-                    step="any"
-                    inputMode="decimal"
-                    value={strategy.takeProfit.value ?? ""}
-                    onChange={(e) => set("takeProfit", { ...strategy.takeProfit, value: numOrNull(e.target.value) })}
-                  />
+                  <NumberInput nullable step={0.1} min={0} value={strategy.takeProfit.value} onChange={(v) => set("takeProfit", { ...strategy.takeProfit, value: v })} />
                 </Field>
               )}
               <Field label={tl("Risque par trade (%)")} term="risque-par-trade">
-                <input type="number" step="any" inputMode="decimal" value={strategy.riskPerTradePercent} onChange={(e) => set("riskPerTradePercent", Number(e.target.value))} />
+                <NumberInput step={0.1} min={0.01} value={strategy.riskPerTradePercent} onChange={(v) => set("riskPerTradePercent", v)} />
               </Field>
               {!beginner && (
                 <>
@@ -432,20 +427,20 @@ export function StrategyEditor({ id }: { id?: string }) {
                   </Field>
                   {strategy.trailingStop.type !== "none" && (
                     <Field label={tl("Distance du stop suiveur")} term="stop-suiveur">
-                      <input type="number" step="any" value={strategy.trailingStop.value ?? ""} onChange={(e) => set("trailingStop", { ...strategy.trailingStop, value: numOrNull(e.target.value) })} />
+                      <NumberInput nullable step={0.1} min={0} value={strategy.trailingStop.value} onChange={(v) => set("trailingStop", { ...strategy.trailingStop, value: v })} />
                     </Field>
                   )}
                   <Field label={tl("Point mort à (R)")} hint={tl("vide = jamais")} term="point-mort">
-                    <input type="number" step="any" value={strategy.breakEvenAtR ?? ""} onChange={(e) => set("breakEvenAtR", numOrNull(e.target.value))} />
+                    <NumberInput nullable step={0.5} min={0} value={strategy.breakEvenAtR} onChange={(v) => set("breakEvenAtR", v)} />
                   </Field>
                   <Field label={tl("Durée max (bougies)")} hint={tl("vide = illimitée")} term="duree-max">
-                    <input type="number" value={strategy.maxBarsInTrade ?? ""} onChange={(e) => set("maxBarsInTrade", numOrNull(e.target.value))} />
+                    <NumberInput nullable integer min={1} value={strategy.maxBarsInTrade} onChange={(v) => set("maxBarsInTrade", v)} />
                   </Field>
                   <Field label={tl("Taille sans stop (%)")} term="taille">
-                    <input type="number" step="any" value={strategy.positionSizePercent} onChange={(e) => set("positionSizePercent", Number(e.target.value))} />
+                    <NumberInput step={10} min={1} value={strategy.positionSizePercent} onChange={(v) => set("positionSizePercent", v)} />
                   </Field>
                   <Field label={tl("Levier max")} term="levier">
-                    <input type="number" step="any" value={strategy.maxLeverage} onChange={(e) => set("maxLeverage", Number(e.target.value))} />
+                    <NumberInput min={1} value={strategy.maxLeverage} onChange={(v) => set("maxLeverage", v)} />
                   </Field>
                   <div className="col-span-2">
                     <Field label={tl("Entrées entre")} hint={tl("heure locale, vide = toute la journée")} term="horaires">
@@ -537,7 +532,7 @@ export function StrategyEditor({ id }: { id?: string }) {
               </>
             )}
             <Field label={tl("Capital de départ (USD)")} term="capital">
-              <input type="number" inputMode="numeric" value={config.initialCapital} onChange={(e) => setConfig({ ...config, initialCapital: Number(e.target.value) })} />
+              <NumberInput integer step={1000} min={1} value={config.initialCapital} onChange={(v) => setConfig({ ...config, initialCapital: v })} />
             </Field>
             {beginner ? (
               <div className="flex items-center text-xs text-muted">
@@ -560,16 +555,16 @@ export function StrategyEditor({ id }: { id?: string }) {
             {!beginner && (
               <div className="grid grid-cols-2 gap-2">
                 <Field label={tl("Frais / côté (%)")} term="frais">
-                  <input type="number" step="any" value={config.feePercent} onChange={(e) => setCost("feePercent", e.target.value)} />
+                  <NumberInput step={0.01} min={0} value={config.feePercent} onChange={(v) => setCost("feePercent", v)} />
                 </Field>
                 <Field label={tl("Spread (%)")} term="spread">
-                  <input type="number" step="any" value={config.spreadPercent} onChange={(e) => setCost("spreadPercent", e.target.value)} />
+                  <NumberInput step={0.01} min={0} value={config.spreadPercent} onChange={(v) => setCost("spreadPercent", v)} />
                 </Field>
                 <Field label={tl("Glissement (%)")} term="glissement">
-                  <input type="number" step="any" value={config.slippagePercent} onChange={(e) => setCost("slippagePercent", e.target.value)} />
+                  <NumberInput step={0.01} min={0} value={config.slippagePercent} onChange={(v) => setCost("slippagePercent", v)} />
                 </Field>
                 <Field label={tl("Financement / 8h (%)")} term="financement">
-                  <input type="number" step="any" value={config.fundingPercentPer8h} onChange={(e) => setCost("fundingPercentPer8h", e.target.value)} />
+                  <NumberInput step={0.01} min={0} value={config.fundingPercentPer8h} onChange={(v) => setCost("fundingPercentPer8h", v)} />
                 </Field>
               </div>
             )}
@@ -795,10 +790,6 @@ function timezones(current: string): string[] {
     // Older browsers: the common list is enough.
   }
   return [...new Set([current, ...COMMON_TIMEZONES, ...all])];
-}
-
-function numOrNull(v: string) {
-  return v === "" ? null : Number(v);
 }
 
 /** A useful default test length per interval: long for swing, shorter where data is heavy. */
