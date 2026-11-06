@@ -1391,4 +1391,10 @@ export const EN: Record<string, string> = {
   "Quand un test dure plus de 2 minutes, un e-mail te prévient à la fin, avec les chiffres clés et le lien vers le résultat. Tu peux le désactiver dans Compte.": "When a test takes more than 2 minutes, an email tells you when it ends, with the key figures and a link to the result. You can turn it off in Account.",
   "Alertes Telegram réparées": "Telegram alerts fixed",
   "Les alertes sur le forex, l'or et le QQQ ne partaient pas : elles arrivent maintenant environ une minute après la clôture de la bougie. Le Live de ces marchés montre aussi la dernière bougie plus tôt.": "Alerts on forex, gold and QQQ weren't going out: they now arrive about a minute after the candle closes. The Live page of these markets also shows the latest candle sooner.",
+  "en pause": "paused",
+  "Avec alerte Telegram": "With a Telegram alert",
+  "Autres stratégies": "Other strategies",
+  "🔔 Alerte Telegram en pause": "🔔 Telegram alert paused",
+  "Tes alertes en tête du Live": "Your alerts first on Live",
+  "Sur la page Live, les stratégies qui ont une alerte Telegram apparaissent en premier, et le bouton indique si l'alerte est déjà active.": "On the Live page, strategies with a Telegram alert come first, and the button says whether the alert is already on.",
 };
