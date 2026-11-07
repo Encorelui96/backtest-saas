@@ -73,10 +73,28 @@ export async function fetchKlines(symbol: string, interval: Interval, from: numb
 }
 
 let symbolCache: { at: number; symbols: { symbol: string; base: string; quote: string; volume: number }[] } | null = null;
+/** When Binance last refused the listing: asked again a minute later, not at every call (the listing weighs about 3 MB, and /api/symbols is open to all). */
+let symbolFailure: { at: number; error: unknown } | null = null;
+const RETRY_FAILED_MS = 60_000;
 
 /** Spot USDT/USDC/BTC/EUR pairs ranked by 24h quote volume. */
 export async function listSymbols() {
   if (symbolCache && Date.now() - symbolCache.at < 6 * 3600_000) return symbolCache.symbols;
+  if (symbolFailure && Date.now() - symbolFailure.at < RETRY_FAILED_MS) {
+    // The stale list, when there is one, beats an error.
+    if (symbolCache) return symbolCache.symbols;
+    throw symbolFailure.error;
+  }
+  try {
+    return await fetchSymbols();
+  } catch (error) {
+    symbolFailure = { at: Date.now(), error };
+    if (symbolCache) return symbolCache.symbols;
+    throw error;
+  }
+}
+
+async function fetchSymbols() {
   const [info, tickers] = (await Promise.all([
     getJson(`${BASE}/api/v3/exchangeInfo?permissions=SPOT&symbolStatus=TRADING`),
     getJson(`${BASE}/api/v3/ticker/24hr?type=MINI`),
@@ -88,5 +106,6 @@ export async function listSymbols() {
     .map((s) => ({ symbol: s.symbol, base: s.baseAsset, quote: s.quoteAsset, volume: vol.get(s.symbol) ?? 0 }))
     .sort((a, b) => b.volume - a.volume);
   symbolCache = { at: Date.now(), symbols };
+  symbolFailure = null;
   return symbols;
 }

@@ -271,24 +271,27 @@ export async function sensitivity(
   const knobs = strategyKnobs(strategy);
   for (const [k, knob] of knobs.entries()) {
     const values = [...new Set(FACTORS.map((f) => roundKnob(knob.base * f, knob.integer)))];
-    const variants = values.map((value) => {
+    const variants: SensitivityRow["variants"] = [];
+    for (const value of values) {
       const s = structuredClone(strategy);
       knob.apply(s, value);
-      const run = runBacktest(candles, s, config, ctx, startIndex);
-      const m = computeMetrics(run, startIndex);
+      // Scoped: the variant's own series are dropped once it is measured, so the sweep's memory stays flat.
+      const m = ctx.scoped(() => computeMetrics(runBacktest(candles, s, config, ctx, startIndex), startIndex));
       if (value !== knob.base) {
         total++;
         if (m.totalReturnPercent > 0) profitable++;
       }
-      return {
+      variants.push({
         value,
         trades: m.trades,
         returnPercent: m.totalReturnPercent,
         avgTradePercent: m.avgTradePercent,
         avgR: m.avgR,
         profitFactor: m.profitFactor,
-      };
-    });
+      });
+      // A breath between variants: the worker also answers the Telegram bot and the alerts in this process.
+      await new Promise((r) => setTimeout(r, 0));
+    }
     rows.push({ label: knob.label, base: knob.base, variants });
     await onProgress?.((k + 1) / knobs.length);
   }

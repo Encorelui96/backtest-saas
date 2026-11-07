@@ -1444,6 +1444,9 @@ export const EN: Record<string, string> = {
   "L'indicateur {0:t} est réservé à l'offre Pro. Passe à l'offre Pro pour tester cette stratégie.": "The {0:t} indicator is reserved to the Pro plan. Upgrade to Pro to test this strategy.",
   "L'indicateur {0:t} est réservé à l'offre Pro.": "The {0:t} indicator is reserved to the Pro plan.",
   "Indicateurs avancés : structure de marché, FVG, Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon, CMF": "Advanced indicators: market structure, FVG, Heikin Ashi, RSI and MACD divergences, Stoch RSI, Aroon, CMF",
+  "Tests plus légers pour le serveur": "Lighter tests for the server",
+  "Les longs tests en 1 minute consomment bien moins de mémoire et ne font plus tomber le serveur de calcul. Les rapports de backtest sont gardés jusqu'à 200 par compte : nomme ou partage ceux que tu veux garder.":
+    "Long 1-minute tests use far less memory and no longer bring the compute server down. Backtest reports are kept up to 200 per account: name or share the ones you want to keep.",
   "Indicateurs avancés dans l'offre Pro": "Advanced indicators in the Pro plan",
   "Structure de marché (sommets et creux de swing, cassure de structure), Fair Value Gaps, bougies Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon et CMF, utilisables dans les règles et compris par l'IA.": "Market structure (swing highs and lows, break of structure), Fair Value Gaps, Heikin Ashi candles, RSI and MACD divergences, Stoch RSI, Aroon and CMF, usable in the rules and understood by the AI.",
   "Nouveaux indicateurs pour tous": "New indicators for everyone",

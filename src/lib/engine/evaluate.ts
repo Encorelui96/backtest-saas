@@ -2,7 +2,7 @@ import type { Candles, Interval } from "../types";
 import { INTERVAL_MS, emptyCandles } from "../types";
 import type { Condition, Group, Operand } from "../strategy/schema";
 import * as ind from "./indicators";
-import { localTime, parseHHMM, type LocalTime } from "./time";
+import { localTimes, parseHHMM, type LocalTimes } from "./time";
 
 /**
  * Computes operand series over a candle set, with memoization so that
@@ -12,8 +12,8 @@ export class SeriesContext {
   readonly n: number;
   private cache = new Map<string, Float64Array>();
   private htf = new Map<Interval, { ctx: SeriesContext; map: Int32Array }>();
-  private _local: LocalTime[] | null = null;
-  private _closeLocal: LocalTime[] | null = null;
+  private _local: LocalTimes | null = null;
+  private _closeLocal: LocalTimes | null = null;
   private fvg: ReturnType<typeof ind.fairValueGaps> | null = null;
   private ha: ReturnType<typeof ind.heikinAshi> | null = null;
 
@@ -25,22 +25,40 @@ export class SeriesContext {
     this.n = candles.t.length;
   }
 
-  get local(): LocalTime[] {
-    if (!this._local) {
-      const out: LocalTime[] = new Array(this.n);
-      for (let i = 0; i < this.n; i++) out[i] = localTime(this.timezone, this.candles.t[i]);
-      this._local = out;
-    }
+  /** Local time of each bar's open, as typed arrays (see LocalTimes). */
+  get local(): LocalTimes {
+    if (!this._local) this._local = localTimes(this.timezone, this.candles.t);
     return this._local;
   }
 
   /** Local time of each bar's close, the moment entry and exit decisions are made. Cached for parameter sweeps. */
-  get closeLocal(): LocalTime[] {
-    if (!this._closeLocal) {
-      const barMs = INTERVAL_MS[this.interval];
-      this._closeLocal = Array.from(this.candles.t, (t) => localTime(this.timezone, t + barMs));
-    }
+  get closeLocal(): LocalTimes {
+    if (!this._closeLocal) this._closeLocal = localTimes(this.timezone, this.candles.t, INTERVAL_MS[this.interval]);
     return this._closeLocal;
+  }
+
+  /**
+   * Runs `fn`, then forgets every series it added to the cache, here and on the
+   * higher timeframes. A parameter sweep tries dozens of variants on one context:
+   * kept, each variant's series would stay in memory until the end of the report
+   * (several MB each on a year of 1-minute bars), which is what used to exhaust
+   * the worker. The base strategy's series, computed before, stay cached.
+   */
+  scoped<T>(fn: () => T): T {
+    const before = new Set(this.cache.keys());
+    const htfBefore = new Map<Interval, Set<string>>();
+    for (const [tf, e] of this.htf) htfBefore.set(tf, new Set(e.ctx.cache.keys()));
+    try {
+      return fn();
+    } finally {
+      for (const key of this.cache.keys()) if (!before.has(key)) this.cache.delete(key);
+      for (const [tf, e] of this.htf) {
+        const keep = htfBefore.get(tf);
+        // A higher timeframe first built inside the scope goes with it.
+        if (!keep) this.htf.delete(tf);
+        else for (const key of e.ctx.cache.keys()) if (!keep.has(key)) e.ctx.cache.delete(key);
+      }
+    }
   }
 
   /**
@@ -290,11 +308,11 @@ export class SeriesContext {
       case "cam_s4":
         return this.pivots()[op.indicator];
       case "hour":
-        return Float64Array.from(this.local, (lt) => lt.hour);
+        return Float64Array.from(this.local.minuteOfDay, (m) => Math.floor(m / 60));
       case "minute":
-        return Float64Array.from(this.local, (lt) => lt.minute);
+        return Float64Array.from(this.local.minuteOfDay, (m) => m % 60);
       case "weekday":
-        return Float64Array.from(this.local, (lt) => lt.weekday);
+        return Float64Array.from(this.local.weekday);
     }
   }
 
@@ -306,7 +324,7 @@ export class SeriesContext {
       let pv = 0;
       let vol = 0;
       for (let i = 0; i < this.n; i++) {
-        const d = this.local[i].dayKey;
+        const d = this.local.dayKey[i];
         if (d !== day) {
           day = d;
           pv = 0;
@@ -340,7 +358,7 @@ export class SeriesContext {
       prevLow = NaN,
       prevClose = NaN;
     for (let i = 0; i < n; i++) {
-      const d = this.local[i].dayKey;
+      const d = this.local.dayKey[i];
       if (d !== day) {
         if (day !== -1) {
           prevHigh = curHigh;
@@ -379,7 +397,7 @@ export class SeriesContext {
     let prevLow = NaN;
     for (let i = 0; i < this.n; i++) {
       // Day 0 of the epoch is a Thursday: shifting by 3 makes weeks start on Monday.
-      const w = Math.floor((this.local[i].dayKey + 3) / 7);
+      const w = Math.floor((this.local.dayKey[i] + 3) / 7);
       if (w !== week) {
         if (!Number.isNaN(week)) {
           prevHigh = curHigh;
@@ -446,8 +464,8 @@ export class SeriesContext {
     let doneLow = NaN;
     let doneDay = NaN;
     for (let i = 0; i < this.n; i++) {
-      const lt = this.local[i];
-      if (inside(lt.minuteOfDay)) {
+      const dayKey = this.local.dayKey[i];
+      if (inside(this.local.minuteOfDay[i])) {
         if (!forming) {
           forming = true;
           hi = -Infinity;
@@ -457,16 +475,16 @@ export class SeriesContext {
         hi = Math.max(hi, c.h[i]);
         lo = Math.min(lo, c.l[i]);
         // The bar that closes on the window's end completes the range.
-        if (!inside(this.closeLocal[i].minuteOfDay)) {
+        if (!inside(this.closeLocal.minuteOfDay[i])) {
           forming = false;
-          [doneHigh, doneLow, doneDay] = [hi, lo, lt.dayKey];
+          [doneHigh, doneLow, doneDay] = [hi, lo, dayKey];
         }
       } else if (forming) {
         // A gap skipped the window's last bars: settle on what was traded.
         forming = false;
-        [doneHigh, doneLow, doneDay] = [hi, lo, lt.dayKey];
+        [doneHigh, doneLow, doneDay] = [hi, lo, dayKey];
       }
-      if (spansMidnight || lt.dayKey === doneDay) {
+      if (spansMidnight || dayKey === doneDay) {
         outHigh[i] = doneHigh;
         outLow[i] = doneLow;
       }
@@ -493,13 +511,19 @@ export class SeriesContext {
     return out;
   }
 
+  /** The operand's series, or its value when it is a plain number (the same at every bar). */
+  private operand(op: Operand): Float64Array | number {
+    return op.indicator === "number" ? (op.value ?? 0) : this.series(op);
+  }
+
   conditionSeries(cond: Condition): Uint8Array {
-    const a = this.series(cond.left);
-    const b = this.series(cond.right);
+    // A constant ("RSI < 30") is compared as a number: a full series for each threshold a sweep tries would cost 8 bytes a bar for nothing.
+    const a = this.operand(cond.left);
+    const b = this.operand(cond.right);
     const out = new Uint8Array(this.n);
     for (let i = 0; i < this.n; i++) {
-      const x = a[i];
-      const y = b[i];
+      const x = typeof a === "number" ? a : a[i];
+      const y = typeof b === "number" ? b : b[i];
       if (Number.isNaN(x) || Number.isNaN(y)) continue;
       let ok = false;
       switch (cond.op) {
@@ -519,10 +543,10 @@ export class SeriesContext {
           ok = Math.abs(x - y) < 1e-9;
           break;
         case "crosses_above":
-          ok = i > 0 && x > y && a[i - 1] <= b[i - 1];
+          ok = i > 0 && x > y && (typeof a === "number" ? a : a[i - 1]) <= (typeof b === "number" ? b : b[i - 1]);
           break;
         case "crosses_below":
-          ok = i > 0 && x < y && a[i - 1] >= b[i - 1];
+          ok = i > 0 && x < y && (typeof a === "number" ? a : a[i - 1]) >= (typeof b === "number" ? b : b[i - 1]);
           break;
       }
       out[i] = ok ? 1 : 0;

@@ -8,7 +8,7 @@ import { runBacktest } from "../backtest";
 import { computeMetrics } from "../metrics";
 import { buildReport } from "../report";
 import { PROP_PRESETS, simulatePropFirm } from "../propfirm";
-import { localTime } from "../time";
+import { localTime, localTimes } from "../time";
 
 const H = 3_600_000;
 const T0 = Date.UTC(2024, 0, 1);
@@ -58,6 +58,33 @@ describe("time", () => {
     expect(localTime("Europe/Paris", Date.UTC(2024, 6, 1, 12)).hour).toBe(14);
     expect(localTime("Europe/Paris", Date.UTC(2024, 0, 1, 12)).hour).toBe(13);
     expect(localTime("Europe/Paris", Date.UTC(2024, 0, 1, 12)).weekday).toBe(1);
+  });
+  it("localTimes matches localTime bar by bar, across a time change and a weekend", () => {
+    // 15-minute bars over the last week of March 2024: the clocks jump on the 31st.
+    const ts = Float64Array.from({ length: 7 * 96 }, (_, i) => Date.UTC(2024, 2, 26) + i * 900_000);
+    const all = localTimes("Europe/Paris", ts, 900_000);
+    for (let i = 0; i < ts.length; i += 7) {
+      const one = localTime("Europe/Paris", ts[i] + 900_000);
+      expect([all.minuteOfDay[i], all.weekday[i], all.dayKey[i]]).toEqual([one.minuteOfDay, one.weekday, one.dayKey]);
+    }
+  });
+});
+
+describe("series cache", () => {
+  it("forgets what a scoped run computed, and keeps the rest", () => {
+    const ctx = new SeriesContext(candlesFromCloses(Array.from({ length: 60 }, (_, i) => 100 + Math.sin(i))), "1h", "UTC");
+    const base = operand("sma", { period: 10 });
+    const kept = ctx.series(base);
+    const inside = ctx.scoped(() => ctx.series(operand("sma", { period: 12 })));
+    expect(ctx.series(base)).toBe(kept);
+    expect(ctx.series(operand("sma", { period: 12 }))).not.toBe(inside);
+  });
+  it("compares a constant without building a series for it", () => {
+    const ctx = new SeriesContext(candlesFromCloses([1, 2, 3, 4, 5, 4, 3]), "1h", "UTC");
+    const above = ctx.conditionSeries({ left: operand("close"), op: "crosses_above", right: num(3.5) });
+    const below = ctx.conditionSeries({ left: operand("close"), op: "<", right: num(3.5) });
+    expect(Array.from(above)).toEqual([0, 0, 0, 1, 0, 0, 0]);
+    expect(Array.from(below)).toEqual([1, 1, 1, 0, 0, 0, 1]);
   });
 });
 

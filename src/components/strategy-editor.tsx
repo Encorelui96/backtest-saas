@@ -200,6 +200,8 @@ export function StrategyEditor({ id }: { id?: string }) {
       const strategyId = await save();
       const { jobId } = await api<{ jobId: string }>("/api/backtests", { json: { strategy, config: period, strategyId } });
       // The worker computes the backtest; follow its progress until the report exists.
+      // Quick at first, so a short test lands fast; every 2 seconds after 30 seconds, a long test's bar doesn't move faster than that.
+      const started = Date.now();
       for (;;) {
         const state = await api<JobState>(`/api/jobs/${jobId}`);
         setJob(state);
@@ -208,7 +210,7 @@ export function StrategyEditor({ id }: { id?: string }) {
           return;
         }
         if (state.status === "failed") throw new Error(state.error ?? tl("Le calcul a échoué."));
-        await new Promise((r) => setTimeout(r, 700));
+        await new Promise((r) => setTimeout(r, Date.now() - started < 30_000 ? 700 : 2000));
       }
     } catch (e) {
       fail(e);

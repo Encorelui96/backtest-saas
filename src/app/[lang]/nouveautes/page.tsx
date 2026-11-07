@@ -12,6 +12,7 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "Tests plus légers pour le serveur", text: "Les longs tests en 1 minute consomment bien moins de mémoire et ne font plus tomber le serveur de calcul. Les rapports de backtest sont gardés jusqu'à 200 par compte : nomme ou partage ceux que tu veux garder." },
       {
         title: "Indicateurs avancés dans l'offre Pro",
         text: "Structure de marché (sommets et creux de swing, cassure de structure), Fair Value Gaps, bougies Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon et CMF, utilisables dans les règles et compris par l'IA.",

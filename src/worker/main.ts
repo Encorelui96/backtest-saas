@@ -2,6 +2,7 @@ import { BacktestPayload, claimNext, failJob, finishJob, reportProgress, type Jo
 import { UserError, computeBacktest, saveBacktest } from "../lib/server/backtests";
 import { notifyFailed, notifyFinished } from "../lib/server/backtest-notice";
 import { pool } from "../lib/server/db";
+import { housekeepingTick } from "../lib/server/housekeeping";
 import { startTelegram } from "./telegram";
 
 /**
@@ -36,6 +37,8 @@ async function loop() {
       return null;
     });
     if (!job) {
+      // Idle: the daily purge of old reports and jobs runs here, never while a test waits.
+      await housekeepingTick();
       await new Promise((r) => setTimeout(r, IDLE_MS));
       continue;
     }
@@ -63,8 +66,21 @@ for (const sig of ["SIGINT", "SIGTERM"]) {
   });
 }
 
-// The bot and the alerts run beside the backtest queue, in the same process.
-const telegramDone = startTelegram(() => stopping);
-loop()
-  .then(() => telegramDone)
-  .finally(() => pool().end());
+/**
+ * WORKER_ROLE picks what this process does. "all" (the default, one service):
+ * the backtest queue, the bot and the alerts together. To keep the alerts
+ * apart from the heavy calculations, run two services: one with "compute",
+ * one with "alerts" (see render.yaml). Several "alerts" processes are safe:
+ * a Postgres lock keeps a single bot reader.
+ */
+const role = process.env.WORKER_ROLE ?? "all";
+if (!["all", "compute", "alerts"].includes(role)) throw new Error(`WORKER_ROLE inconnu : ${role} (all, compute ou alerts)`);
+const telegramDone = role === "compute" ? Promise.resolve() : startTelegram(() => stopping);
+const computeDone = role === "alerts" ? idle() : loop();
+Promise.all([computeDone, telegramDone]).finally(() => pool().end());
+
+/** An "alerts" process has no queue to read: it waits for the stop signal. */
+async function idle() {
+  console.log("[worker] rôle alertes : pas de calcul ici");
+  while (!stopping) await new Promise((r) => setTimeout(r, IDLE_MS));
+}

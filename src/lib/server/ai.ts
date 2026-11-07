@@ -96,6 +96,11 @@ export const AI_PRICES: Record<string, [number, number]> = {
   "claude-opus-4-8": [5, 25],
 };
 
+/** The model that translates (AI_MODEL to try another, e.g. a Sonnet, without a deploy). */
+const MODEL = process.env.AI_MODEL || "claude-opus-5-5";
+/** A strategy's JSON runs 1 000 to 3 000 tokens; the explanation and questions a few hundred more. */
+const MAX_TOKENS = 8000;
+
 /** The prompt is written for the French site; the English one gets its texts in English. */
 function systemPrompt(lang: Lang) {
   const prompt = `${SYSTEM}\n\n${OUTPUT_FORMAT}`;
@@ -118,16 +123,21 @@ export async function parseStrategyText(text: string, current: Strategy | undefi
   const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: userContent }];
   for (let attempt = 0; attempt < 2; attempt++) {
     const response = await client.beta.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: 16000,
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
       output_config: { effort: "medium" },
-      system: pro ? systemPrompt(lang) : `${systemPrompt(lang)}\n\n${NO_PRO}`,
+      // The rules and the schema (about 4 000 tokens) are the same for every call: cached, they cost a tenth from the second call on.
+      system: [
+        { type: "text", text: systemPrompt(lang), cache_control: { type: "ephemeral" } },
+        ...(pro ? [] : [{ type: "text" as const, text: NO_PRO }]),
+      ],
       messages,
     });
     const u = response.usage;
-    usage.inputTokens += u.input_tokens + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
+    // Counted at their billed weight (a cache write costs 1.25×, a read 0.1×), so the admin page's cost estimate stays right.
+    usage.inputTokens += Math.round(u.input_tokens + 1.25 * (u.cache_creation_input_tokens ?? 0) + 0.1 * (u.cache_read_input_tokens ?? 0));
     usage.outputTokens += u.output_tokens;
     usage.model = response.model;
     if (response.stop_reason === "refusal") {
