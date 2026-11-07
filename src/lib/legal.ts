@@ -13,7 +13,7 @@ export const EDITOR = {
   /** Postal address. */
   address: "3 allée des Patissiaux, 35510 Cesson-Sévigné",
   /** Contact address for users and for personal data requests. */
-  email: "lemeurg35@gmail.com",
+  email: "service-clients@backtestlab.fr",
   /** Person responsible for the content (usually the same as name). */
   director: "Gabin Le Meur",
 };
@@ -28,4 +28,4 @@ export const HOST = {
 };
 
 /** Date of the last change to the legal pages. */
-export const LEGAL_UPDATED = "3 novembre 2026";
+export const LEGAL_UPDATED = "7 novembre 2026";
