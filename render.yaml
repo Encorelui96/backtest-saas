@@ -71,6 +71,37 @@ services:
       # The site's address, for the "Voir en direct" link in the alerts.
       - key: SITE_HOST
         value: backtestlab.fr
+      # all (default): backtests, bot and alerts in this one process. To keep the alerts
+      # apart from the heavy tests, set "compute" here and add the service below.
+      - key: WORKER_ROLE
+        value: all
+
+  # Optional, about 7 $ a month: the bot and the alerts on their own, so a long test or a
+  # memory restart of the compute worker never delays a signal. Uncomment it, set the
+  # worker above to WORKER_ROLE=compute, and give this one the same TELEGRAM_BOT_TOKEN,
+  # ADMIN_EMAILS and ADMIN_USER_IDS.
+  # - type: worker
+  #   name: backtest-lab-alerts
+  #   runtime: node
+  #   plan: starter
+  #   region: frankfurt
+  #   buildCommand: npm ci
+  #   startCommand: npm run worker
+  #   envVars:
+  #     - key: WORKER_ROLE
+  #       value: alerts
+  #     - key: DATABASE_URL
+  #       fromDatabase:
+  #         name: backtest-db
+  #         property: connectionString
+  #     - key: TELEGRAM_BOT_TOKEN
+  #       sync: false
+  #     - key: ADMIN_EMAILS
+  #       sync: false
+  #     - key: ADMIN_USER_IDS
+  #       sync: false
+  #     - key: SITE_HOST
+  #       value: backtestlab.fr
 
 databases:
   - name: backtest-db
