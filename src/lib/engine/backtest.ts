@@ -118,11 +118,10 @@ export function runBacktest(
   const canEnterAt = (i: number) => {
     if (i < startIndex) return false;
     if (!closeLocal) return true;
-    const lt = closeLocal[i];
-    if (!allowedDays.has(lt.weekday)) return false;
-    if (exitMinute !== null && lt.minuteOfDay >= exitMinute) return false;
+    if (!allowedDays.has(closeLocal.weekday[i])) return false;
+    const m = closeLocal.minuteOfDay[i];
+    if (exitMinute !== null && m >= exitMinute) return false;
     if (windowStart !== null && windowEnd !== null) {
-      const m = lt.minuteOfDay;
       const inside = windowStart <= windowEnd ? m >= windowStart && m <= windowEnd : m >= windowStart || m <= windowEnd;
       if (!inside) return false;
     }
@@ -264,7 +263,7 @@ export function runBacktest(
     if (pos) {
       const p: Pos = pos;
       const held = i - p.entryIndex + 1;
-      if (closeLocal && exitMinute !== null && closeLocal[i].minuteOfDay >= exitMinute) {
+      if (closeLocal && exitMinute !== null && closeLocal.minuteOfDay[i] >= exitMinute) {
         close(i, c[i], "time", false, false);
       } else if (strategy.maxBarsInTrade && held >= strategy.maxBarsInTrade) {
         close(i, c[i], "max_bars", false, false);
