@@ -133,18 +133,38 @@ export const PRO_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>
 
 export const SOURCES = ["close", "open", "high", "low", "volume", "hl2", "hlc3", "ohlc4"] as const;
 
+/**
+ * Bounds on a strategy's size. Beyond them a request is refused before anything
+ * is queued: one strategy with thousands of conditions, or periods in the
+ * millions, would keep the worker busy for hours and everyone else waiting.
+ * The widest template uses periods of 200, offsets of 1 and 4 conditions a group.
+ */
+export const LIMITS = {
+  groups: 8,
+  conditionsPerGroup: 8,
+  period: 5000,
+  offset: 500,
+  multiplier: 100,
+  value: 1e9,
+  name: 120,
+  description: 2000,
+  maxBarsInTrade: 100_000,
+} as const;
+
+const period = z.number().max(LIMITS.period).nullable();
+
 export const OperandSchema = z.object({
   indicator: z.enum(INDICATORS),
-  period: z.number().nullable().describe("Main period (sma/ema/rsi/atr/bb/roc/highest/lowest/adx/stoch, MACD fast)."),
-  period2: z.number().nullable().describe("MACD slow period, stochastic %K smoothing."),
-  period3: z.number().nullable().describe("MACD signal period, stochastic %D smoothing."),
-  multiplier: z.number().nullable().describe("Bollinger band standard deviation multiplier."),
+  period: period.describe("Main period (sma/ema/rsi/atr/bb/roc/highest/lowest/adx/stoch, MACD fast)."),
+  period2: period.describe("MACD slow period, stochastic %K smoothing."),
+  period3: period.describe("MACD signal period, stochastic %D smoothing."),
+  multiplier: z.number().min(-LIMITS.multiplier).max(LIMITS.multiplier).nullable().describe("Bollinger band standard deviation multiplier."),
   source: z
     .enum(SOURCES)
     .nullable()
     .describe("Price series the indicator is computed on: hl2 = (high + low) / 2, hlc3 = (high + low + close) / 3, ohlc4 = average of the four prices. Default close; highest uses high, lowest uses low, cci uses hlc3."),
-  value: z.number().nullable().describe("Constant value, only for indicator 'number'."),
-  offset: z.number().describe("How many bars back to read the value (0 = current closed bar, 1 = previous bar)."),
+  value: z.number().min(-LIMITS.value).max(LIMITS.value).nullable().describe("Constant value, only for indicator 'number'."),
+  offset: z.number().max(LIMITS.offset).describe("How many bars back to read the value (0 = current closed bar, 1 = previous bar)."),
   timeframe: z.enum(INTERVALS).nullable().describe("Higher timeframe to compute the indicator on (only completed higher-timeframe bars are used). null = strategy timeframe."),
   // Defaults to null so strategies saved before this field existed still parse.
   window: z
@@ -170,7 +190,7 @@ export type Condition = z.infer<typeof ConditionSchema>;
 
 /** All conditions of a group must be true (AND). A rule fires when any group is true (OR). */
 export const GroupSchema = z.object({
-  conditions: z.array(ConditionSchema),
+  conditions: z.array(ConditionSchema).max(LIMITS.conditionsPerGroup),
 });
 export type Group = z.infer<typeof GroupSchema>;
 
@@ -192,28 +212,30 @@ export const TrailingSchema = z.object({
   atrPeriod: z.number().nullable(),
 });
 
+const groups = z.array(GroupSchema).max(LIMITS.groups);
+
 export const StrategySchema = z.object({
-  name: z.string(),
-  description: z.string(),
+  name: z.string().max(LIMITS.name),
+  description: z.string().max(LIMITS.description),
   style: z.enum(["scalp", "day", "swing"]),
-  symbol: z.string().describe("Binance spot symbol (e.g. BTCUSDT), or one of EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD, EURGBP, EURJPY, GBPJPY, XAUUSD (gold), NAS100 (Nasdaq 100 future NQ, nearly 24h) or QQQ (Nasdaq 100 fund, US market hours)."),
+  symbol: z.string().max(20).describe("Binance spot symbol (e.g. BTCUSDT), or one of EURUSD, GBPUSD, USDJPY, USDCHF, AUDUSD, USDCAD, EURGBP, EURJPY, GBPJPY, XAUUSD (gold), NAS100 (Nasdaq 100 future NQ, nearly 24h) or QQQ (Nasdaq 100 fund, US market hours)."),
   interval: z.enum(INTERVALS),
-  timezone: z.string().describe("IANA timezone used for hours, sessions and daily levels, e.g. Europe/Paris."),
+  timezone: z.string().max(64).describe("IANA timezone used for hours, sessions and daily levels, e.g. Europe/Paris."),
   direction: z.enum(["long", "short", "both"]),
-  entryLong: z.array(GroupSchema),
-  entryShort: z.array(GroupSchema),
-  exitLong: z.array(GroupSchema),
-  exitShort: z.array(GroupSchema),
+  entryLong: groups,
+  entryShort: groups,
+  exitLong: groups,
+  exitShort: groups,
   stop: StopSchema,
   takeProfit: TakeProfitSchema,
   trailingStop: TrailingSchema,
   breakEvenAtR: z.number().nullable().describe("Move the stop to entry once the trade reaches this many R. null = off."),
-  maxBarsInTrade: z.number().nullable(),
+  maxBarsInTrade: z.number().max(LIMITS.maxBarsInTrade).nullable(),
   tradingWindow: z
     .object({ start: z.string(), end: z.string() })
     .nullable()
     .describe("Entries only when the signal bar closes between start and end (HH:MM local). null = any time."),
-  tradingDays: z.array(z.number()).describe("Allowed entry weekdays, 1 = Monday … 7 = Sunday."),
+  tradingDays: z.array(z.number()).max(7).describe("Allowed entry weekdays, 1 = Monday … 7 = Sunday."),
   exitAtTime: z.string().nullable().describe("Close any open position at this local time (HH:MM), for day trading. null = off."),
   riskPerTradePercent: z.number().describe("Equity risked per trade when a stop is set."),
   positionSizePercent: z.number().describe("Position size as % of equity when there is no stop."),
