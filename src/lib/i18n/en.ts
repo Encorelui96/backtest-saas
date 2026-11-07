@@ -104,6 +104,11 @@ export const EN: Record<string, string> = {
   "Un clic ne vaut pas un paiement, mais c'est le signal qui dit quand ouvrir le paiement en ligne.": "A click isn't a payment, but it's the signal that says when to open online payment.",
   "{0} ajoutés au compte {1}.": "{0} added to account {1}.",
   "Créditer une recharge": "Credit a top-up",
+  "Offrir une offre": "Give a plan",
+  "Offre {0:t} appliquée au compte {1}.": "{0:t} plan applied to account {1}.",
+  "Appliquer": "Apply",
+  "Pour un testeur, un partenaire ou un client qui a payé autrement. Découverte retire l'offre. Prend effet tout de suite.":
+    "For a tester, a partner or a customer who paid another way. Starter takes the plan back. Takes effect at once.",
   "E-mail ou identifiant du compte": "E-mail or account ID",
   "Ajouter": "Add",
   "En attendant le paiement en ligne : après un paiement par virement ou pour dépanner un client.": "Until online payment opens: after a bank transfer, or to help out a customer.",
