@@ -16,7 +16,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/backtests/[id]">
     const [b, share] = await Promise.all([getBacktest(user.id, id), shareOf(user.id, id)]);
     if (!b) return Response.json({ error: (await requestT())("Backtest introuvable") }, { status: 404 });
     const saved = b.strategyId ? await getStrategy(user.id, b.strategyId) : null;
-    return Response.json({ ...b, share, strategyCurrent: saved !== null && sameRules(saved.strategy, b.strategy) });
+    return Response.json({ ...b, share, strategyCurrent: saved !== null && sameRules(saved.strategy, b.strategy), strategyFavorite: saved?.favorite ?? null });
   });
 }
 

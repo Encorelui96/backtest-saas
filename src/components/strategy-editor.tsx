@@ -207,6 +207,10 @@ export function StrategyEditor({ id }: { id?: string }) {
         setJob(state);
         if (state.status === "done" && state.resultId) {
           router.push(`/backtests/${state.resultId}${challengeGoal.current ? "?tab=prop" : ""}`);
+          // The app keeps this page alive behind its bottom menu: coming back a few seconds later must
+          // find the button ready, not a finished bar and "En cours" greyed out for a minute.
+          setBusy(null);
+          setJob(null);
           return;
         }
         if (state.status === "failed") throw new Error(state.error ?? tl("Le calcul a échoué."));
