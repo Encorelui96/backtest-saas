@@ -31,6 +31,8 @@ interface Stored {
   strategyId: string | null;
   /** Whether the saved strategy still has this test's rules: each later run changes it (absent from shared views). */
   strategyCurrent?: boolean;
+  /** Whether the saved strategy is starred; null when the test has no saved strategy (absent from shared views). */
+  strategyFavorite?: boolean | null;
   strategy: Strategy;
   config: BacktestConfig;
   report: BacktestReport;
@@ -138,6 +140,22 @@ export function BacktestResults({ id, shared = false }: { id: string; shared?: b
             <div className="flex items-center gap-1">
               <h1 className="text-xl font-semibold">{name}</h1>
               {!shared && <RenameButton onClick={() => setRenaming(true)} />}
+              {!shared && data.strategyId && data.strategyFavorite !== null && data.strategyFavorite !== undefined && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const favorite = !data.strategyFavorite;
+                    setData({ ...data, strategyFavorite: favorite });
+                    await api(`/api/strategies/${data.strategyId}`, { method: "PATCH", json: { favorite } }).catch(() => setData({ ...data, strategyFavorite: !favorite }));
+                  }}
+                  aria-pressed={data.strategyFavorite}
+                  title={data.strategyFavorite ? tl("Retirer des favoris") : tl("Ajouter aux favoris")}
+                  aria-label={data.strategyFavorite ? tl("Retirer des favoris") : tl("Ajouter aux favoris")}
+                  className={`ml-1 text-xl leading-none ${data.strategyFavorite ? "text-amber-400" : "text-muted/60 hover:text-amber-400"}`}
+                >
+                  {data.strategyFavorite ? "★" : "☆"}
+                </button>
+              )}
             </div>
           )}
           <p className="text-sm text-muted">
