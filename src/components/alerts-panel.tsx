@@ -107,7 +107,7 @@ export function AlertsPanel() {
                       <div className="text-[11px] text-muted">
                         {a.symbol} · {a.interval} · {a.lastSignalAt ? tl("dernier signal le {0}", [date(a.lastSignalAt)]) : tl("aucun signal pour l'instant")}
                       </div>
-                      {a.lastError && <div className="text-[11px] text-warn">{tl("Dernière vérification en erreur : ")}{a.lastError}</div>}
+                      {a.lastError && <div className="text-[11px] text-warn">{tl("Dernière vérification en erreur : ")}{tl(a.lastError)}</div>}
                     </div>
                     <button
                       disabled={busy}
