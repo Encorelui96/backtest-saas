@@ -2,6 +2,7 @@ import { BacktestPayload, claimNext, failJob, finishJob, reportProgress, type Jo
 import { UserError, computeBacktest, saveBacktest } from "../lib/server/backtests";
 import { notifyFailed, notifyFinished } from "../lib/server/backtest-notice";
 import { pool } from "../lib/server/db";
+import { housekeepingTick } from "../lib/server/housekeeping";
 import { startTelegram } from "./telegram";
 
 /**
@@ -36,6 +37,8 @@ async function loop() {
       return null;
     });
     if (!job) {
+      // Idle: the daily purge of old reports and jobs runs here, never while a test waits.
+      await housekeepingTick();
       await new Promise((r) => setTimeout(r, IDLE_MS));
       continue;
     }
