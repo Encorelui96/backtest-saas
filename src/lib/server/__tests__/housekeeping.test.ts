@@ -25,6 +25,7 @@ describe("purgeOld", () => {
     const [backtests, jobs] = db.calls;
     expect(backtests.text).toContain("name IS NULL");
     expect(backtests.text).toContain("NOT EXISTS (SELECT 1 FROM shares");
+    expect(backtests.text).toContain("st.favorite");
     expect(backtests.text).toContain("ORDER BY created_at DESC");
     expect(backtests.params).toEqual([KEEP_BACKTESTS]);
     expect(jobs.text).toContain("status IN ('done', 'failed')");

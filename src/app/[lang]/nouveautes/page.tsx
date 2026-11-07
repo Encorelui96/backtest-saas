@@ -12,6 +12,7 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      { title: "Stratégies favorites", text: "Une étoile à côté de chaque stratégie sur l'accueil. Les favorites passent en tête de liste, et leurs backtests ne sont jamais supprimés par le ménage automatique." },
       { title: "Tests plus légers pour le serveur", text: "Les longs tests en 1 minute consomment bien moins de mémoire et ne font plus tomber le serveur de calcul. Les rapports de backtest sont gardés jusqu'à 200 par compte : nomme ou partage ceux que tu veux garder." },
       {
         title: "Indicateurs avancés dans l'offre Pro",

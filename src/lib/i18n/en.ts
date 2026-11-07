@@ -249,6 +249,10 @@ export const EN: Record<string, string> = {
   "Marché": "Market",
   "Moy.": "Avg.",
   "Mes stratégies": "My strategies",
+  "Favoris": "Favourites",
+  "Autres": "Others",
+  "Ajouter aux favoris": "Add to favourites",
+  "Retirer des favoris": "Remove from favourites",
   "Aucune stratégie enregistrée.": "No saved strategy.",
   "Voir un exemple de rapport, sans créer de compte →": "See a sample report, no account needed →",
   "Avant de payer ton challenge,": "Before you pay for your challenge,",
@@ -1452,6 +1456,9 @@ export const EN: Record<string, string> = {
   "Tests plus légers pour le serveur": "Lighter tests for the server",
   "Les longs tests en 1 minute consomment bien moins de mémoire et ne font plus tomber le serveur de calcul. Les rapports de backtest sont gardés jusqu'à 200 par compte : nomme ou partage ceux que tu veux garder.":
     "Long 1-minute tests use far less memory and no longer bring the compute server down. Backtest reports are kept up to 200 per account: name or share the ones you want to keep.",
+  "Stratégies favorites": "Favourite strategies",
+  "Une étoile à côté de chaque stratégie sur l'accueil. Les favorites passent en tête de liste, et leurs backtests ne sont jamais supprimés par le ménage automatique.":
+    "A star next to each strategy on the home page. Favourites go to the top of the list, and their backtests are never removed by the automatic clean-up.",
   "Indicateurs avancés dans l'offre Pro": "Advanced indicators in the Pro plan",
   "Structure de marché (sommets et creux de swing, cassure de structure), Fair Value Gaps, bougies Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon et CMF, utilisables dans les règles et compris par l'IA.": "Market structure (swing highs and lows, break of structure), Fair Value Gaps, Heikin Ashi candles, RSI and MACD divergences, Stoch RSI, Aroon and CMF, usable in the rules and understood by the AI.",
   "Nouveaux indicateurs pour tous": "New indicators for everyone",

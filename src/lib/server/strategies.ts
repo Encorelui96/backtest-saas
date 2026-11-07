@@ -7,6 +7,8 @@ export interface StoredStrategy {
   name: string;
   strategy: Strategy;
   sourceText: string | null;
+  /** Starred by the owner: listed first, and its backtests are kept out of the purge. */
+  favorite: boolean;
   createdAt: number;
   updatedAt: number;
 }
@@ -16,16 +18,31 @@ interface Row {
   name: string;
   json: Strategy;
   source_text: string | null;
+  favorite: boolean;
   created_at: Date;
   updated_at: Date;
 }
 
 function fromRow(r: Row): StoredStrategy {
-  return { id: r.id, name: r.name, strategy: r.json, sourceText: r.source_text, createdAt: r.created_at.getTime(), updatedAt: r.updated_at.getTime() };
+  return {
+    id: r.id,
+    name: r.name,
+    strategy: r.json,
+    sourceText: r.source_text,
+    favorite: r.favorite,
+    createdAt: r.created_at.getTime(),
+    updatedAt: r.updated_at.getTime(),
+  };
 }
 
 export async function listStrategies(userId: string): Promise<StoredStrategy[]> {
-  return (await query<Row>("SELECT * FROM strategies WHERE user_id = $1 ORDER BY updated_at DESC", [userId])).map(fromRow);
+  return (await query<Row>("SELECT * FROM strategies WHERE user_id = $1 ORDER BY favorite DESC, updated_at DESC", [userId])).map(fromRow);
+}
+
+/** Stars or unstars a strategy. Returns false when it isn't the user's. */
+export async function setFavorite(userId: string, id: string, favorite: boolean) {
+  const r = await queryOne<{ id: string }>("UPDATE strategies SET favorite = $3 WHERE id = $1 AND user_id = $2 RETURNING id", [id, userId, favorite]);
+  return r !== null;
 }
 
 export async function getStrategy(userId: string, id: string): Promise<StoredStrategy | null> {
