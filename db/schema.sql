@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS strategies (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS strategies_by_user ON strategies (user_id, updated_at DESC);
+-- A starred strategy: listed first, and its backtests are never purged.
+ALTER TABLE strategies ADD COLUMN IF NOT EXISTS favorite boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS backtests (
   id text PRIMARY KEY,

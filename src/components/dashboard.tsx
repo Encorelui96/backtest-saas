@@ -120,7 +120,7 @@ export function Dashboard() {
   const tl = useT();
   const router = useRouter();
   const beginner = useBeginner();
-  const [strategies, setStrategies] = useState<{ id: string; name: string; strategy: Strategy; updatedAt: number }[] | null>(null);
+  const [strategies, setStrategies] = useState<{ id: string; name: string; strategy: Strategy; favorite: boolean; updatedAt: number }[] | null>(null);
   const [backtests, setBacktests] = useState<BacktestRow[] | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [search, setSearch] = useState("");
@@ -170,6 +170,13 @@ export function Dashboard() {
     if (!confirm(tl("Supprimer cette stratégie ? Ses backtests restent consultables."))) return;
     await api(`/api/strategies/${id}`, { method: "DELETE" });
     setStrategies((s) => s?.filter((x) => x.id !== id) ?? null);
+  };
+  // Favourites stay on top, like the server lists them; the rest keep their order.
+  const star = async (id: string, favorite: boolean) => {
+    setStrategies((rows) => rows && [...rows.map((x) => (x.id === id ? { ...x, favorite } : x))].sort((a, b) => Number(b.favorite) - Number(a.favorite)));
+    await api(`/api/strategies/${id}`, { method: "PATCH", json: { favorite } }).catch(() => {
+      setStrategies((rows) => rows && rows.map((x) => (x.id === id ? { ...x, favorite: !favorite } : x)));
+    });
   };
 
   return (
@@ -340,20 +347,36 @@ export function Dashboard() {
             <p className="text-sm text-muted">{query ? tl("Aucune stratégie trouvée.") : tl("Aucune stratégie enregistrée.")}</p>
           ) : (
             <ul className="flex flex-col divide-y divide-line/50">
-              {latest(shownStrategies, moreStrategies).map((s) => (
-                <li key={s.id} className="flex items-center gap-2 py-2 text-sm">
-                  <Link href={`/strategies/${s.id}`} className="flex-1 hover:text-accent">
-                    {s.name}
-                    <div className="text-[11px] text-muted">
-                      {s.strategy.symbol} · {s.strategy.interval} · {s.strategy.style}
-                    </div>
-                  </Link>
-                  <Link href={`/live?strategy=${s.id}`} className="text-xs text-muted hover:text-fg">
-                    {tl("live")}
-                  </Link>
-                  <button onClick={() => remove(s.id)} className="text-xs text-muted hover:text-down">
-                    ✕
-                  </button>
+              {latest(shownStrategies, moreStrategies).map((s, i, rows) => (
+                <li key={s.id} className="py-2 text-sm">
+                  {/* A heading when the list has favourites: "Favoris" above the first, "Autres" above the first unstarred one. */}
+                  {rows[0].favorite && (i === 0 || (!s.favorite && rows[i - 1].favorite)) && (
+                    <div className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted">{s.favorite ? tl("Favoris") : tl("Autres")}</div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => star(s.id, !s.favorite)}
+                      aria-pressed={s.favorite}
+                      aria-label={s.favorite ? tl("Retirer des favoris") : tl("Ajouter aux favoris")}
+                      title={s.favorite ? tl("Retirer des favoris") : tl("Ajouter aux favoris")}
+                      className={`text-base leading-none ${s.favorite ? "text-amber-400" : "text-muted/60 hover:text-amber-400"}`}
+                    >
+                      {s.favorite ? "★" : "☆"}
+                    </button>
+                    <Link href={`/strategies/${s.id}`} className="flex-1 hover:text-accent">
+                      {s.name}
+                      <div className="text-[11px] text-muted">
+                        {s.strategy.symbol} · {s.strategy.interval} · {s.strategy.style}
+                      </div>
+                    </Link>
+                    <Link href={`/live?strategy=${s.id}`} className="text-xs text-muted hover:text-fg">
+                      {tl("live")}
+                    </Link>
+                    <button onClick={() => remove(s.id)} className="text-xs text-muted hover:text-down">
+                      ✕
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

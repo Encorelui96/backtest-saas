@@ -109,7 +109,7 @@ function French() {
         <p>
           Tant que ton compte existe. Quand tu le supprimes, ton compte, tes stratégies, tes backtests et ton historique d&apos;utilisation sont effacés immédiatement de la
           base. Les copies de sauvegarde de l&apos;hébergeur disparaissent ensuite au fil de leur renouvellement. Les rapports de backtest sont gardés jusqu&apos;à 200 par
-          compte : au-delà, les plus anciens sont supprimés, sauf ceux que tu as nommés ou partagés.
+          compte : au-delà, les plus anciens sont supprimés, sauf ceux que tu as nommés ou partagés, et ceux d&apos;une stratégie en favori.
         </p>
       </Section>
 
@@ -220,7 +220,7 @@ function English() {
         <p>
           As long as your account exists. When you delete it, your account, your strategies, your backtests and your usage history are erased from the database at once.
           The host&apos;s backup copies then disappear as they are renewed. Backtest reports are kept up to 200 per account: beyond that, the oldest are deleted, except
-          those you named or shared.
+          those you named or shared, and those of a favourite strategy.
         </p>
       </Section>
 
