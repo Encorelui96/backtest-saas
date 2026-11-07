@@ -93,6 +93,9 @@ export async function startTelegram(isStopping: () => boolean) {
       const { rows } = await client.query<{ ok: boolean }>("SELECT pg_try_advisory_lock($1) AS ok", [LOCK]);
       if (rows[0].ok) {
         console.log("[telegram] bot et alertes actifs");
+        if (!process.env.ADMIN_EMAILS && !process.env.ADMIN_USER_IDS) {
+          console.warn("[telegram] ADMIN_EMAILS et ADMIN_USER_IDS absents : un compte admin compte ici comme Gratuit, ses alertes ne partent pas");
+        }
         await Promise.all([pollUpdates(isStopping), alertLoop(isStopping)]);
         await client.query("SELECT pg_advisory_unlock($1)", [LOCK]);
         return;

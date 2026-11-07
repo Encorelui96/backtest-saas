@@ -62,6 +62,12 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      # Same values as the web service: the worker reads the plan before sending an alert,
+      # and an admin account (Pro without paying) would otherwise count as Free there, with no alerts.
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: ADMIN_USER_IDS
+        sync: false
       # The site's address, for the "Voir en direct" link in the alerts.
       - key: SITE_HOST
         value: backtestlab.fr

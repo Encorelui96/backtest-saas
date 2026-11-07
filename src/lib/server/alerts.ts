@@ -164,6 +164,7 @@ interface DueAlert {
   strategy_id: string;
   json: Strategy;
   last_bar: string | null;
+  last_error: string | null;
   chat_id: string;
   lang: string;
   rank: string;
@@ -176,6 +177,8 @@ const RETRY_MS = 60_000;
 const RETRY_FOR_MS = 10 * 60_000;
 /** Per alert, the candle looked for in vain and when: a late or closed market isn't read again every 20 seconds. */
 const missed = new Map<string, { open: number; at: number }>();
+/** Shown on the account page when the worker doesn't check an alert because of the plan, instead of a silence. */
+export const NOT_IN_PLAN = "Ton offre ne couvre pas cette alerte (nombre d'alertes, unité de temps ou indicateurs Pro) : elle n'est pas vérifiée.";
 
 /**
  * The signals of each candle closed after `after` (an open time), oldest
@@ -215,7 +218,7 @@ async function evaluateCloses(strategy: Strategy, now: number, after: number) {
  */
 export async function runAlertChecks(now = Date.now()) {
   const due = await query<DueAlert>(
-    `SELECT a.id, a.user_id, u.email, u."emailVerified" AS email_verified, p.plan, a.strategy_id, s.json, a.last_bar, t.chat_id, t.lang,
+    `SELECT a.id, a.user_id, u.email, u."emailVerified" AS email_verified, p.plan, a.strategy_id, s.json, a.last_bar, a.last_error, t.chat_id, t.lang,
             row_number() OVER (PARTITION BY a.user_id ORDER BY a.created_at) AS rank
      FROM alerts a
      JOIN strategies s ON s.id = a.strategy_id
@@ -229,8 +232,12 @@ export async function runAlertChecks(now = Date.now()) {
     const plan = isAdmin({ id: a.user_id, email: a.email, emailVerified: a.email_verified }) ? PLANS.pro : (PLANS[a.plan ?? "free"] ?? PLANS.free);
     const { strategy } = normalizeStrategy(a.json);
     const ms = INTERVAL_MS[strategy.interval];
-    // Past the plan's limits (after a downgrade, say), the alert waits instead of being deleted.
-    if (Number(a.rank) > plan.alerts || ms < INTERVAL_MS[plan.minInterval] || (!plan.proIndicators && proIndicatorsIn(strategy).length > 0)) continue;
+    // Past the plan's limits (after a downgrade, say), the alert waits instead of being deleted, and the account page says so:
+    // written once, not every 20 seconds. An admin whose ADMIN_* variables are missing on the worker lands here too.
+    if (Number(a.rank) > plan.alerts || ms < INTERVAL_MS[plan.minInterval] || (!plan.proIndicators && proIndicatorsIn(strategy).length > 0)) {
+      if (a.last_error !== NOT_IN_PLAN) await query("UPDATE alerts SET last_error = $2 WHERE id = $1", [a.id, NOT_IN_PLAN]);
+      continue;
+    }
     // Open time of the candle that closed last, once its source has had time to publish it.
     const lastOpen = lastPublishedOpen(strategy.symbol, strategy.interval, now);
     if (a.last_bar !== null && Number(a.last_bar) >= lastOpen) continue;
@@ -243,7 +250,7 @@ export async function runAlertChecks(now = Date.now()) {
       else missed.delete(a.id);
       // A new alert starts from the current candle: an old signal must not arrive the minute it is created.
       if (a.last_bar === null) {
-        await query("UPDATE alerts SET last_bar = $2 WHERE id = $1", [a.id, lastBar]);
+        await query("UPDATE alerts SET last_bar = $2, last_error = NULL WHERE id = $1", [a.id, lastBar]);
         continue;
       }
       if (lastBar <= Number(a.last_bar)) continue;

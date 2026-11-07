@@ -3,11 +3,14 @@ import type { CandleRow } from "../../types";
 
 vi.mock("server-only", () => ({}));
 
-const store = vi.hoisted(() => ({ due: [] as Record<string, unknown>[], updates: [] as unknown[][], deletes: [] as unknown[][] }));
+const store = vi.hoisted(() => ({ due: [] as Record<string, unknown>[], updates: [] as unknown[][], sql: [] as string[], deletes: [] as unknown[][] }));
 vi.mock("../db", () => ({
   query: vi.fn(async (text: string, params: unknown[] = []) => {
     if (text.includes("FROM alerts a")) return store.due;
-    if (text.startsWith("UPDATE alerts")) store.updates.push(params);
+    if (text.startsWith("UPDATE alerts")) {
+      store.updates.push(params);
+      store.sql.push(text);
+    }
     if (text.startsWith("DELETE FROM telegram_links")) store.deletes.push(params);
     return [];
   }),
@@ -30,7 +33,7 @@ vi.mock("../telegram", async (orig) => {
   };
 });
 
-import { alertMessage, runAlertChecks } from "../alerts";
+import { NOT_IN_PLAN, alertMessage, runAlertChecks } from "../alerts";
 import { TelegramError } from "../telegram";
 import { defaultStrategy, num, operand, type Strategy } from "../../strategy/schema";
 
@@ -61,6 +64,7 @@ function alertRow(over: Record<string, unknown> = {}) {
 beforeEach(() => {
   store.due = [];
   store.updates = [];
+  store.sql = [];
   store.deletes = [];
   tg.sent = [];
   tg.fail = null;
@@ -103,7 +107,19 @@ describe("runAlertChecks", () => {
     store.due = [alertRow({ plan: null, last_bar: String(START + 59 * H) })];
     await runAlertChecks(START + 61 * H + 30_000);
     expect(tg.sent).toHaveLength(0);
-    expect(store.updates).toHaveLength(0);
+    // The account page says why, instead of a silence; written once, not at every pass.
+    expect(store.updates).toEqual([["a1", NOT_IN_PLAN]]);
+    store.due = [alertRow({ plan: null, last_bar: String(START + 59 * H), last_error: NOT_IN_PLAN })];
+    await runAlertChecks(START + 61 * H + 50_000);
+    expect(store.updates).toHaveLength(1);
+  });
+
+  it("clears that note once the plan covers the alert again", async () => {
+    market.rows = bars(60, 100);
+    store.due = [alertRow({ last_error: NOT_IN_PLAN })];
+    await runAlertChecks(START + 60 * H + 30_000);
+    expect(store.updates).toEqual([["a1", START + 59 * H]]);
+    expect(store.sql[0]).toContain("last_error = NULL");
   });
 
   it("reads a candle its source publishes late, instead of skipping it", async () => {

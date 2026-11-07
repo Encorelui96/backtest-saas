@@ -121,6 +121,8 @@ export const EN: Record<string, string> = {
   "dernier signal le {0}": "last signal on {0}",
   "aucun signal pour l'instant": "no signal yet",
   "Dernière vérification en erreur : ": "Last check failed: ",
+  "Ton offre ne couvre pas cette alerte (nombre d'alertes, unité de temps ou indicateurs Pro) : elle n'est pas vérifiée.":
+    "Your plan doesn't cover this alert (number of alerts, timeframe or Pro indicators): it isn't checked.",
   "En pause": "Paused",
   "Supprimer": "Delete",
   "Choisir une stratégie…": "Choose a strategy…",
