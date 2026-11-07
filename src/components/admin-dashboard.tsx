@@ -178,7 +178,50 @@ export function AdminDashboard() {
       </Card>
 
       <GrantCredits />
+      <GivePlan />
     </div>
+  );
+}
+
+/** Gives an account an offer by hand: a tester, a partner, a customer who paid another way. */
+function GivePlan() {
+  const tl = useT();
+  const [account, setAccount] = useState("");
+  const [plan, setPlan] = useState<PlanId>("pro");
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const give = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setResult(null);
+    try {
+      const r = await api<{ email: string; label: string }>("/api/admin/plan", { json: { account, plan } });
+      setResult({ ok: true, text: tl("Offre {0:t} appliquée au compte {1}.", [r.label, r.email]) });
+      setAccount("");
+    } catch (err) {
+      setResult({ ok: false, text: (err as Error).message });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <Card title={tl("Offrir une offre")}>
+      <form onSubmit={give} className="flex flex-col gap-2 text-sm">
+        <input value={account} onChange={(e) => setAccount(e.target.value)} placeholder={tl("E-mail ou identifiant du compte")} required />
+        <select value={plan} onChange={(e) => setPlan(e.target.value as PlanId)}>
+          {(Object.keys(PLANS) as PlanId[]).map((id) => (
+            <option key={id} value={id}>
+              {tl(PLANS[id].label)}
+            </option>
+          ))}
+        </select>
+        <button disabled={busy} className="self-start rounded-md bg-accent px-3 py-1.5 font-medium text-white disabled:opacity-50">
+          {tl("Appliquer")}
+        </button>
+        {result && <p className={result.ok ? "text-up" : "text-down"}>{result.text}</p>}
+      </form>
+      <p className="mt-2 text-xs text-muted">{tl("Pour un testeur, un partenaire ou un client qui a payé autrement. Découverte retire l'offre. Prend effet tout de suite.")}</p>
+    </Card>
   );
 }
 
