@@ -71,15 +71,15 @@ services:
       # The site's address, for the "Voir en direct" link in the alerts.
       - key: SITE_HOST
         value: backtestlab.fr
-      # all (default): backtests, bot and alerts in this one process. To keep the alerts
-      # apart from the heavy tests, set "compute" here and add the service below.
+      # Backtests only: the bot and the alerts live in backtest-lab-alerts (below), so a long
+      # test or a memory restart here never delays a signal. "all" would run everything here.
       - key: WORKER_ROLE
-        value: all
+        value: compute
 
-  # Optional, about 7 $ a month: the bot and the alerts on their own, so a long test or a
-  # memory restart of the compute worker never delays a signal. Uncomment it, set the
-  # worker above to WORKER_ROLE=compute, and give this one the same TELEGRAM_BOT_TOKEN,
-  # ADMIN_EMAILS and ADMIN_USER_IDS.
+  # The bot and the alerts, about 7 $ a month. Created by hand in the dashboard on 7 November 2026
+  # (name backtest-lab-alerts, WORKER_ROLE=alerts, same DATABASE_URL, TELEGRAM_BOT_TOKEN,
+  # ADMIN_EMAILS, ADMIN_USER_IDS and SITE_HOST as the worker above). Kept commented out: a
+  # blueprint sync would otherwise create a second copy next to the one that exists.
   # - type: worker
   #   name: backtest-lab-alerts
   #   runtime: node
