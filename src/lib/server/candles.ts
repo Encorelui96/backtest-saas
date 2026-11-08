@@ -132,9 +132,23 @@ function saveMonth(symbol: string, interval: Interval, month: string, rows: Cand
 }
 
 /**
- * Twelve Data allows only a few requests a minute, so one request per month is
- * too slow: every month still missing is fetched in one run of 4500-bar
- * requests, then stored month by month for monthRows to find.
+ * Months fetched from the source in one request run. Twelve Data allows only a
+ * few requests a minute, so one request per month is too slow and the missing
+ * months are fetched together. The run is capped so that the rows of one run
+ * fit in the worker's memory: five years of 1m NQ bars, which Databento sends
+ * as one CSV and the 15m backtest then aggregates, are over two million rows
+ * and used to take the worker down with them.
+ */
+export function prefillBatchMonths(source: Source, interval: Interval): number {
+  const ms = INTERVAL_MS[interval];
+  if (source === "databento") return ms < INTERVAL_MS["1h"] ? 2 : 24;
+  if (ms <= INTERVAL_MS["5m"]) return ms === INTERVAL_MS["1m"] ? 2 : 6;
+  return 24;
+}
+
+/**
+ * Every month still missing is fetched in runs of a few months (see
+ * prefillBatchMonths), then stored month by month for monthRows to find.
  */
 async function prefillMonths(symbol: string, interval: Interval, months: string[], needUntil: number, metered: boolean) {
   const ms = INTERVAL_MS[interval];
@@ -149,12 +163,16 @@ async function prefillMonths(symbol: string, interval: Interval, months: string[
     return !c || !(c.complete || Number(c.filled_to) >= Math.min(needUntil, monthBounds(key).end - ms, lastClosed));
   });
   if (missing.length < 2) return;
-  const fetchTo = Math.min(monthBounds(missing[missing.length - 1]).end - ms, lastClosed);
-  const rows = await fetchHistory(symbol, interval, monthBounds(missing[0]).start, fetchTo, metered);
-  for (const key of missing) {
-    const { start, end } = monthBounds(key);
-    const part = rows.filter((r) => r.t >= start && r.t < end);
-    await saveMonth(symbol, interval, key, part, Math.min(end - ms, lastClosed), end - ms <= lastClosed);
+  const batch = prefillBatchMonths(market(symbol)?.source ?? "binance", interval);
+  for (let i = 0; i < missing.length; i += batch) {
+    const run = missing.slice(i, i + batch);
+    const fetchTo = Math.min(monthBounds(run[run.length - 1]).end - ms, lastClosed);
+    const rows = await fetchHistory(symbol, interval, monthBounds(run[0]).start, fetchTo, metered);
+    for (const key of run) {
+      const { start, end } = monthBounds(key);
+      const part = rows.filter((r) => r.t >= start && r.t < end);
+      await saveMonth(symbol, interval, key, part, Math.min(end - ms, lastClosed), end - ms <= lastClosed);
+    }
   }
 }
 
