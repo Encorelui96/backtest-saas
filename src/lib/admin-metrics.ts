@@ -108,10 +108,27 @@ export function quotaPressure(rows: MonthUse[]) {
   return { near: rows.filter((r) => share(r) >= 0.8 && share(r) < 1).length, at: rows.filter((r) => share(r) >= 1).length };
 }
 
+/** One account in the admin's list of sign-ups. */
+export interface Signup {
+  email: string;
+  emailVerified: boolean;
+  createdAt: number;
+  plan: PlanId;
+  /** Backtests saved since the account was opened. */
+  backtests: number;
+  lastActivity: number | null;
+}
+
+/** Newest sign-ups first, at most `limit` of them: the page stays light however many accounts there are. */
+export function latestSignups(rows: Signup[], limit = 200): Signup[] {
+  return [...rows].sort((a, b) => b.createdAt - a.createdAt).slice(0, limit);
+}
+
 export interface AdminMetrics {
   generatedAt: number;
   funnel: Funnel;
   cohorts: Cohort[];
+  signups: Signup[];
   quotas: { near: number; at: number };
   ai: {
     /** Translations this month, and how many have their tokens recorded. */
