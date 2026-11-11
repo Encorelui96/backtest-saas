@@ -1,5 +1,5 @@
 import "server-only";
-import { cohorts, funnel, quotaPressure, type AdminMetrics } from "../admin-metrics";
+import { cohorts, funnel, latestSignups, quotaPressure, type AdminMetrics } from "../admin-metrics";
 import type { PlanId } from "../plans";
 import { AI_PRICES } from "./ai";
 import { query } from "./db";
@@ -17,9 +17,10 @@ export async function adminMetrics(): Promise<AdminMetrics> {
   const since = monthStart();
   const now = Date.now();
   const [users, ai, feedback, interest, marketRequests] = await Promise.all([
-    query<{ id: string; email: string; email_verified: boolean; created_at: Date; first_backtest: Date | null; last_activity: Date | null; plan: PlanId; backtests_month: string; ai_month: string }>(
+    query<{ id: string; email: string; email_verified: boolean; created_at: Date; first_backtest: Date | null; backtests_total: string; last_activity: Date | null; plan: PlanId; backtests_month: string; ai_month: string }>(
       `SELECT u.id, u.email, u."emailVerified" AS email_verified, u."createdAt" AS created_at,
          (SELECT min(b.created_at) FROM backtests b WHERE b.user_id = u.id) AS first_backtest,
+         (SELECT count(*) FROM backtests b WHERE b.user_id = u.id) AS backtests_total,
          GREATEST(
            (SELECT max(j.created_at) FROM jobs j WHERE j.user_id = u.id),
            (SELECT max(e.created_at) FROM usage_events e WHERE e.user_id = u.id)
@@ -60,14 +61,23 @@ export async function adminMetrics(): Promise<AdminMetrics> {
   }
 
   const count = (a: string) => feedback.filter((f) => f.answer === a).length;
+  // Admins have the Pro plan whatever the table says.
+  const planOf = (u: (typeof users)[number]): PlanId => (isAdmin({ id: u.id, email: u.email, emailVerified: u.email_verified }) ? "pro" : u.plan);
   return {
     generatedAt: now,
     funnel: funnel(rows, now),
     cohorts: cohorts(rows, now),
-    quotas: quotaPressure(
-      // Admins have the Pro plan whatever the table says.
-      users.map((u) => ({ plan: isAdmin({ id: u.id, email: u.email, emailVerified: u.email_verified }) ? "pro" : u.plan, backtests: Number(u.backtests_month), ai: Number(u.ai_month) })),
+    signups: latestSignups(
+      users.map((u) => ({
+        email: u.email,
+        emailVerified: u.email_verified,
+        createdAt: u.created_at.getTime(),
+        plan: planOf(u),
+        backtests: Number(u.backtests_total),
+        lastActivity: time(u.last_activity),
+      })),
     ),
+    quotas: quotaPressure(users.map((u) => ({ plan: planOf(u), backtests: Number(u.backtests_month), ai: Number(u.ai_month) }))),
     ai: {
       calls,
       measured,

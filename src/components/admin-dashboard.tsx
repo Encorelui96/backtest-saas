@@ -5,7 +5,7 @@ import { tr } from "@/lib/i18n";
 import { formatLocale } from "@/lib/client/format";
 import { useT } from "@/lib/client/i18n";
 import { useEffect, useState } from "react";
-import type { AdminMetrics, Ratio } from "@/lib/admin-metrics";
+import type { AdminMetrics, Ratio, Signup } from "@/lib/admin-metrics";
 import { PACKS, PACK_BY_ID, PLANS, euros, type PackId, type PlanId } from "@/lib/plans";
 import { api } from "@/lib/client/api";
 import { Alert, Card, Stat } from "./ui";
@@ -59,6 +59,8 @@ export function AdminDashboard() {
           <Stat label={tl("Délai jusqu'au 1er backtest")} value={hours(f.medianHoursToValue)} hint={tl("médiane des activés")} />
         </div>
       </Card>
+
+      <Signups signups={m.signups} total={f.users} />
 
       <Card title={tl("Rétention : les activés reviennent-ils ?")}>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -180,6 +182,49 @@ export function AdminDashboard() {
       <GrantCredits />
       <GivePlan />
     </div>
+  );
+}
+
+const day = (t: number) => new Date(t).toLocaleDateString(formatLocale(), { day: "numeric", month: "short", year: "numeric" });
+
+/** Who signed up, newest first: what they pay for, how much they backtested, when they were last seen. */
+function Signups({ signups, total }: { signups: Signup[]; total: number }) {
+  const tl = useT();
+  return (
+    <Card title={tl("Liste des inscrits")}>
+      {signups.length === 0 ? (
+        <p className="text-sm text-muted">{tl("Personne ne s'est encore inscrit.")}</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="num w-full text-sm">
+            <thead className="text-xs text-muted">
+              <tr className="text-left">
+                <th className="font-normal">{tl("E-mail")}</th>
+                <th className="whitespace-nowrap font-normal">{tl("Inscrit le")}</th>
+                <th className="font-normal">{tl("Offre")}</th>
+                <th className="text-right font-normal">{tl("Backtests")}</th>
+                <th className="whitespace-nowrap text-right font-normal">{tl("Dernière activité")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {signups.map((s) => (
+                <tr key={s.email} className="border-t border-line/50 align-top">
+                  <td className="max-w-[14rem] py-1.5 pr-3">
+                    <div className="truncate">{s.email}</div>
+                    {!s.emailVerified && <div className="text-[11px] text-muted">{tl("e-mail non vérifié")}</div>}
+                  </td>
+                  <td className="whitespace-nowrap py-1.5 pr-3">{day(s.createdAt)}</td>
+                  <td className="whitespace-nowrap py-1.5 pr-3">{tl(PLANS[s.plan]?.label ?? s.plan)}</td>
+                  <td className="py-1.5 text-right">{s.backtests}</td>
+                  <td className="whitespace-nowrap py-1.5 pl-3 text-right">{s.lastActivity === null ? "—" : day(s.lastActivity)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {total > signups.length && <p className="mt-2 text-xs text-muted">{tl("Les {0} inscriptions les plus récentes sur {1}.", [signups.length, total])}</p>}
+        </div>
+      )}
+    </Card>
   );
 }
 

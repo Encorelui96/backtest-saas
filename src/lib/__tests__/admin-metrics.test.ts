@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cohorts, funnel, median, quotaPressure, weekOf } from "../admin-metrics";
+import { cohorts, funnel, latestSignups, median, quotaPressure, weekOf } from "../admin-metrics";
 
 const DAY = 86_400_000;
 const NOW = Date.UTC(2026, 9, 31, 12); // Saturday 31 October 2026, noon UTC
@@ -62,5 +62,16 @@ describe("quotaPressure", () => {
         { plan: "trader", backtests: 10, ai: 5 },
       ]),
     ).toEqual({ near: 1, at: 2 });
+  });
+});
+
+describe("latestSignups", () => {
+  const signup = (email: string, daysAgo: number) => ({ email, emailVerified: true, createdAt: NOW - daysAgo * DAY, plan: "free" as const, backtests: 0, lastActivity: null });
+
+  it("lists the newest accounts first and caps the list", () => {
+    const rows = [signup("old@x.fr", 30), signup("new@x.fr", 1), signup("mid@x.fr", 10)];
+    expect(latestSignups(rows).map((s) => s.email)).toEqual(["new@x.fr", "mid@x.fr", "old@x.fr"]);
+    expect(latestSignups(rows, 2).map((s) => s.email)).toEqual(["new@x.fr", "mid@x.fr"]);
+    expect(rows[0].email).toBe("old@x.fr");
   });
 });
