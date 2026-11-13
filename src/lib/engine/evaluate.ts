@@ -15,6 +15,7 @@ export class SeriesContext {
   private _local: LocalTimes | null = null;
   private _closeLocal: LocalTimes | null = null;
   private fvg: ReturnType<typeof ind.fairValueGaps> | null = null;
+  private blocks = new Map<string, ReturnType<typeof ind.orderBlocks>>();
   private ha: ReturnType<typeof ind.heikinAshi> | null = null;
 
   constructor(
@@ -204,6 +205,16 @@ export class SeriesContext {
       case "fvg_bear_bottom": {
         const g = this.fvg ?? (this.fvg = ind.fairValueGaps(c.h, c.l, c.c));
         return { fvg: g.signal, fvg_bull_top: g.bullTop, fvg_bull_bottom: g.bullBottom, fvg_bear_top: g.bearTop, fvg_bear_bottom: g.bearBottom }[op.indicator];
+      }
+      case "order_block":
+      case "ob_bull_top":
+      case "ob_bull_bottom":
+      case "ob_bear_top":
+      case "ob_bear_bottom": {
+        const key = `${op.period ?? 5}:${op.period2 ?? 5}`;
+        let b = this.blocks.get(key);
+        if (!b) this.blocks.set(key, (b = ind.orderBlocks(c.o, c.h, c.l, c.c, op.period ?? 5, op.period2 ?? 5)));
+        return { order_block: b.signal, ob_bull_top: b.bullTop, ob_bull_bottom: b.bullBottom, ob_bear_top: b.bearTop, ob_bear_bottom: b.bearBottom }[op.indicator];
       }
       case "ha_open":
       case "ha_high":

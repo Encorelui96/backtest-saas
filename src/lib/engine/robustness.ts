@@ -165,6 +165,11 @@ const OPERAND_LABEL: Partial<Record<Operand["indicator"], string>> = {
   swing_low: "Swing",
   bos: "BOS",
   structure: "Structure",
+  order_block: "Order block",
+  ob_bull_top: "Order block",
+  ob_bull_bottom: "Order block",
+  ob_bear_top: "Order block",
+  ob_bear_bottom: "Order block",
   rsi_divergence: "Divergence RSI",
   macd_divergence: "Divergence MACD",
   stoch_rsi_k: "Stoch RSI",
@@ -175,7 +180,7 @@ const OPERAND_LABEL: Partial<Record<Operand["indicator"], string>> = {
 };
 
 /** Yes/no or −1/0/1 signals: the numbers they are compared with are categories, not thresholds to wiggle. */
-const SIGNALS = new Set<Operand["indicator"]>(["hour", "minute", "weekday", "inside_bar", "engulfing", "pin_bar", "narrow_range", "squeeze", "bos", "structure", "fvg", "rsi_divergence", "macd_divergence"]);
+const SIGNALS = new Set<Operand["indicator"]>(["hour", "minute", "weekday", "inside_bar", "engulfing", "pin_bar", "narrow_range", "squeeze", "bos", "structure", "fvg", "order_block", "rsi_divergence", "macd_divergence"]);
 
 /** Every numeric setting worth wiggling: indicator periods, thresholds, stop and target sizes. */
 export function strategyKnobs(s: Strategy): Knob[] {

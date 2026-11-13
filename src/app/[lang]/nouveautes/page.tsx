@@ -12,6 +12,10 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
   {
     month: "Novembre 2026",
     items: [
+      {
+        title: "Order blocks (ICT)",
+        text: "Nouvel indicateur Pro : la dernière bougie contraire avant le mouvement qui a cassé la structure. Le haut et le bas de la zone restent disponibles tant qu'aucune clôture ne la traverse, et « Order block » vaut 1 ou −1 au premier retour du prix dedans, pour entrer sur la retouche. Compris par l'IA.",
+      },
       { title: "Stratégies favorites", text: "Une étoile à côté de chaque stratégie sur l'accueil. Les favorites passent en tête de liste, et leurs backtests ne sont jamais supprimés par le ménage automatique." },
       { title: "Tests plus légers pour le serveur", text: "Les longs tests en 1 minute consomment bien moins de mémoire et ne font plus tomber le serveur de calcul. Les rapports de backtest sont gardés jusqu'à 200 par compte : nomme ou partage ceux que tu veux garder." },
       {

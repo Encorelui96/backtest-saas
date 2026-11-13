@@ -604,6 +604,67 @@ export function fairValueGaps(h: Arr, l: Arr, c: Arr) {
   return { signal, bullTop, bullBottom, bearTop, bearBottom };
 }
 
+/**
+ * The candle a move started from, between a swing (excluded) and the bar that broke it: the last candle against the
+ * move (bearish for a rise) at or before its most extreme bar (the lowest low for a rise), or that bar if none.
+ */
+function blockOrigin(o: Arr, extreme: Arr, c: Arr, from: number, to: number, bullish: boolean) {
+  let k = to;
+  for (let j = from + 1; j <= to; j++) if (bullish ? extreme[j] <= extreme[k] : extreme[j] >= extreme[k]) k = j;
+  for (let j = k; j > from; j--) if (bullish ? c[j] < o[j] : c[j] > o[j]) return j;
+  return k;
+}
+
+/**
+ * Order blocks, as in ICT / Smart Money Concepts. When a close breaks the latest swing high (`left` and `right` bars
+ * each side, as in `structure`), the last bearish candle before the rise that broke it is the bullish order block:
+ * its high and low make the zone. The mirror for a bearish block. Each zone holds until a close goes through it, or a
+ * newer block of the same side replaces it (NaN when there is none).
+ * `signal` is 1 on the first bar that comes back into the bullish block (its low reaches the top of the zone without
+ * closing below it), −1 the same for the bearish block, else 0: each block is signalled once.
+ */
+export function orderBlocks(o: Arr, h: Arr, l: Arr, c: Arr, left: number, right: number) {
+  const n = c.length;
+  const signal = new Float64Array(n);
+  const bullTop = nanArray(n);
+  const bullBottom = nanArray(n);
+  const bearTop = nanArray(n);
+  const bearBottom = nanArray(n);
+  let [bt, bb, st, sb] = [NaN, NaN, NaN, NaN];
+  let bullFresh = false;
+  let bearFresh = false;
+  let hi = -1;
+  let lo = -1;
+  let hiBroken = true;
+  let loBroken = true;
+  for (let i = 0; i < n; i++) {
+    if (c[i] < bb) [bt, bb, bullFresh] = [NaN, NaN, false];
+    if (c[i] > st) [st, sb, bearFresh] = [NaN, NaN, false];
+    if (bullFresh && l[i] <= bt) {
+      signal[i] = 1;
+      bullFresh = false;
+    } else if (bearFresh && h[i] >= sb) {
+      signal[i] = -1;
+      bearFresh = false;
+    }
+    const ph = pivotAt(h, i, left, right, true);
+    if (ph >= 0) [hi, hiBroken] = [ph, false];
+    const pl = pivotAt(l, i, left, right, false);
+    if (pl >= 0) [lo, loBroken] = [pl, false];
+    if (!hiBroken && c[i] > h[hi]) {
+      hiBroken = true;
+      const j = blockOrigin(o, l, c, hi, i, true);
+      [bt, bb, bullFresh] = [h[j], l[j], true];
+    } else if (!loBroken && c[i] < l[lo]) {
+      loBroken = true;
+      const j = blockOrigin(o, h, c, lo, i, false);
+      [st, sb, bearFresh] = [h[j], l[j], true];
+    }
+    [bullTop[i], bullBottom[i], bearTop[i], bearBottom[i]] = [bt, bb, st, sb];
+  }
+  return { signal, bullTop, bullBottom, bearTop, bearBottom };
+}
+
 /** Heikin Ashi candles: each close is the bar's average price, each open the middle of the previous Heikin Ashi body. */
 export function heikinAshi(o: Arr, h: Arr, l: Arr, c: Arr) {
   const n = c.length;

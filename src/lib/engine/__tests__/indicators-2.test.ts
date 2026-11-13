@@ -3,7 +3,7 @@ import { rowsToCandles, type CandleRow } from "../../types";
 import { PRO_INDICATORS, defaultStrategy, num, operand, proIndicatorsIn, type Strategy } from "../../strategy/schema";
 import { operandLabel } from "../../strategy/describe";
 import { PLANS } from "../../plans";
-import { adx, aroon, cci, cmf, divergence, dmi, fairValueGaps, heikinAshi, hma, sma, stochRsi, structure, swings, williamsR, wma } from "../indicators";
+import { adx, aroon, cci, cmf, divergence, dmi, fairValueGaps, heikinAshi, hma, orderBlocks, sma, stochRsi, structure, swings, williamsR, wma } from "../indicators";
 import { SeriesContext } from "../evaluate";
 
 const F = (xs: number[]) => Float64Array.from(xs);
@@ -134,6 +134,53 @@ describe("market structure", () => {
     expect(Number.isNaN(g.bullTop[5])).toBe(true);
   });
 
+  describe("order blocks", () => {
+    // Swing high 10 at bar 2, a drop to a hammer at bar 6 (the lowest low), then the rise closes above 10 at bar 8.
+    // The last bearish candle at or before the low is bar 5: its high 6 and low 4 make the bullish block.
+    //            0    1    2    3    4    5    6    7    8     9     10   11   12
+    const o = F([3, 3.5, 4.5, 9, 6.5, 5.5, 4.2, 4.8, 7.5, 10.5, 9.5, 7, 6]);
+    const hi = F([4, 5, 10, 9, 7, 6, 5, 8, 11, 11, 9.6, 7.5, 6.2]);
+    const lo = F([2, 3, 4, 6, 5, 4, 3, 4.7, 7.4, 9, 5.5, 5, 3.5]);
+    const cl = F([3.5, 4.5, 9, 6.5, 5.5, 4.5, 4.8, 7.5, 10.5, 9.5, 7, 6, 3.8]);
+
+    it("the last bearish candle before the rise that broke the swing high, from the breaking bar on", () => {
+      const b = orderBlocks(o, hi, lo, cl, 2, 2);
+      expect(Number.isNaN(b.bullTop[7])).toBe(true);
+      expect([b.bullTop[8], b.bullBottom[8]]).toEqual([6, 4]);
+      expect([b.bullTop[11], b.bullBottom[11]]).toEqual([6, 4]);
+    });
+
+    it("signals the first return into the block only, and drops the block when a close goes under it", () => {
+      const b = orderBlocks(o, hi, lo, cl, 2, 2);
+      // Bar 10's low (5.5) reaches the top of the block (6); bar 11 touches it again; bar 12 closes at 3.8, under 4.
+      expect(Array.from(b.signal)).toEqual([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0]);
+      expect(Number.isNaN(b.bullTop[12])).toBe(true);
+      expect(Array.from(b.bearTop).every(Number.isNaN)).toBe(true);
+    });
+
+    it("bearish blocks mirror bullish ones", () => {
+      const neg = (x: Float64Array) => x.map((v) => -v);
+      const b = orderBlocks(neg(o), neg(lo), neg(hi), neg(cl), 2, 2);
+      expect([b.bearTop[8], b.bearBottom[8]]).toEqual([-4, -6]);
+      expect(b.signal[10]).toBe(-1);
+      expect(Array.from(b.signal).filter((x) => x !== 0)).toHaveLength(1);
+      expect(Number.isNaN(b.bearTop[12])).toBe(true);
+    });
+
+    it("never looks ahead: each bar is the same whatever comes after it", () => {
+      const n = wave.length;
+      const wo = wave.map((x, i) => (i ? wave[i - 1] : x));
+      const wh = wave.map((x, i) => Math.max(x, wo[i]) + 0.4 + (i % 3) * 0.2);
+      const wl = wave.map((x, i) => Math.min(x, wo[i]) - 0.4 - (i % 5) * 0.1);
+      const full = orderBlocks(wo, wh, wl, wave, 3, 3);
+      expect(Array.from(full.signal).filter((x) => x !== 0).length).toBeGreaterThan(3);
+      for (const m of [40, 97, 211, n - 1]) {
+        const part = orderBlocks(wo.slice(0, m), wh.slice(0, m), wl.slice(0, m), wave.slice(0, m), 3, 3);
+        for (const k of ["signal", "bullTop", "bullBottom", "bearTop", "bearBottom"] as const) expect(Array.from(part[k]), `${k} up to ${m}`).toEqual(Array.from(full[k].slice(0, m)));
+      }
+    });
+  });
+
   it("Heikin Ashi closes on the average price and opens mid previous body", () => {
     const k = heikinAshi(F([10, 12]), F([13, 14]), F([9, 11]), F([12, 13]));
     expect(k.close[0]).toBe(11);
@@ -182,6 +229,15 @@ describe("engine wiring", () => {
     expect(Array.from(ctx.series(operand("adx", { period: 14 })))).toEqual(Array.from(d.adx));
   });
 
+  it("order blocks come from one computation per swing setting", () => {
+    const b = orderBlocks(c.o, c.h, c.l, c.c, 3, 4);
+    expect(Array.from(ctx.series(operand("ob_bull_top", { period: 3, period2: 4 })))).toEqual(Array.from(b.bullTop));
+    expect(Array.from(ctx.series(operand("ob_bear_bottom", { period: 3, period2: 4 })))).toEqual(Array.from(b.bearBottom));
+    expect(Array.from(ctx.series(operand("order_block", { period: 3, period2: 4 })))).toEqual(Array.from(b.signal));
+    expect(Array.from(ctx.series(operand("order_block")))).toEqual(Array.from(orderBlocks(c.o, c.h, c.l, c.c, 5, 5).signal));
+    expect(operandLabel(operand("ob_bull_bottom", { period: 5, period2: 5 }))).toBe("OB haussier bas(5, 5)");
+  });
+
   it("labels show a source other than the indicator's default", () => {
     expect(operandLabel(operand("sma", { period: 15, source: "hl2" }))).toBe("MM(15, hl2)");
     expect(operandLabel(operand("cci", { period: 20, source: "hlc3" }))).toBe("CCI(20)");
@@ -195,6 +251,8 @@ describe("Pro indicators", () => {
   it("only the Pro plan includes them", () => {
     expect([PLANS.free.proIndicators, PLANS.trader.proIndicators, PLANS.pro.proIndicators]).toEqual([false, false, true]);
     expect(PRO_INDICATORS.has("bos")).toBe(true);
+    expect(PRO_INDICATORS.has("order_block")).toBe(true);
+    expect(PRO_INDICATORS.has("ob_bull_top")).toBe(true);
     expect(PRO_INDICATORS.has("hma")).toBe(false);
   });
 
