@@ -3,6 +3,7 @@ import { UserError, computeBacktest, saveBacktest } from "../lib/server/backtest
 import { notifyFailed, notifyFinished } from "../lib/server/backtest-notice";
 import { pool } from "../lib/server/db";
 import { housekeepingTick } from "../lib/server/housekeeping";
+import { alertAdmins, watchMemory } from "../lib/server/admin-alert";
 import { startTelegram } from "./telegram";
 
 /**
@@ -34,8 +35,10 @@ async function loop() {
   while (!stopping) {
     const job = await claimNext().catch((e) => {
       console.error("[worker] file inaccessible", e);
+      alertAdmins("worker", "file", e);
       return null;
     });
+    watchMemory("worker");
     if (!job) {
       // Idle: the daily purge of old reports and jobs runs here, never while a test waits.
       await housekeepingTick();
@@ -52,6 +55,8 @@ async function loop() {
       console.error(`[worker] ${ref} en échec`, e);
       // Stored as text and values, so the page shows it in its own language.
       const error = e instanceof UserError ? { text: e.text, values: e.values } : { text: "Le calcul a échoué (réf. {0}).", values: [ref] };
+      // An error meant for the user (no data, wrong period) is not a breakdown; anything else is.
+      if (!(e instanceof UserError)) alertAdmins("worker", ref, e);
       await failJob(job.id, JSON.stringify(error)).catch(() => {});
       const payload = BacktestPayload.safeParse(job.payload);
       if (payload.success) await notifyFailed(job, payload.data, error);

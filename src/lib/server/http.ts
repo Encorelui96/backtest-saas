@@ -8,12 +8,14 @@ import { QuotaError } from "./quotas";
 import { TelegramError } from "./telegram";
 import { translate } from "@/lib/i18n";
 import { requestInApp, requestLang } from "./lang";
+import { alertAdmins, watchMemory } from "./admin-alert";
 
 /**
  * Turns thrown errors into JSON responses with a message the UI can show as is.
  * Answers belong to the signed-in user, or to a link its author can withdraw: no cache keeps them unless the route says so.
  */
 export async function handle(fn: () => Promise<Response>): Promise<Response> {
+  watchMemory("site");
   const res = await settle(fn);
   if (!res.headers.has("Cache-Control")) {
     try {
@@ -51,6 +53,7 @@ async function settle(fn: () => Promise<Response>): Promise<Response> {
     // The details stay in the server logs; the browser only gets a generic message.
     const ref = crypto.randomUUID().slice(0, 8);
     console.error(`[${ref}]`, e);
+    alertAdmins("site", ref, e);
     if (e instanceof Anthropic.APIError) return Response.json({ error: t("Erreur de l'IA (réf. {0}). Réessaie dans un instant.", [ref]) }, { status: 502 });
     return Response.json({ error: t("Erreur interne (réf. {0}). Réessaie dans un instant.", [ref]) }, { status: 500 });
   }

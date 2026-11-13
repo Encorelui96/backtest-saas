@@ -5,6 +5,7 @@ import { BacktestConfigSchema, StrategySchema } from "../strategy/schema";
 import type { PoolClient } from "pg";
 import { newId, query, queryOne } from "./db";
 import { refundBacktestCredit } from "./quotas";
+import { alertAdmins } from "./admin-alert";
 
 /**
  * Work queue in Postgres. The web server only inserts; the worker claims jobs
@@ -98,6 +99,8 @@ export async function claimNext(): Promise<Job | null> {
      RETURNING id, status`,
   );
   for (const j of stale) if (j.status === "failed") await refundBacktestCredit(j.id);
+  // A test left running means a worker stopped in the middle of it, most often for lack of memory.
+  if (stale.length) alertAdmins("worker", stale[0].id, new Error(`${stale.length} backtest(s) interrompu(s) : le worker s'est arrêté en plein calcul (mémoire ?).`));
   const r = await queryOne<Row>(
     `UPDATE jobs SET status = 'running', started_at = now(), attempts = attempts + 1, message = 'Démarrage'
      WHERE id = (
