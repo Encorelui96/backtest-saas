@@ -20,7 +20,7 @@ function features(p: Plan) {
     p.historyDays === null ? tr("Tout l'historique") : tr("Historique : les {0} derniers mois", [historyMonths(p)]),
     tr("Crypto, forex, or et Nasdaq"),
     p.advanced ? tr("Robustesse détaillée et comparatif des prop firms") : tr("Verdict de robustesse et challenge prop firm"),
-    ...(p.proIndicators ? [tr("Indicateurs avancés : structure de marché, FVG, Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon, CMF")] : []),
+    ...(p.proIndicators ? [tr("Indicateurs avancés : structure de marché, FVG, order blocks, Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon, CMF")] : []),
     ...(p.live ? [tr("Suivi Live des stratégies")] : []),
     ...(p.alerts ? [tr("{0} alertes Telegram", [p.alerts])] : []),
   ];

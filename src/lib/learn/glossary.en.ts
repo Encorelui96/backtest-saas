@@ -245,6 +245,12 @@ export const GLOSSARY_EN: Record<string, Pick<GlossaryEntry, "term" | "short" | 
     short: "A gap left by a fast move over three candles: the third candle's low stays above the first one's high (bullish FVG), or the reverse.",
     long: "“FVG” equals 1 or −1 on the candle that forms the gap. The top and bottom of the zone stay available until a close goes through it, to trade the price coming back into the zone.",
   },
+  "order-block": {
+    term: "Order block (OB)",
+    short: "The last opposite candle before the move that broke the structure: the last bearish candle before the rise that closed above the last swing high (bullish order block), or the reverse.",
+    long: "That candle's high and low make the zone. It stays available until a close goes through it or a newer order block replaces it. “Order block” equals 1 the first time the price comes back into the bullish zone, −1 into the bearish zone: each zone gives one signal only. Everything is known at the close: the test never looks ahead.",
+    example: "“Order block = 1” on the buy side = buy the first retest of a bullish order block.",
+  },
   "heikin-ashi": {
     term: "Heikin Ashi",
     short: "Smoothed candles: the close is the average of the four prices, the open the middle of the previous body. Trends show as long runs of candles of the same color.",
@@ -569,6 +575,7 @@ export const USES_EN: Record<string, string> = {
   swing: "Set breakout or stop levels on the latest highs and lows.",
   bos: "Follow the market structure, as in Smart Money Concepts.",
   fvg: "Wait for the price to come back into an imbalance to enter.",
+  "order-block": "Enter when the price comes back to the zone the move started from, as in ICT.",
   "heikin-ashi": "Filter out noise and stay in the trend longer.",
   divergence: "Spot a loss of momentum before a reversal.",
   "stoch-rsi": "Time an entry in a pullback.",

@@ -23,6 +23,7 @@ const OVERLAY = new Set<Operand["indicator"]>([
   "supertrend", "psar", "ichimoku_tenkan", "ichimoku_kijun", "ichimoku_span_a", "ichimoku_span_b", "keltner_upper", "keltner_middle", "keltner_lower",
   "prev_week_high", "prev_week_low", "range_high", "range_low", "pivot", "pivot_r1", "pivot_s1", "pivot_r2", "pivot_s2", "cam_r3", "cam_s3", "cam_r4", "cam_s4",
   "wma", "hma", "swing_high", "swing_low", "fvg_bull_top", "fvg_bull_bottom", "fvg_bear_top", "fvg_bear_bottom",
+  "ob_bull_top", "ob_bull_bottom", "ob_bear_top", "ob_bear_bottom",
 ]);
 
 /**
