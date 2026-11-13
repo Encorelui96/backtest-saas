@@ -112,7 +112,7 @@ export const INDICATORS = [
 ] as const;
 export type IndicatorName = (typeof INDICATORS)[number];
 
-/** Indicators reserved to the plans with `proIndicators` (the Pro plan). */
+/** Indicators reserved to the plans with `proIndicators` (the Pro plan). The ICT order blocks are in every plan. */
 export const PRO_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>([
   "swing_high",
   "swing_low",
@@ -123,11 +123,6 @@ export const PRO_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>
   "fvg_bull_bottom",
   "fvg_bear_top",
   "fvg_bear_bottom",
-  "order_block",
-  "ob_bull_top",
-  "ob_bull_bottom",
-  "ob_bear_top",
-  "ob_bear_bottom",
   "ha_open",
   "ha_high",
   "ha_low",
