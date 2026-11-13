@@ -89,6 +89,8 @@ L'unité minimale s'applique aussi au suivi d'une stratégie sur la page Live. L
 - Un mot de passe présent dans une fuite connue (Have I Been Pwned, seuls 5 caractères du hachage sortent du serveur) est refusé à l'inscription et à chaque changement. Si le service ne répond pas en 3 secondes, le mot de passe est accepté.
 - `/api/health` répond 200 quand le site joint sa base, 503 sinon : à donner à une sonde externe. Le contrôle de santé de Render reste sur `/api/me`.
 - `public/.well-known/security.txt` dit où signaler une faille ; sa date `Expires` est à repousser chaque année.
+- Alertes par e-mail aux administrateurs (`src/lib/server/admin-alert.ts`) : erreur inattendue du site, backtest qui plante, worker arrêté en plein calcul, mémoire au-dessus de `MEMORY_ALERT_MB` (420 Mo par défaut). Au plus une alerte toutes les 10 minutes par service ; il faut `RESEND_API_KEY` et `EMAIL_FROM` sur le service concerné.
+- Sonde externe : `.github/workflows/sonde.yml` appelle `/api/health` toutes les 15 minutes ; GitHub envoie son e-mail « workflow en échec » si le site ou la base ne répond pas.
 - Les erreurs inattendues renvoient un message générique avec une référence ; le détail reste dans les logs du serveur.
 
 ## Tests

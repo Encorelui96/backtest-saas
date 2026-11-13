@@ -1,0 +1,20 @@
+# Outside probe: asks the site every 15 minutes whether it answers and reaches its database
+# (/api/health: 200 or 503). A failed run sends GitHub's usual "workflow failed" e-mail.
+# GitHub may start a scheduled run a few minutes late, and pauses schedules after 60 days
+# without activity on the repository.
+name: Sonde
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "7,22,37,52 * * * *"
+
+permissions: {}
+
+jobs:
+  sante:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      # Three tries a few seconds apart: a deploy in progress or one lost request is not an outage.
+      - run: curl --fail --silent --show-error --max-time 20 --retry 3 --retry-delay 15 --retry-all-errors https://backtestlab.fr/api/health
