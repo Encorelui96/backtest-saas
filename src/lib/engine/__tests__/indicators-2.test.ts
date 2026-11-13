@@ -251,9 +251,12 @@ describe("Pro indicators", () => {
   it("only the Pro plan includes them", () => {
     expect([PLANS.free.proIndicators, PLANS.trader.proIndicators, PLANS.pro.proIndicators]).toEqual([false, false, true]);
     expect(PRO_INDICATORS.has("bos")).toBe(true);
-    expect(PRO_INDICATORS.has("order_block")).toBe(true);
-    expect(PRO_INDICATORS.has("ob_bull_top")).toBe(true);
+    expect(PRO_INDICATORS.has("fvg")).toBe(true);
     expect(PRO_INDICATORS.has("hma")).toBe(false);
+  });
+
+  it("leave the ICT order blocks to every plan", () => {
+    for (const i of ["order_block", "ob_bull_top", "ob_bull_bottom", "ob_bear_top", "ob_bear_bottom"] as const) expect(PRO_INDICATORS.has(i), i).toBe(false);
   });
 
   it("are found in the rules a strategy uses, each once", () => {

@@ -152,4 +152,10 @@ describe("Pro indicators", () => {
     db.plan = "pro";
     expect(await checkBacktestAllowed(user, withBos, sql)).toEqual({ useCredit: false });
   });
+
+  it("leave the ICT order blocks to every plan", async () => {
+    db.plan = "free";
+    const withBlock = { ...on("1h"), entryLong: [{ conditions: [{ left: operand("order_block", { period: 5, period2: 5 }), op: "==" as const, right: num(1) }] }] };
+    expect(await checkBacktestAllowed(user, withBlock, sql)).toEqual({ useCredit: false });
+  });
 });
