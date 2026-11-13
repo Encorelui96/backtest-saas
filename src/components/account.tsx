@@ -8,11 +8,13 @@ import { authClient } from "@/lib/client/auth-client";
 import { setSignedInHint } from "@/lib/signed-in-hint";
 import { Alert, Button, Card, Field } from "./ui";
 import { AlertsPanel } from "./alerts-panel";
+import { TwoFactorCard } from "./two-factor-card";
 
 interface Me {
   user: { id: string; email: string; name: string } | null;
   hasPassword: boolean;
   isAdmin: boolean;
+  twoFactor: boolean;
   testEmails: boolean;
   usage: {
     plan: { id: string; label: string; backtestsPerMonth: number; aiPerMonth: number; minInterval: string; historyDays: number | null; alerts: number };
@@ -105,6 +107,7 @@ export function Account() {
       <AlertsPanel />
       <EmailsCard enabled={me.testEmails} />
       <PasswordCard hasPassword={me.hasPassword} onSet={() => setMe({ ...me, hasPassword: true })} />
+      <TwoFactorCard enabled={me.twoFactor} hasPassword={me.hasPassword} isAdmin={me.isAdmin} onChange={(twoFactor) => setMe({ ...me, twoFactor })} />
       <DataCard hasPassword={me.hasPassword} />
       <Button
         variant="ghost"
@@ -257,7 +260,15 @@ function PasswordCard({ hasPassword, onSet }: { hasPassword: boolean; onSet: () 
     try {
       if (hasPassword) {
         const { error } = await authClient.changePassword({ currentPassword: current, newPassword: next, revokeOtherSessions: true });
-        if (error) throw new Error(error.code === "INVALID_PASSWORD" ? tl("Mot de passe actuel incorrect.") : tl("Changement impossible. Réessaie."));
+        if (error) {
+          throw new Error(
+            error.code === "INVALID_PASSWORD"
+              ? tl("Mot de passe actuel incorrect.")
+              : error.code === "PASSWORD_COMPROMISED"
+                ? tl("Ce mot de passe figure dans une fuite de données connue : choisis-en un autre.")
+                : tl("Changement impossible. Réessaie."),
+          );
+        }
         setDone(tl("Mot de passe changé. Tes autres appareils ont été déconnectés."));
       } else {
         await api("/api/password", { json: { password: next } });

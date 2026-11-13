@@ -30,6 +30,7 @@ export function ResetPassword() {
     setBusy(false);
     if (!error) setDone(true);
     else if (error.code === "INVALID_TOKEN") setExpired(true);
+    else if (error.code === "PASSWORD_COMPROMISED") setError(tl("Ce mot de passe figure dans une fuite de données connue : choisis-en un autre."));
     else if (error.status === 429) setError(tl("Trop d'essais : réessaie dans une minute."));
     else setError(tl("Changement impossible. Réessaie."));
   };

@@ -30,7 +30,8 @@ const CSP = [
 const SECURITY_HEADERS = [
   { key: "Content-Security-Policy", value: CSP },
   // Browsers ignore it over plain HTTP, so local development is unaffected.
-  { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  // Sub-domains included: every address of the site (www redirects here) is served over HTTPS.
+  { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

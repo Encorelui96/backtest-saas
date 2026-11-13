@@ -74,7 +74,7 @@ Définis dans `src/lib/plans.ts` :
 | Trader | 15 € / mois | 100 | 50 | 1m | 2 |
 | Pro | 39 € / mois | 1 000 | 200 | 1m | 3 |
 
-L'unité minimale s'applique aussi au suivi d'une stratégie sur la page Live. L'IA est aussi limitée à 5 traductions par minute et par compte, et à `AI_DAILY_CAP` par jour pour tout le site. Le paiement (Stripe) n'est pas encore branché : pour changer l'offre d'un compte, mets la ligne `plans` à jour en base. La page `/tarifs` compte les intérêts pour chaque offre.
+L'unité minimale s'applique aussi au suivi d'une stratégie sur la page Live. L'IA est aussi limitée à 5 traductions par minute et par compte, à `AI_USER_DAILY_CAP` par compte sur 24 heures (40 par défaut), et à `AI_DAILY_CAP` par jour pour tout le site. Le paiement (Stripe) n'est pas encore branché : pour changer l'offre d'un compte, mets la ligne `plans` à jour en base. La page `/tarifs` compte les intérêts pour chaque offre.
 
 **Recharges** (`PACKS` dans `src/lib/plans.ts`) : +50 traductions IA pour 9 €, +100 backtests pour 5 €, les deux pour 12 €. Les crédits n'expirent pas et ne servent qu'une fois le quota du mois épuisé ; un backtest qui échoue rend son crédit. Ils sont tenus dans `credit_ledger`. Tant que le paiement en ligne n'est pas ouvert, la page Tarifs enregistre l'intérêt et l'administrateur crédite un compte depuis `/admin` (« Créditer une recharge »).
 
@@ -84,6 +84,11 @@ L'unité minimale s'applique aussi au suivi d'une stratégie sur la page Live. L
 - Toute requête qui modifie quelque chose doit venir des pages du site (contrôle de l'en-tête `Origin` dans `src/proxy.ts`).
 - En-têtes de sécurité (CSP, HSTS, etc.) dans `next.config.ts`.
 - Limites par minute sur les routes coûteuses, et quota de téléchargement des cours par fournisseur.
+- Les routes ouvertes à tous (rapport partagé, recherche de symboles) sont limitées par adresse IP ; un rapport partagé est gardé une minute en mémoire pour ne pas le décompresser à chaque appel.
+- Double authentification, au choix de chaque compte (carte « Double authentification » de `/compte`) : après le mot de passe, un code à 6 chiffres d'une application d'authentification, ou un des 10 codes de secours. Elle protège la connexion par mot de passe ; le lien par e-mail et Google n'y passent pas. Active-la sur le compte administrateur.
+- Un mot de passe présent dans une fuite connue (Have I Been Pwned, seuls 5 caractères du hachage sortent du serveur) est refusé à l'inscription et à chaque changement. Si le service ne répond pas en 3 secondes, le mot de passe est accepté.
+- `/api/health` répond 200 quand le site joint sa base, 503 sinon : à donner à une sonde externe. Le contrôle de santé de Render reste sur `/api/me`.
+- `public/.well-known/security.txt` dit où signaler une faille ; sa date `Expires` est à repousser chaque année.
 - Les erreurs inattendues renvoient un message générique avec une référence ; le détail reste dans les logs du serveur.
 
 ## Tests

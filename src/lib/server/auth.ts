@@ -1,7 +1,9 @@
 import "server-only";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
-import { magicLink } from "better-auth/plugins";
+import { APIError, createAuthMiddleware } from "better-auth/api";
+import { magicLink, twoFactor } from "better-auth/plugins";
+import { isPasswordCompromised } from "better-auth/plugins/haveibeenpwned";
 import { Resend } from "resend";
 import { pool } from "./db";
 import { translator, type Lang } from "@/lib/i18n";
@@ -56,6 +58,27 @@ async function sendMagicLink({ email, url }: { email: string; url: string }) {
 
 export const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 
+/** The routes that choose a password, and the field that carries it. */
+const NEW_PASSWORD_FIELD: Record<string, string> = {
+  "/sign-up/email": "password",
+  "/change-password": "newPassword",
+  "/reset-password": "newPassword",
+  "/set-password": "newPassword",
+};
+
+/**
+ * Whether the password appears in a known leak (Have I Been Pwned: only the first five characters of its
+ * SHA-1 hash leave the server). When the service doesn't answer within 3 seconds the password is accepted:
+ * a breakdown over there must not stop sign-ups here.
+ */
+async function knownLeaked(password: string): Promise<boolean> {
+  try {
+    return await Promise.race([isPasswordCompromised(password), new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000))]);
+  } catch {
+    return false;
+  }
+}
+
 /** Sign-in attempts per visitor (IP address), on top of better-auth's limit of 100 requests a minute. */
 const ATTEMPTS = { window: 60, max: 5 };
 
@@ -88,6 +111,16 @@ export const auth = betterAuth({
       autoSignInAfterVerification: true,
     },
   }),
+  // A password found in a public leak is refused wherever one is chosen: it is the first one an attacker tries.
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      const field = NEW_PASSWORD_FIELD[ctx.path];
+      if (!field) return;
+      const password = (ctx.body as Record<string, unknown> | undefined)?.[field];
+      if (typeof password !== "string" || !(await knownLeaked(password))) return;
+      throw APIError.from("BAD_REQUEST", { message: "This password appears in a known data leak.", code: "PASSWORD_COMPROMISED" });
+    }),
+  },
   socialProviders: googleEnabled
     ? { google: { clientId: process.env.GOOGLE_CLIENT_ID!, clientSecret: process.env.GOOGLE_CLIENT_SECRET!, prompt: "select_account" } }
     : {},
@@ -117,7 +150,13 @@ export const auth = betterAuth({
   // Behind Render's proxies X-Forwarded-For holds several addresses, which better-auth won't guess from:
   // read the single-value client IP headers first, so sign-in attempts are rate-limited per visitor, not all together.
   advanced: { ipAddress: { ipAddressHeaders: ["cf-connecting-ip", "true-client-ip", "x-real-ip", "x-forwarded-for"] } },
-  plugins: [...(emailLinksEnabled || devSignInLinks ? [magicLink({ sendMagicLink, expiresIn: 10 * 60 })] : []), nextCookies()],
+  plugins: [
+    ...(emailLinksEnabled || devSignInLinks ? [magicLink({ sendMagicLink, expiresIn: 10 * 60 })] : []),
+    // Optional second step after the password: a 6-digit code from an authenticator app, or one of 10 backup codes.
+    // It guards the password sign-in; the e-mail link and Google rely on the mailbox or on Google's own second step.
+    twoFactor({ issuer: "Backtest Lab" }),
+    nextCookies(),
+  ],
 });
 
 export class AuthError extends Error {
@@ -132,12 +171,15 @@ export interface SessionUser {
   name: string;
   /** Whether the owner of the address confirmed it (false for every account until e-mail sending is set up). */
   emailVerified: boolean;
+  /** Whether the password sign-in asks for a code from an authenticator app. */
+  twoFactorEnabled?: boolean;
 }
 
 export async function currentUser(headers: Headers): Promise<SessionUser | null> {
   const session = await auth.api.getSession({ headers });
   if (!session) return null;
-  return { id: session.user.id, email: session.user.email, name: session.user.name, emailVerified: session.user.emailVerified };
+  const { twoFactorEnabled } = session.user as unknown as { twoFactorEnabled?: boolean | null };
+  return { id: session.user.id, email: session.user.email, name: session.user.name, emailVerified: session.user.emailVerified, twoFactorEnabled: Boolean(twoFactorEnabled) };
 }
 
 /** Whether the signed-in user can sign in with a password (accounts made with the e-mail link or Google have none). */

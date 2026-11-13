@@ -32,11 +32,29 @@ function message(error: { code?: string; status?: number; message?: string }, mo
       return tr("Le mot de passe est trop long (128 caractères maximum).");
     case "INVALID_EMAIL":
       return tr("Adresse e-mail invalide.");
+    case "PASSWORD_COMPROMISED":
+      return tr("Ce mot de passe figure dans une fuite de données connue : choisis-en un autre.");
     case "EMAIL_NOT_VERIFIED":
       return tr("Confirme d'abord ton adresse : un e-mail de confirmation vient de t'être renvoyé.");
   }
   if (error.status === 429) return tr("Trop d'essais : réessaie dans une minute.");
   return mode === "signin" ? tr("Connexion impossible. Vérifie ton e-mail et ton mot de passe.") : tr("Création du compte impossible. Réessaie.");
+}
+
+/** The second step's errors (better-auth's two-factor codes) in plain French. */
+function codeMessage(error: { code?: string; status?: number }) {
+  switch (error.code) {
+    case "INVALID_CODE":
+    case "INVALID_BACKUP_CODE":
+      return tr("Code incorrect. Vérifie-le et réessaie.");
+    case "INVALID_TWO_FACTOR_COOKIE":
+      return tr("La vérification a expiré : reconnecte-toi avec ton mot de passe.");
+    case "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE":
+    case "ACCOUNT_TEMPORARILY_LOCKED":
+      return tr("Trop de codes incorrects : réessaie dans quelques minutes.");
+  }
+  if (error.status === 429) return tr("Trop d'essais : réessaie dans une minute.");
+  return tr("Vérification impossible. Réessaie.");
 }
 
 /** What was just sent by e-mail, shown instead of the form. */
@@ -66,6 +84,11 @@ export function SignIn() {
   const [google, setGoogle] = useState(false);
   const [emailLinks, setEmailLinks] = useState(false);
   const [sent, setSent] = useState<Sent | null>(null);
+  // The second step of a password sign-in, for accounts with two-factor authentication on.
+  const [secondStep, setSecondStep] = useState(false);
+  const [code, setCode] = useState("");
+  const [backup, setBackup] = useState(false);
+  const [trust, setTrust] = useState(false);
 
   useEffect(() => {
     api<{ googleEnabled: boolean; emailLinksEnabled: boolean }>("/api/me")
@@ -81,19 +104,42 @@ export function SignIn() {
     setBusy(true);
     setError(null);
     const address = email.trim().toLowerCase();
-    const { error } =
+    const res =
       mode === "signin"
         ? await authClient.signIn.email({ email: address, password })
         : await authClient.signUp.email({ email: address, password, name: address.split("@")[0], callbackURL: back });
-    if (error) {
+    if (res.error) {
       setBusy(false);
-      setError(message(error, mode));
+      setError(message(res.error, mode));
+      return;
+    }
+    // The password was right, but the account asks for a code: no session yet.
+    if (mode === "signin" && (res.data as unknown as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect) {
+      setBusy(false);
+      setSecondStep(true);
       return;
     }
     // With e-mail sending on, a new account opens only once its address is confirmed.
     if (mode === "signup" && emailLinks) {
       setBusy(false);
       setSent("verify");
+      return;
+    }
+    router.replace(next);
+    router.refresh();
+  };
+
+  const verifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    const body = { code: code.trim(), trustDevice: trust };
+    const { error } = backup ? await authClient.twoFactor.verifyBackupCode(body) : await authClient.twoFactor.verifyTotp(body);
+    if (error) {
+      setBusy(false);
+      setError(codeMessage(error));
+      // The 10-minute window is over: back to the password.
+      if (error.code === "INVALID_TWO_FACTOR_COOKIE") setSecondStep(false);
       return;
     }
     router.replace(next);
@@ -143,7 +189,55 @@ export function SignIn() {
           ))}
         </div>
 
-        {sent ? (
+        {secondStep ? (
+          <form onSubmit={verifyCode} className="flex flex-col gap-3">
+            <p className="text-sm text-muted">{backup ? tl("Saisis un de tes codes de secours. Chaque code ne sert qu'une fois.") : tl("Saisis le code à 6 chiffres affiché par ton application d'authentification.")}</p>
+            <Field label={backup ? tl("Code de secours") : tl("Code à 6 chiffres")}>
+              <input
+                required
+                autoFocus
+                inputMode={backup ? "text" : "numeric"}
+                autoComplete="one-time-code"
+                maxLength={backup ? 32 : 6}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                className="num"
+              />
+            </Field>
+            <label className="flex items-center gap-2 text-xs text-muted">
+              <input type="checkbox" checked={trust} onChange={(e) => setTrust(e.target.checked)} />
+              {tl("Ne plus demander de code sur cet appareil pendant 30 jours")}
+            </label>
+            {error && <Alert tone="error">{error}</Alert>}
+            <Button type="submit" disabled={busy || !code.trim()} className="py-2">
+              {busy ? tl("Un instant…") : tl("Vérifier")}
+            </Button>
+            <div className="flex flex-wrap justify-between gap-2 text-xs">
+              <button
+                type="button"
+                className="text-accent hover:underline"
+                onClick={() => {
+                  setBackup((b) => !b);
+                  setCode("");
+                  setError(null);
+                }}
+              >
+                {backup ? tl("Utiliser mon application d'authentification") : tl("Utiliser un code de secours")}
+              </button>
+              <button
+                type="button"
+                className="text-muted hover:text-fg"
+                onClick={() => {
+                  setSecondStep(false);
+                  setCode("");
+                  setError(null);
+                }}
+              >
+                {tl("Revenir")}
+              </button>
+            </div>
+          </form>
+        ) : sent ? (
           <div className="flex flex-col gap-2 text-sm">
             <p className="font-semibold">{tl(SENT[sent].title)}</p>
             <p className="text-muted">
