@@ -40,3 +40,16 @@ jobs:
       - run: npx tsc --noEmit
       - run: npx eslint src
       - run: npx next build
+
+  # Known vulnerabilities in the packages the site ships. For information: it never blocks a merge,
+  # because a new advisory on an untouched package would otherwise fail every pull request.
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm audit --omit=dev --audit-level=high

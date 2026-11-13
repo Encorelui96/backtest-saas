@@ -1,0 +1,5 @@
+# Signaler une faille de sécurité sur Backtest Lab / Report a security issue
+Contact: mailto:service-clients@backtestlab.fr
+Expires: 2027-11-13T00:00:00.000Z
+Preferred-Languages: fr, en
+Canonical: https://backtestlab.fr/.well-known/security.txt

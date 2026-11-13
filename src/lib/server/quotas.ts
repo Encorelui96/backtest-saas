@@ -16,6 +16,9 @@ const AI_PER_MINUTE = 5;
 /** AI translations a day for the whole site: a crowd of new accounts, each with its free quota, can't run up the bill. */
 const AI_DAILY_CAP = Number(process.env.AI_DAILY_CAP) > 0 ? Number(process.env.AI_DAILY_CAP) : 200;
 
+/** AI translations a day for one account: a single account can't use up the whole site's daily cap. */
+const AI_USER_DAILY_CAP = Number(process.env.AI_USER_DAILY_CAP) > 0 ? Number(process.env.AI_USER_DAILY_CAP) : 40;
+
 export class QuotaError extends UserError {
   /** The recharge that would lift this limit, offered next to the message. */
   readonly recharge?: PackId;
@@ -181,6 +184,8 @@ export async function consumeAi(user: SessionUser): Promise<string> {
     if (useCredit && u.credits.ai === 0) throw quotaSpent("Tu as utilisé tes {0} traductions par l'IA du mois (offre {1:t}). Elles reviennent le {2:date}, ou recharge tout de suite : {3:t} pour {4:euros}.", "Tu as utilisé tes {0} traductions par l'IA du mois (offre {1:t}). Elles reviennent le {2:date}.", u.plan.aiPerMonth, u, "ai50");
     const [recent] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'ai' AND created_at > now() - interval '1 minute'", [user.id]);
     if (Number(recent.n) >= AI_PER_MINUTE) throw new QuotaError("Trop de traductions d'affilée : attends une minute.");
+    const [mine] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'ai' AND created_at > now() - interval '1 day'", [user.id]);
+    if (Number(mine.n) >= AI_USER_DAILY_CAP) throw new QuotaError("Tu as atteint la limite de {0} traductions par l'IA sur 24 heures : réessaie demain, ou utilise le constructeur manuel.", [AI_USER_DAILY_CAP]);
     // The site-wide count runs under its own lock, so accounts translating at the same moment can't all slip under the cap.
     await run("SELECT pg_advisory_xact_lock(hashtext('ai:daily'))", []);
     const [today] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE kind = 'ai' AND created_at > now() - interval '1 day'", []);

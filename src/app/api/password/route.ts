@@ -15,7 +15,13 @@ export async function POST(req: Request) {
     await requireUser(req.headers);
     const { password } = Body.parse(await req.json());
     if (await hasPassword(req.headers)) throw new UserError("Ce compte a déjà un mot de passe : utilise « Changer de mot de passe ».");
-    await auth.api.setPassword({ body: { newPassword: password }, headers: req.headers });
+    try {
+      await auth.api.setPassword({ body: { newPassword: password }, headers: req.headers });
+    } catch (e) {
+      // Refused by the leak check in auth.ts: say why instead of "internal error".
+      if ((e as { body?: { code?: string } }).body?.code === "PASSWORD_COMPROMISED") throw new UserError("Ce mot de passe figure dans une fuite de données connue : choisis-en un autre.");
+      throw e;
+    }
     return Response.json({ ok: true });
   });
 }

@@ -20,6 +20,7 @@ export async function GET(req: Request) {
       usage: user ? await usageOf(user) : null,
       hasPassword: user ? await hasPassword(req.headers) : false,
       isAdmin: user ? isAdmin(user) : false,
+      twoFactor: user?.twoFactorEnabled ?? false,
       surveyAnswered: Number(surveyed[0]?.n ?? 0) > 0,
       interests: interests.map((i) => i.plan),
       testEmails: settings[0]?.test_emails ?? true,

@@ -75,7 +75,7 @@ export async function enqueue(userId: string, kind: string, payload: unknown, cl
   return fromRow(r!);
 }
 
-/** The job and its place in the queue, for the progress bar. */
+/** The job and its place in the queue, for the progress bar (an upper bound: accounts are served in turn, see claimNext). */
 export async function getJob(userId: string, id: string): Promise<(Job & { ahead: number }) | null> {
   const r = await queryOne<Row & { ahead: string }>(
     `SELECT j.*, (SELECT count(*) FROM jobs q WHERE q.status = 'queued' AND q.created_at < j.created_at) AS ahead
@@ -85,7 +85,11 @@ export async function getJob(userId: string, id: string): Promise<(Job & { ahead
   return r ? { ...fromRow(r), ahead: Number(r.ahead) } : null;
 }
 
-/** Takes the oldest waiting job. Jobs left running by a crashed worker for 15 minutes are retried once. */
+/**
+ * Takes the next waiting job, the accounts in turn: the one served least in the last 10 minutes goes first,
+ * then the oldest job. A batch of 50 tests no longer keeps the worker while another account waits.
+ * Jobs left running by a crashed worker for 15 minutes are retried once.
+ */
 export async function claimNext(): Promise<Job | null> {
   const stale = await query<{ id: string; status: string }>(
     `UPDATE jobs SET status = CASE WHEN attempts >= 2 THEN 'failed' ELSE 'queued' END,
@@ -96,7 +100,11 @@ export async function claimNext(): Promise<Job | null> {
   for (const j of stale) if (j.status === "failed") await refundBacktestCredit(j.id);
   const r = await queryOne<Row>(
     `UPDATE jobs SET status = 'running', started_at = now(), attempts = attempts + 1, message = 'Démarrage'
-     WHERE id = (SELECT id FROM jobs WHERE status = 'queued' ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1)
+     WHERE id = (
+       SELECT q.id FROM jobs q WHERE q.status = 'queued'
+       ORDER BY (SELECT count(*) FROM jobs r WHERE r.user_id = q.user_id AND r.started_at > now() - interval '10 minutes'), q.created_at
+       FOR UPDATE OF q SKIP LOCKED LIMIT 1
+     )
      RETURNING *`,
   );
   return r ? fromRow(r) : null;
