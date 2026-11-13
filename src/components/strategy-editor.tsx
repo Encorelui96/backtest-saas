@@ -1,5 +1,6 @@
 "use client";
 
+import { pollDelay } from "@/lib/poll-delay";
 import { tr } from "@/lib/i18n";
 import { Link, rich, useRouter, useT, useText } from "@/lib/client/i18n";
 import { NumberInput } from "./number-input";
@@ -200,8 +201,7 @@ export function StrategyEditor({ id }: { id?: string }) {
       const strategyId = await save();
       const { jobId } = await api<{ jobId: string }>("/api/backtests", { json: { strategy, config: period, strategyId } });
       // The worker computes the backtest; follow its progress until the report exists.
-      // Quick at first, so a short test lands fast; every 2 seconds after 30 seconds, a long test's bar doesn't move faster than that.
-      const started = Date.now();
+      let started = 0;
       for (;;) {
         const state = await api<JobState>(`/api/jobs/${jobId}`);
         setJob(state);
@@ -214,7 +214,8 @@ export function StrategyEditor({ id }: { id?: string }) {
           return;
         }
         if (state.status === "failed") throw new Error(state.error ?? tl("Le calcul a échoué."));
-        await new Promise((r) => setTimeout(r, Date.now() - started < 30_000 ? 700 : 2000));
+        if (state.status === "running" && !started) started = Date.now();
+        await new Promise((r) => setTimeout(r, pollDelay(state, started)));
       }
     } catch (e) {
       fail(e);
