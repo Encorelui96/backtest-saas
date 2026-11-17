@@ -509,7 +509,11 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
   const tl = useT();
   const [page, setPage] = useState(0);
   const size = 50;
-  const rows = trades.slice(page * size, page * size + size);
+  // Most recent first. Each row keeps its chronological number and index.
+  const rows = trades
+    .map((t, i) => ({ t, i }))
+    .reverse()
+    .slice(page * size, page * size + size);
   const exportCsv = () => {
     const header = "entree,sortie,sens,prix_entree,prix_sortie,raison,pnl,pnl_pct,r,bougies,annonces";
     const lines = trades.map((t) =>
@@ -543,8 +547,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
     >
       {/* Phones: one compact row per trade. */}
       <ul className="-my-1 flex flex-col divide-y divide-line/50 md:hidden">
-        {rows.map((t, k) => {
-          const i = page * size + k;
+        {rows.map(({ t, i }) => {
           const kinds = tradeEvents(t);
           return (
             <li key={i}>
@@ -591,8 +594,7 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
             </tr>
           </thead>
           <tbody>
-            {rows.map((t, k) => {
-              const i = page * size + k;
+            {rows.map(({ t, i }) => {
               return (
                 <tr key={i} onClick={() => onSelect(i)} className="cursor-pointer border-t border-line/50 hover:bg-panel-2">
                   <td className="text-muted">{i + 1}</td>
@@ -616,12 +618,12 @@ function TradesTable({ trades, hasR, onSelect }: { trades: Trade[]; hasR: boolea
       {trades.length > size && (
         <div className="mt-3 flex items-center gap-3 text-sm">
           <Button variant="ghost" disabled={page === 0} onClick={() => setPage(page - 1)}>
-            {tl("Précédents")}</Button>
+            {tl("Plus récents")}</Button>
           <span className="text-muted">
             {page + 1} / {Math.ceil(trades.length / size)}
           </span>
           <Button variant="ghost" disabled={(page + 1) * size >= trades.length} onClick={() => setPage(page + 1)}>
-            {tl("Suivants")}</Button>
+            {tl("Plus anciens")}</Button>
         </div>
       )}
     </Card>

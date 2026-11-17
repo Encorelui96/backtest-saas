@@ -207,8 +207,8 @@ export const EN: Record<string, string> = {
   "Durée": "Duration",
   "Annonces": "News",
   "Résultat": "Result",
-  "Précédents": "Previous",
-  "Suivants": "Next",
+  "Plus récents": "Newer",
+  "Plus anciens": "Older",
   "4 contrôles pour vérifier que le gain ne vient pas du ": "4 checks that the gain doesn't come from ",
   "L'avantage est-il réel ?": "Is the edge real?",
   "Gain moyen par trade : ": "Average gain per trade: ",
@@ -509,6 +509,7 @@ export const EN: Record<string, string> = {
   "Aucun": "None",
   "En ATR": "In ATR",
   "Plus bas / haut récent": "Recent low / high",
+  "Plus haut / bas récent": "Recent high / low",
   "Multiple d'ATR": "ATR multiple",
   "Nombre de bougies": "Number of candles",
   "Sans stop, une seule perte peut être énorme.": "Without a stop, a single loss can be huge.",
@@ -834,6 +835,7 @@ export const EN: Record<string, string> = {
   " il y a {0} bougie{1}": " {0} candle{1} ago",
   "{0} % sous l'entrée": "{0}% below entry",
   "Au-delà du plus bas/haut des {0} dernières bougies": "Beyond the low/high of the last {0} candles",
+  "Au plus haut/bas des {0} dernières bougies": "At the high/low of the last {0} candles",
   "Décris ta stratégie en français": "Describe your strategy in plain words",
   "L'IA la traduit en règles précises, liste ses choix et te pose des questions quand c'est flou.": "The AI turns it into precise rules, lists its choices and asks you questions when something is unclear.",
   "Un test honnête": "An honest test",
@@ -1474,6 +1476,12 @@ export const EN: Record<string, string> = {
   "Tests plus légers pour le serveur": "Lighter tests for the server",
   "Les longs tests en 1 minute consomment bien moins de mémoire et ne font plus tomber le serveur de calcul. Les rapports de backtest sont gardés jusqu'à 200 par compte : nomme ou partage ceux que tu veux garder.":
     "Long 1-minute tests use far less memory and no longer bring the compute server down. Backtest reports are kept up to 200 per account: name or share the ones you want to keep.",
+  "Objectif au dernier point haut": "Target at the previous high",
+  "Nouvel objectif « Plus haut / bas récent » : un achat est revendu au plus haut des N dernières bougies, au prix exact du niveau et non à l'ouverture suivante. L'IA le choisit quand tu écris « sortir à l'ancien point haut ». Si le prix est déjà au-dessus à l'entrée, le trade n'est pas pris.":
+    "New \"Recent high / low\" target: a buy is sold at the highest high of the last N candles, at the exact level and not at the next open. The AI picks it when you write \"exit at the previous high\". If the price is already above it at entry, the trade is not taken.",
+  "Les trades les plus récents d'abord": "Most recent trades first",
+  "La liste des trades d'un backtest commence maintenant par les plus récents, et chaque trade garde son numéro dans l'ordre chronologique.":
+    "A backtest's trade list now starts with the most recent trades, and each trade keeps its number in chronological order.",
   "Stratégies favorites": "Favourite strategies",
   "Une étoile à côté de chaque stratégie sur l'accueil. Les favorites passent en tête de liste, et leurs backtests ne sont jamais supprimés par le ménage automatique.":
     "A star next to each strategy on the home page. Favourites go to the top of the list, and their backtests are never removed by the automatic clean-up.",

@@ -66,7 +66,7 @@ How the engine works:
   - timeframe: compute the operand on a higher timeframe (e.g. a daily 200 SMA trend filter on a 15m strategy: sma, period 200, timeframe "1d"). Only completed higher-timeframe bars are used. Leave null for the strategy timeframe.
 - Prefer tradingWindow (HH:MM–HH:MM on the signal bar close, local time) and tradingDays to express sessions, and exitAtTime to flatten intraday positions, rather than hour conditions.
 - stop: percent (% from entry), atr (multiple of ATR at the signal bar), swing (value = lookback bars: below the lowest low for longs, above the highest high for shorts), or none.
-- takeProfit: percent, atr, r_multiple (multiple of the stop distance, requires a stop), or none.
+- takeProfit: percent, atr, r_multiple (multiple of the stop distance, requires a stop), swing (value = lookback bars: at the highest high of the last N bars for longs, the lowest low for shorts, signal bar included), or none. "Sortir à l'ancien point haut / au dernier sommet" = takeProfit swing (default 20 bars, or the number the user gives), never an exit condition on highest: an exit condition fills at the next open, a target fills at its price. A signal whose entry is already at or beyond that level is not taken.
 - trailingStop: percent or atr distance from the best price since entry, or none. breakEvenAtR moves the stop to entry after that many R.
 - maxBarsInTrade: time stop in bars.
 - Sizing: with a stop, riskPerTradePercent of equity is lost at the stop. Without stop, positionSizePercent of equity is invested. maxLeverage caps the notional.

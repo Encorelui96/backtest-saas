@@ -61,7 +61,7 @@ export function warmupMs(s: Strategy): number {
     if (o.timeframe && INTERVAL_MS[o.timeframe] > base) continue;
     worst = Math.max(worst, barsNeeded(o) * base, CALENDAR_WARMUP[o.indicator] ?? 0);
   }
-  for (const p of [s.stop.atrPeriod, s.takeProfit.atrPeriod, s.trailingStop.atrPeriod, s.stop.type === "swing" ? s.stop.value : null]) {
+  for (const p of [s.stop.atrPeriod, s.takeProfit.atrPeriod, s.trailingStop.atrPeriod, s.stop.type === "swing" ? s.stop.value : null, s.takeProfit.type === "swing" ? s.takeProfit.value : null]) {
     if (p) worst = Math.max(worst, p * 3 * base);
   }
   return worst;

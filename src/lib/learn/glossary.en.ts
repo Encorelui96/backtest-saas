@@ -296,6 +296,7 @@ export const GLOSSARY_EN: Record<string, Pick<GlossaryEntry, "term" | "short" | 
   objectif: {
     term: "Target (take profit)",
     short: "The price where you take your profit automatically.",
+    example: "\"Recent high / low\" over 20 candles: a buy is sold at the highest high of the last 20 candles, the previous high. If the price is already above it at entry, the trade is not taken.",
   },
   r: {
     term: "R (multiple of risk)",

@@ -442,6 +442,8 @@ export function targetLabel(s: Strategy, t: T = tr): string {
       return `${tp.value} × ATR(${tp.atrPeriod ?? 14})`;
     case "r_multiple":
       return `${tp.value} R`;
+    case "swing":
+      return t("Au plus haut/bas des {0} dernières bougies", [tp.value]);
     default:
       return t("Aucun");
   }

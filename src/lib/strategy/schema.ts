@@ -206,8 +206,11 @@ export const StopSchema = z.object({
 });
 
 export const TakeProfitSchema = z.object({
-  type: z.enum(["none", "percent", "atr", "r_multiple"]),
-  value: z.number().nullable().describe("percent: % distance. atr: ATR multiple. r_multiple: multiple of the stop distance."),
+  type: z.enum(["none", "percent", "atr", "r_multiple", "swing"]),
+  value: z
+    .number()
+    .nullable()
+    .describe("percent: % distance. atr: ATR multiple. r_multiple: multiple of the stop distance. swing: lookback bars for the highest high (longs) / lowest low (shorts), the recent high or low as the target."),
   atrPeriod: z.number().nullable(),
 });
 
