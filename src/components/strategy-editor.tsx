@@ -415,18 +415,34 @@ export function StrategyEditor({ id }: { id?: string }) {
                 <select
                   value={strategy.takeProfit.type}
                   onChange={(e) =>
-                    set("takeProfit", { ...strategy.takeProfit, type: e.target.value as Strategy["takeProfit"]["type"], value: strategy.takeProfit.value ?? 2, atrPeriod: strategy.takeProfit.atrPeriod ?? 14 })
+                    set("takeProfit", {
+                      ...strategy.takeProfit,
+                      type: e.target.value as Strategy["takeProfit"]["type"],
+                      // A number of candles for the recent high / low, a distance for the others.
+                      value: e.target.value === "swing" ? 20 : strategy.takeProfit.type === "swing" ? 2 : (strategy.takeProfit.value ?? 2),
+                      atrPeriod: strategy.takeProfit.atrPeriod ?? 14,
+                    })
                   }
                 >
                   <option value="none">{tl("Aucun")}</option>
                   <option value="r_multiple">{tl("En R (× le stop)")}</option>
                   <option value="percent">{tl("En %")}</option>
                   <option value="atr">{tl("En ATR")}</option>
+                  <option value="swing">{tl("Plus haut / bas récent")}</option>
                 </select>
               </Field>
               {strategy.takeProfit.type !== "none" && (
-                <Field label={strategy.takeProfit.type === "r_multiple" ? tl("Objectif en R") : tl("Valeur de l'objectif")} term={strategy.takeProfit.type === "r_multiple" ? "r" : undefined}>
-                  <NumberInput nullable step={0.1} min={0} value={strategy.takeProfit.value} onChange={(v) => set("takeProfit", { ...strategy.takeProfit, value: v })} />
+                <Field
+                  label={strategy.takeProfit.type === "r_multiple" ? tl("Objectif en R") : strategy.takeProfit.type === "swing" ? tl("Nombre de bougies") : tl("Valeur de l'objectif")}
+                  term={strategy.takeProfit.type === "r_multiple" ? "r" : undefined}
+                >
+                  <NumberInput
+                    nullable
+                    step={strategy.takeProfit.type === "swing" ? 1 : 0.1}
+                    min={0}
+                    value={strategy.takeProfit.value}
+                    onChange={(v) => set("takeProfit", { ...strategy.takeProfit, value: v })}
+                  />
                 </Field>
               )}
               <Field label={tl("Risque par trade (%)")} term="risque-par-trade">

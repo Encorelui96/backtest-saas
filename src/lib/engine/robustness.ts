@@ -240,7 +240,7 @@ export function strategyKnobs(s: Strategy): Knob[] {
     knobs.push({ label: `Stop (${s.stop.type}) ${s.stop.value}`, base: s.stop.value, integer: s.stop.type === "swing", apply: (x, v) => (x.stop.value = v) });
   }
   if (s.takeProfit.type !== "none" && s.takeProfit.value) {
-    knobs.push({ label: `Objectif (${s.takeProfit.type}) ${s.takeProfit.value}`, base: s.takeProfit.value, integer: false, apply: (x, v) => (x.takeProfit.value = v) });
+    knobs.push({ label: `Objectif (${s.takeProfit.type}) ${s.takeProfit.value}`, base: s.takeProfit.value, integer: s.takeProfit.type === "swing", apply: (x, v) => (x.takeProfit.value = v) });
   }
   if (s.trailingStop.type !== "none" && s.trailingStop.value) {
     knobs.push({ label: `Stop suiveur ${s.trailingStop.value}`, base: s.trailingStop.value, integer: false, apply: (x, v) => (x.trailingStop.value = v) });

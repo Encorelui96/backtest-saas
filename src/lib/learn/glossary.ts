@@ -451,6 +451,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "Objectif (take profit)",
     category: "risque",
     short: "Le prix où tu encaisses ton gain automatiquement.",
+    example: "« Plus haut / bas récent » sur 20 bougies : un achat est revendu au plus haut des 20 dernières bougies, l'ancien point haut. Si le prix est déjà au-dessus à l'entrée, le trade n'est pas pris.",
   },
   {
     id: "r",

@@ -74,6 +74,10 @@ export function runBacktest(
   const trailAtr = strategy.trailingStop.type === "atr" ? ctxAtr(ctx, strategy.trailingStop.atrPeriod ?? 14) : null;
   const swingLow = strategy.stop.type === "swing" ? ind.lowest(l, Math.max(1, Math.round(strategy.stop.value ?? 10))) : null;
   const swingHigh = strategy.stop.type === "swing" ? ind.highest(h, Math.max(1, Math.round(strategy.stop.value ?? 10))) : null;
+  // Target at the recent high (longs) or low (shorts): the highest high / lowest low of the last N bars, signal bar included.
+  const tpBars = Math.max(1, Math.round(strategy.takeProfit.value ?? 20));
+  const tpHigh = strategy.takeProfit.type === "swing" ? ind.highest(h, tpBars) : null;
+  const tpLow = strategy.takeProfit.type === "swing" ? ind.lowest(l, tpBars) : null;
 
   const fee = config.feePercent / 100;
   const halfSpread = config.spreadPercent / 200;
@@ -188,6 +192,14 @@ export function runBacktest(
     if (tp.type === "percent") target = entryPrice * (1 + side * (tp.value! / 100));
     else if (tp.type === "atr") target = entryPrice + side * tp.value! * tpAtr![signalIndex];
     else if (tp.type === "r_multiple" && stopDist) target = entryPrice + side * tp.value! * stopDist;
+    else if (tp.type === "swing") {
+      target = side === 1 ? tpHigh![signalIndex] : tpLow![signalIndex];
+      // Already at or beyond the recent high / low: no room to the target, the signal is not taken.
+      if (Number.isNaN(target) || side * (target - entryPrice) <= 0) {
+        skipped++;
+        return;
+      }
+    }
     if (target !== null && Number.isNaN(target)) target = null;
 
     const maxNotional = equity * strategy.maxLeverage;

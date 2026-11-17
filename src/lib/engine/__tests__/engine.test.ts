@@ -170,6 +170,37 @@ describe("backtest", () => {
     expect(run.trades[0].r).toBeCloseTo(2);
   });
 
+  it("takes the target at the recent high, at its price", () => {
+    // A wick to 110 at bar 1, then a signal at bar 4 (close 104 > 103) and an entry at the bar 5 open (104).
+    const bars: [number, number, number, number][] = [
+      [100, 100, 100, 100],
+      [100, 110, 100, 100],
+      [100, 100, 99, 99],
+      [99, 100, 99, 100],
+      [100, 104, 100, 104],
+      [104, 106, 103, 106],
+      [106, 112, 105, 111],
+      [111, 112, 110, 112],
+    ];
+    const rows: CandleRow[] = bars.map(([o, h, l, c], i) => ({ t: T0 + i * H, o, h, l, c, v: 1 }));
+    const s = longWhenCloseAbove(103, { takeProfit: { type: "swing", value: 5, atrPeriod: null }, maxLeverage: 1 });
+    const run = runBacktest(rowsToCandles(rows), s, noCosts);
+    const t = run.trades[0];
+    expect(t.entryPrice).toBe(104);
+    expect(t.targetPrice).toBe(110); // highest high of the 5 bars up to the signal bar
+    expect(t.exitReason).toBe("target");
+    expect(t.exitPrice).toBe(110); // bar 6 trades from 106 to 112: filled at the target, not at the close
+  });
+
+  it("skips the signal when the entry is already above the recent high", () => {
+    const closes = [100, 101, 102, 103, 104, 105, 106];
+    const c = candlesFromCloses(closes, H, 0);
+    const s = longWhenCloseAbove(102.5, { takeProfit: { type: "swing", value: 3, atrPeriod: null }, maxLeverage: 1 });
+    const run = runBacktest(c, s, noCosts);
+    expect(run.trades).toHaveLength(0);
+    expect(run.skippedSignals).toBeGreaterThan(0);
+  });
+
   it("charges fees, spread and slippage", () => {
     const closes = [100, 100, 105, 110, 115, 120, 90, 90];
     const c = candlesFromCloses(closes);

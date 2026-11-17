@@ -13,6 +13,11 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
     month: "Novembre 2026",
     items: [
       {
+        title: "Objectif au dernier point haut",
+        text: "Nouvel objectif « Plus haut / bas récent » : un achat est revendu au plus haut des N dernières bougies, au prix exact du niveau et non à l'ouverture suivante. L'IA le choisit quand tu écris « sortir à l'ancien point haut ». Si le prix est déjà au-dessus à l'entrée, le trade n'est pas pris.",
+      },
+      { title: "Les trades les plus récents d'abord", text: "La liste des trades d'un backtest commence maintenant par les plus récents, et chaque trade garde son numéro dans l'ordre chronologique." },
+      {
         title: "Order blocks (ICT) pour tout le monde",
         text: "Nouvel indicateur, dans toutes les offres, gratuite comprise : la dernière bougie contraire avant le mouvement qui a cassé la structure. Le haut et le bas de la zone restent disponibles tant qu'aucune clôture ne la traverse, et « Order block » vaut 1 ou −1 au premier retour du prix dedans, pour entrer sur la retouche. Groupe « ICT : order blocks » de l'éditeur de règles. Compris par l'IA.",
       },
