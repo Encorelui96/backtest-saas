@@ -22,8 +22,8 @@ export async function sendWelcome(userId: string, lang: Lang): Promise<boolean> 
     let user = null;
     for (let attempt = 0; attempt < 3 && !user; attempt++) {
       if (attempt) await new Promise((r) => setTimeout(r, 1500));
-      user = await queryOne<{ email: string; name: string | null; email_verified: boolean; created_at: Date }>(
-        `SELECT email, name, "emailVerified" AS email_verified, "createdAt" AS created_at FROM "user" WHERE id = $1`,
+      user = await queryOne<{ email: string; email_verified: boolean; created_at: Date }>(
+        `SELECT email, "emailVerified" AS email_verified, "createdAt" AS created_at FROM "user" WHERE id = $1`,
         [userId],
       );
     }
@@ -36,7 +36,7 @@ export async function sendWelcome(userId: string, lang: Lang): Promise<boolean> 
       [userId],
     );
     if (!claimed) return false;
-    const { error } = await new Resend(key).emails.send({ from, to: user.email, ...welcomeEmail({ lang, name: user.name, site: siteUrl() }) });
+    const { error } = await new Resend(key).emails.send({ from, to: user.email, ...welcomeEmail({ lang, site: siteUrl() }) });
     if (error) {
       // Released, so the next confirmation or sign-in can try again.
       await query(`UPDATE user_settings SET welcome_sent_at = NULL WHERE user_id = $1`, [userId]).catch(() => undefined);

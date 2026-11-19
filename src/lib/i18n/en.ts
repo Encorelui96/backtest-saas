@@ -1532,7 +1532,6 @@ export const EN: Record<string, string> = {
   "Tu as atteint la limite de {0} traductions par l'IA sur 24 heures : réessaie demain, ou utilise le constructeur manuel.": "You've reached the limit of {0} AI translations in 24 hours: try again tomorrow, or use the manual builder.",
   // Welcome e-mail
   "Bienvenue sur Backtest Lab": "Welcome to Backtest Lab",
-  "Bienvenue {0} !": "Welcome, {0}!",
   "Bienvenue !": "Welcome!",
   "Ici, tu testes ta stratégie sur des années de cours, frais compris, avant d'y mettre ton argent.": "Here you test your strategy on years of prices, fees included, before you put your money on it.",
   "Pour bien démarrer :": "To get started:",

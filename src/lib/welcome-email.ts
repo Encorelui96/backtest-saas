@@ -19,18 +19,10 @@ export function welcomeDue(user: { emailVerified: boolean; createdAt: Date | str
   return user.emailVerified && Number.isFinite(created) && now - created <= WELCOME_WINDOW_MS;
 }
 
-/** The first word of the name, unless the name is an address or empty. */
-export function firstName(name: string | null | undefined): string {
-  const first = (name ?? "").trim().split(/\s+/)[0] ?? "";
-  if (!first || first.includes("@") || first.length > 30) return "";
-  return first;
-}
-
-export function welcomeEmail({ lang, name, site }: { lang: Lang; name: string | null | undefined; site: string }): BacktestEmail {
+export function welcomeEmail({ lang, site }: { lang: Lang; site: string }): BacktestEmail {
   const t = translator(lang);
   const free = PLANS.free;
-  const who = firstName(name);
-  const title = who ? t("Bienvenue {0} !", [who]) : t("Bienvenue !");
+  const title = t("Bienvenue !");
   const intro = t("Ici, tu testes ta stratégie sur des années de cours, frais compris, avant d'y mettre ton argent.");
   const start = t("Pour bien démarrer :");
   const steps = [
