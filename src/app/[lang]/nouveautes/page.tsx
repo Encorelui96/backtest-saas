@@ -13,6 +13,10 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
     month: "Novembre 2026",
     items: [
       {
+        title: "Un e-mail de bienvenue",
+        text: "Chaque nouveau compte reçoit un e-mail de bienvenue dès que son adresse est confirmée : comment lancer son premier backtest et ce que comprend l'offre gratuite. Il n'est envoyé qu'une fois.",
+      },
+      {
         title: "Objectif au dernier point haut",
         text: "Nouvel objectif « Plus haut / bas récent » : un achat est revendu au plus haut des N dernières bougies, au prix exact du niveau et non à l'ouverture suivante. L'IA le choisit quand tu écris « sortir à l'ancien point haut ». Si le prix est déjà au-dessus à l'entrée, le trade n'est pas pris.",
       },

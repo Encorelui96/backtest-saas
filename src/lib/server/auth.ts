@@ -7,6 +7,7 @@ import { isPasswordCompromised } from "better-auth/plugins/haveibeenpwned";
 import { Resend } from "resend";
 import { pool } from "./db";
 import { translator, type Lang } from "@/lib/i18n";
+import { sendWelcome } from "./welcome";
 
 /**
  * Accounts: e-mail and password, plus Google when its keys are set. Everything
@@ -46,6 +47,18 @@ async function sendLinkEmail(to: string, subject: string, action: string, url: s
     html: t("<p>Bonjour,</p><p><a href=\"{2}\">Clique ici {0}</a>. Le lien est valable {1}.</p><p>Si tu n'as rien demandé, ignore ce message.</p>", [a, v, attr(url)]),
   });
   if (error) throw new Error(`Envoi de l'e-mail impossible : ${error.message}`);
+}
+
+/** The language of the page the person came from, when the request carries it (callbackURL). */
+function langOfContext(ctx: unknown): Lang {
+  const c = ctx as { query?: Record<string, unknown>; body?: Record<string, unknown> } | null | undefined;
+  const back = c?.query?.callbackURL ?? c?.body?.callbackURL;
+  if (typeof back !== "string") return "fr";
+  try {
+    return /^\/en(\/|$)/.test(new URL(back, "http://localhost").pathname) ? "en" : "fr";
+  } catch {
+    return "fr";
+  }
 }
 
 async function sendMagicLink({ email, url }: { email: string; url: string }) {
@@ -111,6 +124,22 @@ export const auth = betterAuth({
       autoSignInAfterVerification: true,
     },
   }),
+  // The welcome e-mail, once per account, as soon as its address is confirmed: at creation for Google and the
+  // e-mail link, at the address check for a password. Sent in the background (lib/server/welcome).
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user, ctx) => {
+          if (user.emailVerified) void sendWelcome(user.id, langOfContext(ctx));
+        },
+      },
+      update: {
+        after: async (user, ctx) => {
+          if (user.emailVerified) void sendWelcome(user.id, langOfContext(ctx));
+        },
+      },
+    },
+  },
   // A password found in a public leak is refused wherever one is chosen: it is the first one an attacker tries.
   hooks: {
     before: createAuthMiddleware(async (ctx) => {

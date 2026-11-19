@@ -1530,4 +1530,18 @@ export const EN: Record<string, string> = {
   "Désactiver": "Turn off",
   "Trop de demandes d'affilée : attends une minute.": "Too many requests in a row: wait a minute.",
   "Tu as atteint la limite de {0} traductions par l'IA sur 24 heures : réessaie demain, ou utilise le constructeur manuel.": "You've reached the limit of {0} AI translations in 24 hours: try again tomorrow, or use the manual builder.",
+  // Welcome e-mail
+  "Bienvenue sur Backtest Lab": "Welcome to Backtest Lab",
+  "Bienvenue !": "Welcome!",
+  "Ici, tu testes ta stratégie sur des années de cours, frais compris, avant d'y mettre ton argent.": "Here you test your strategy on years of prices, fees included, before you put your money on it.",
+  "Pour bien démarrer :": "To get started:",
+  "Décris ton idée en français : l'IA la traduit en règles.": "Describe your idea in plain words: the AI turns it into rules.",
+  "Choisis ton marché (crypto, forex, or ou Nasdaq) et lance le test.": "Pick your market (crypto, forex, gold or Nasdaq) and run the test.",
+  "Regarde le verdict : rendement, baisse maximale et contrôles de robustesse.": "Read the verdict: return, maximum drawdown and robustness checks.",
+  "Ton offre {0} comprend {1} backtests et {2} traductions par l'IA chaque mois, sans carte bancaire.": "Your {0} plan includes {1} backtests and {2} AI translations every month, no credit card needed.",
+  "Lancer mon premier backtest": "Run my first backtest",
+  "Backtest Lab est un outil de simulation : les résultats passés ne garantissent pas les résultats futurs.": "Backtest Lab is a simulation tool: past results don't guarantee future results.",
+  "Tu reçois cet e-mail une seule fois, parce que tu viens de créer ton compte.": "You get this e-mail once, because you just created your account.",
+  "Un e-mail de bienvenue": "A welcome e-mail",
+  "Chaque nouveau compte reçoit un e-mail de bienvenue dès que son adresse est confirmée : comment lancer son premier backtest et ce que comprend l'offre gratuite. Il n'est envoyé qu'une fois.": "Every new account gets a welcome e-mail as soon as its address is confirmed: how to run a first backtest and what the free plan includes. It is sent only once.",
 };

@@ -111,6 +111,8 @@ CREATE TABLE IF NOT EXISTS user_settings (
   user_id text PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
   test_emails boolean NOT NULL DEFAULT true
 );
+-- When the welcome e-mail left: it is sent once per account.
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS welcome_sent_at timestamptz;
 
 -- Candles shared by every user: one gzipped chunk per symbol, interval and UTC month.
 CREATE TABLE IF NOT EXISTS candle_chunks (
