@@ -1542,6 +1542,8 @@ export const EN: Record<string, string> = {
   "Lancer mon premier backtest": "Run my first backtest",
   "Backtest Lab est un outil de simulation : les résultats passés ne garantissent pas les résultats futurs.": "Backtest Lab is a simulation tool: past results don't guarantee future results.",
   "Tu reçois cet e-mail une seule fois, parce que tu viens de créer ton compte.": "You get this e-mail once, because you just created your account.",
+  "Un journal de trading": "A trading journal",
+  "Note tes trades réels dans un espace à part, l'onglet Journal : résultat en R, respect de ton plan, registre des erreurs, calendrier et note du jour. Remplis un trade depuis une capture de MetaTrader ou cTrader, garde tes graphiques et fais-les analyser par l'IA si tu veux. Le tableau de bord complet (courbe des R, baisse max, analyses) vient avec les offres Trader et Pro.": "Log your real trades in a space of their own, the Journal tab: result in R, whether you followed your plan, mistake log, calendar and daily note. Fill in a trade from a MetaTrader or cTrader screenshot, keep your charts and have the AI review them if you like. The full dashboard (R curve, max drawdown, analyses) comes with the Trader and Pro plans.",
   "Un e-mail de bienvenue": "A welcome e-mail",
   "Chaque nouveau compte reçoit un e-mail de bienvenue dès que son adresse est confirmée : comment lancer son premier backtest et ce que comprend l'offre gratuite. Il n'est envoyé qu'une fois.": "Every new account gets a welcome e-mail as soon as its address is confirmed: how to run a first backtest and what the free plan includes. It is sent only once.",
   // Trading journal
