@@ -358,7 +358,7 @@ export function ImportDialog({ data, accountId, onDone, onCancel }: { data: Jour
               {!missing.length && (
                 <>
                   <p>
-                    <span className="font-semibold">{tl("{0} trades prêts à importer", [ready.length])}</span>
+                    <span className="font-semibold">{ready.length === 1 ? tl("1 trade prêt à importer") : tl("{0} trades prêts à importer", [ready.length])}</span>
                     {knownCount > 0 && <span className="text-muted"> · {tl("{0} déjà dans le journal", [knownCount])}</span>}
                     {broken.length > 0 && <span className="text-warn"> · {tl("{0} à corriger dans le fichier", [broken.length])}</span>}
                   </p>
@@ -386,7 +386,7 @@ export function ImportDialog({ data, accountId, onDone, onCancel }: { data: Jour
                           <span className="font-medium">{c.draft.market}</span>
                           {c.draft.side && <SideBadge side={c.draft.side} />}
                           <span className="num text-xs text-muted">
-                            {c.draft.size} · {price(c.draft.entry!)} → {c.draft.exit !== null ? price(c.draft.exit) : "…"}
+                            {price(c.draft.size!)} · {price(c.draft.entry!)} → {c.draft.exit !== null ? price(c.draft.exit) : "…"}
                           </span>
                           {c.draft.exit === null && <span className="rounded bg-accent/15 px-1 text-[10px] text-accent">{tl("en cours")}</span>}
                           {c.draft.stop === null && <span className="rounded bg-panel-2 px-1 text-[10px] text-muted">{tl("sans stop")}</span>}

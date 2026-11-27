@@ -8,9 +8,10 @@ export async function generateMetadata({ params }: PageProps<"/[lang]/tarifs">):
   const { lang, t } = await pageLang(params);
   return {
     title: t("Tarifs · Backtest Lab"),
-    description: t("Estime tes chances sur un challenge prop firm gratuitement ({0} backtests par mois). Offres Trader à {1} et Pro à {2} par mois, 2 mois offerts à l'année.", [
+    description: t("Estime tes chances sur un challenge prop firm gratuitement ({0} backtests par mois). Offres Trader à {1}, Avancé à {2} et Pro à {3} par mois, 2 mois offerts à l'année.", [
       PLANS.free.backtestsPerMonth,
       euros(PLANS.trader.monthly, lang),
+      euros(PLANS.advanced.monthly, lang),
       euros(PLANS.pro.monthly, lang),
     ]),
   };
@@ -23,7 +24,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Que réservent les offres payantes ?",
-    a: "Les unités 1 et 5 minutes, tout l'historique au lieu des 12 derniers mois, le détail des contrôles de robustesse (Monte Carlo, réglages voisins), le comparatif côte à côte des prop firms et le suivi Live de tes stratégies. Le verdict reste lisible avec l'offre gratuite.",
+    a: "Les unités 1 et 5 minutes, tout l'historique au lieu des 12 derniers mois, le détail des contrôles de robustesse (Monte Carlo, réglages voisins), le comparatif côte à côte des prop firms, le suivi Live de tes stratégies, les alertes Telegram, le journal complet et des indicateurs en plus (Heikin Ashi, Stoch RSI, Aroon, CMF). Les offres Avancé et Pro ajoutent la structure de marché, les FVG, les divergences et plus de tests chaque mois. Le verdict reste lisible avec l'offre gratuite.",
   },
   {
     q: "Qu'est-ce qu'un backtest compte ?",
@@ -50,7 +51,7 @@ const FAQ: { q: string; a: string }[] = [
 export default async function TarifsPage({ params }: PageProps<"/[lang]/tarifs">) {
   const { t } = await pageLang(params);
   return (
-    <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-6">
+    <div className="mx-auto flex max-w-6xl flex-col gap-8 pb-6">
       <header className="text-center">
         <h1 className="text-2xl font-semibold sm:text-3xl">{t("Des tarifs simples")}</h1>
         <p className="mx-auto mt-2 max-w-xl text-sm text-muted sm:text-base">

@@ -323,7 +323,7 @@ export function JournalAccounts({ data, onChanged }: { data: JournalData; onChan
         </Card>
       ) : full ? (
         data.plan.accounts === 1 ? (
-          <PlanLock>{tl("Suivre plusieurs comptes (réel, démo, challenge) fait partie des offres Trader et Pro.")}</PlanLock>
+          <PlanLock>{tl("Suivre plusieurs comptes (réel, démo, challenge) fait partie des offres payantes.")}</PlanLock>
         ) : (
           <p className="text-sm text-muted">{tl("Tu as atteint {0} comptes : archive ou supprime un compte pour en ajouter un.", [data.plan.accounts])}</p>
         )

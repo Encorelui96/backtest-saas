@@ -2,7 +2,7 @@ import "server-only";
 import { randomBytes } from "node:crypto";
 import type { Strategy } from "../strategy/schema";
 import { lastPublishedOpen, market } from "../markets";
-import { normalizeStrategy, proIndicatorsIn } from "../strategy/schema";
+import { lockedIndicatorsIn, normalizeStrategy } from "../strategy/schema";
 import { stopLabel, targetLabel } from "../strategy/describe";
 import { higherTimeframeWarmupMs, higherTimeframes, warmupMs } from "../strategy/warmup";
 import { INTERVAL_MS, rowsToCandles } from "../types";
@@ -234,7 +234,7 @@ export async function runAlertChecks(now = Date.now()) {
     const ms = INTERVAL_MS[strategy.interval];
     // Past the plan's limits (after a downgrade, say), the alert waits instead of being deleted, and the account page says so:
     // written once, not every 20 seconds. An admin whose ADMIN_* variables are missing on the worker lands here too.
-    if (Number(a.rank) > plan.alerts || ms < INTERVAL_MS[plan.minInterval] || (!plan.proIndicators && proIndicatorsIn(strategy).length > 0)) {
+    if (Number(a.rank) > plan.alerts || ms < INTERVAL_MS[plan.minInterval] || lockedIndicatorsIn(strategy, plan.indicatorTier).length > 0) {
       if (a.last_error !== NOT_IN_PLAN) await query("UPDATE alerts SET last_error = $2 WHERE id = $1", [a.id, NOT_IN_PLAN]);
       continue;
     }

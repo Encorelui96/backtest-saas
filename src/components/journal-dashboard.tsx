@@ -64,7 +64,7 @@ function Locked() {
   return (
     <div className="flex flex-col gap-3">
       <PlanLock>
-        {tl("La courbe des R, la baisse max, les séries et les analyses par configuration, marché, heure, jour, sens, qualité et plan sont dans les offres Trader et Pro.")}
+        {tl("La courbe des R, la baisse max, les séries et les analyses par configuration, marché, heure, jour, sens, qualité et plan sont dans les offres payantes.")}
       </PlanLock>
       <div className="relative overflow-hidden rounded-lg">
         <div aria-hidden inert className="pointer-events-none select-none opacity-60 blur-[3px]">

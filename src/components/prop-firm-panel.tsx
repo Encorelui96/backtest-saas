@@ -102,7 +102,7 @@ export function PropFirmPanel({ trades, strategy, locked = false }: { trades: Tr
               </select>
             </label>
             <FirmCard offer={FLAGSHIPS[firm]} res={firms.results[firm]} asset={asset} leverage={leverage} newsTrades={newsTrades} total={trades.length} onDetail={() => setRules(FLAGSHIPS[firm].rules)} />
-            <PlanLock>{tl("Le comparatif côte à côte des prop firms est réservé aux offres Trader et Pro.")}</PlanLock>
+            <PlanLock>{tl("Le comparatif côte à côte des prop firms est réservé aux offres payantes.")}</PlanLock>
           </div>
         ) : (
           <div className="grid gap-3 lg:grid-cols-3">

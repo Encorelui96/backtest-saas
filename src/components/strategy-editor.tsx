@@ -9,7 +9,7 @@ import { usePlan } from "@/lib/client/plan";
 import { clampStartDate, earliestStart, historyMonths } from "@/lib/plans";
 import { ApiError, api } from "@/lib/client/api";
 import { preferredMarket } from "@/lib/client/preferences";
-import { defaultConfig, defaultStrategy, proIndicatorsIn, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
+import { defaultConfig, defaultStrategy, indicatorTier, lockedIndicatorsIn, type BacktestConfig, type Strategy } from "@/lib/strategy/schema";
 import { INDICATOR_LABELS } from "@/lib/strategy/describe";
 import type { Template } from "@/lib/strategy/templates";
 import { INTERVALS, INTERVAL_MS, MAX_HISTORY_DAYS } from "@/lib/types";
@@ -18,7 +18,7 @@ import { date } from "@/lib/client/format";
 import { COMPARATOR_LABELS, operandLabel } from "@/lib/strategy/describe";
 import { Help, useBeginner } from "./learn";
 import { MarketPicker } from "./market-picker";
-import { GroupsEditor, ProIndicatorsLocked } from "./rule-builder";
+import { GroupsEditor, PlanIndicatorTier } from "./rule-builder";
 import { Alert, Button, Card, Field } from "./ui";
 
 interface Meta {
@@ -95,8 +95,8 @@ export function StrategyEditor({ id }: { id?: string }) {
   const firstEarliest = plan ? earliestStart(plan) : null;
   const firstDay = firstEarliest === null ? undefined : new Date(firstEarliest).toISOString().slice(0, 10);
   const reservedInterval = (i: Strategy["interval"]) => plan !== null && INTERVAL_MS[i] < INTERVAL_MS[plan.minInterval];
-  const proLocked = plan !== null && !plan.proIndicators;
-  const proUsed = proLocked ? proIndicatorsIn(strategy) : [];
+  const tier = plan ? plan.indicatorTier : 2;
+  const [lockedUsed] = lockedIndicatorsIn(strategy, tier);
   // Came from the home page's main button: the report opens on the challenge. Read once, saving rewrites the address.
   const challengeGoal = useRef(false);
 
@@ -299,7 +299,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                     onClick={() => chooseInterval(i)}
                     aria-pressed={strategy.interval === i}
                     disabled={reservedInterval(i)}
-                    title={reservedInterval(i) ? tl("Réservé aux offres Trader et Pro") : undefined}
+                    title={reservedInterval(i) ? tl("Réservé aux offres payantes") : undefined}
                     className={`shrink-0 rounded-md border px-3 py-1.5 text-sm disabled:opacity-40 ${strategy.interval === i ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                   >
                     {beginner ? tl(INTERVAL_LABELS[i]) : i}
@@ -350,7 +350,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {tl("Modifier les règles →")}</button>
             </div>
           ) : (
-          <ProIndicatorsLocked.Provider value={proLocked}>
+          <PlanIndicatorTier.Provider value={tier}>
           <div className="flex flex-col gap-5">
             {strategy.direction !== "short" && (
               <RuleSection title={tl("Quand acheter")} color="text-up">
@@ -377,14 +377,16 @@ export function StrategyEditor({ id }: { id?: string }) {
                 {tl("Règles évaluées à la clôture de chaque bougie, ordre à l'ouverture suivante. Stop et objectif surveillés dans la bougie ; si les deux sont touchés, le stop compte en premier.")}</p>
             )}
           </div>
-          </ProIndicatorsLocked.Provider>
+          </PlanIndicatorTier.Provider>
           )}
-          {proUsed.length > 0 && (
+          {lockedUsed && (
             <div className="mt-3">
               <Alert tone="warn">
-                {tl("{0} est réservé à l'offre Pro : le backtest sera refusé tant que la règle l'utilise.", [tl(INDICATOR_LABELS[proUsed[0]])])}
+                {indicatorTier(lockedUsed) === 1
+                  ? tl("{0} est réservé aux offres payantes : le backtest sera refusé tant que la règle l'utilise.", [tl(INDICATOR_LABELS[lockedUsed])])
+                  : tl("{0} est réservé aux offres Avancé et Pro : le backtest sera refusé tant que la règle l'utilise.", [tl(INDICATOR_LABELS[lockedUsed])])}
                 <Link href="/tarifs" className="web-only mt-1 block font-semibold underline">
-                  {tl("Voir l'offre Pro →")}</Link>
+                  {indicatorTier(lockedUsed) === 1 ? tl("Voir l'offre Trader →") : tl("Voir l'offre Avancé →")}</Link>
               </Alert>
             </div>
           )}
@@ -541,7 +543,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                       key={p.label}
                       onClick={() => choosePeriod(p.days)}
                       disabled={reserved}
-                      title={reserved ? tl("Réservé aux offres Trader et Pro") : undefined}
+                      title={reserved ? tl("Réservé aux offres payantes") : undefined}
                       className={`flex-1 rounded-md border px-2 py-1.5 text-xs disabled:opacity-40 ${on ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                     >
                       {tl(p.label)}

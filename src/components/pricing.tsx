@@ -16,6 +16,7 @@ function features(p: Plan) {
   return [
     tr("{0} backtests par mois", [num(p.backtestsPerMonth, 0)]),
     tr("{0} traductions par l'IA par mois", [p.aiPerMonth]),
+    ...(p.concurrentJobs > 1 ? [tr("{0} backtests en même temps", [p.concurrentJobs])] : []),
     p.minInterval === "1m" ? tr("Toutes les unités de temps, dès 1 minute (scalp)") : tr("Unités de temps à partir de {0}", [tr(INTERVAL_LABELS[p.minInterval] ?? p.minInterval)]),
     p.historyDays === null ? tr("Tout l'historique") : tr("Historique : les {0} derniers mois", [historyMonths(p)]),
     tr("Crypto, forex, or et Nasdaq"),
@@ -24,14 +25,18 @@ function features(p: Plan) {
       ? tr("Journal de trading complet : {0} comptes, tableau de bord, courbe des R et analyses", [p.journalAccounts])
       : tr("Journal de trading : 1 compte, statistiques de base et calendrier"),
     tr("{0} graphiques gardés dans le journal", [num(p.journalImages, 0)]),
-    p.journalCaptures === null ? tr("Lectures par l'IA sans limite dans le journal : trades remplis par capture, graphiques analysés") : tr("{0} lectures par l'IA par mois dans le journal : trades remplis par capture, graphiques analysés", [p.journalCaptures]),
-    ...(p.proIndicators ? [tr("Indicateurs avancés : structure de marché, FVG, Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon, CMF")] : []),
+    p.journalCaptures === null ? tr("Lectures par l'IA sans limite dans le journal : trades remplis par capture, graphiques analysés") : tr("{0} lectures par l'IA par mois dans le journal : trades remplis par capture, graphiques analysés", [num(p.journalCaptures, 0)]),
+    ...(p.indicatorTier === 2
+      ? [tr("Tous les indicateurs avancés : structure de marché, FVG, divergences RSI et MACD, Heikin Ashi, Stoch RSI, Aroon, CMF")]
+      : p.indicatorTier === 1
+        ? [tr("Indicateurs en plus : Heikin Ashi, Stoch RSI, Aroon, CMF")]
+        : []),
     ...(p.live ? [tr("Suivi Live des stratégies")] : []),
     ...(p.alerts ? [tr("{0} alertes Telegram", [p.alerts])] : []),
   ];
 }
 
-/** Three offers, the middle one highlighted, then the one on quote; paid offers record interest until online payment opens. */
+/** Four offers, Trader highlighted, then the one on quote; paid offers record interest until online payment opens. */
 export function Pricing() {
   const tl = useT();
   const { data: session } = authClient.useSession();
@@ -90,14 +95,14 @@ export function Pricing() {
         {tl("Le paiement en ligne n'est pas encore ouvert. Clique sur « Je veux cette offre » : c'est ce qui décidera quand l'ouvrir, et tu ne paies rien aujourd'hui.")}</Alert>
       {error && <Alert tone="error">{error}</Alert>}
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
         {Object.values(PLANS).map((p) => {
           const featured = p.id === "trader";
           const price = billing === "year" ? p.yearly / 12 : p.monthly;
           return (
             <section
               key={p.id}
-              className={`relative flex flex-col rounded-xl border bg-panel p-4 sm:p-5 ${featured ? "border-accent shadow-lg shadow-accent/15 md:-my-2 md:py-7" : "border-line"}`}
+              className={`relative flex flex-col rounded-xl border bg-panel p-4 sm:p-5 ${featured ? "border-accent shadow-lg shadow-accent/15 lg:-my-2 lg:py-7" : "border-line"}`}
             >
               {featured && <span className="absolute -top-3 left-4 rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-semibold text-white">{tl("Recommandée")}</span>}
               <h2 className="text-lg font-semibold">{tl(p.label)}</h2>

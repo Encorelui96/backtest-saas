@@ -7,7 +7,7 @@ import { UserError } from "@/lib/server/backtests";
 import { isAdmin } from "@/lib/server/quotas";
 import { PLANS } from "@/lib/plans";
 
-const Body = z.object({ account: z.string().trim().min(3).max(200), plan: z.enum(["free", "trader", "pro"]) });
+const Body = z.object({ account: z.string().trim().min(3).max(200), plan: z.enum(["free", "trader", "advanced", "pro"]) });
 
 /**
  * Gives an account an offer by hand (e-mail or account id): a tester, a partner, a customer

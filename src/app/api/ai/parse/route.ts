@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const plan = await planOf(user);
     const usage: AiUsage = { inputTokens: 0, outputTokens: 0, model: null };
     try {
-      return Response.json(await parseStrategyText(body.text, body.current ?? undefined, usage, langOf(req), plan.proIndicators));
+      return Response.json(await parseStrategyText(body.text, body.current ?? undefined, usage, langOf(req), plan.indicatorTier));
     } finally {
       await recordAiUsage(eventId, usage).catch((e) => console.error("[ai] usage non enregistré", e));
     }

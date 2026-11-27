@@ -88,7 +88,9 @@ export function LearnSearch({ items, children }: { items: LearnItem[]; children:
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && setQuery("")}
             placeholder={tl("Rechercher un mot, une règle, une question…")}
-            className="w-full py-2 pr-3 pl-9"
+            className="w-full"
+            // Inline: the base input style in globals.css (outside Tailwind's layers) would win over padding utilities.
+            style={{ padding: "8px 12px 8px 36px" }}
             enterKeyHint="search"
             autoComplete="off"
           />

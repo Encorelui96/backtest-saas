@@ -1,4 +1,5 @@
 import { currentLang, formatEuros, type Lang } from "@/lib/i18n";
+import type { IndicatorTier } from "./strategy/schema";
 import type { Interval } from "./types";
 
 /**
@@ -6,7 +7,7 @@ import type { Interval } from "./types";
  * Prices are what a customer pays, VAT included (TTC): the customers are individuals.
  */
 
-export type PlanId = "free" | "trader" | "pro";
+export type PlanId = "free" | "trader" | "advanced" | "pro";
 export type Billing = "month" | "year";
 
 export interface Plan {
@@ -28,8 +29,8 @@ export interface Plan {
   live: boolean;
   /** The detail of the robustness checks and the side-by-side prop firm comparison. */
   advanced: boolean;
-  /** Market structure, fair value gaps, Heikin Ashi, divergences and the other indicators of PRO_INDICATORS (strategy/schema). */
-  proIndicators: boolean;
+  /** The paid indicators it opens (strategy/schema): 1 = Heikin Ashi, Stoch RSI, Aroon, CMF; 2 = also market structure, FVG, divergences. */
+  indicatorTier: IndicatorTier;
   /** Backtests running or waiting at the same time. */
   concurrentJobs: number;
   alerts: number;
@@ -59,7 +60,7 @@ export const PLANS: Record<PlanId, Plan> = {
     historyDays: 365,
     live: false,
     advanced: false,
-    proIndicators: false,
+    indicatorTier: 0,
     concurrentJobs: 1,
     alerts: 0,
     journalAccounts: 1,
@@ -71,46 +72,67 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "trader",
     label: "Trader",
     pitch: "Pour tester sérieusement, y compris le scalp et le day trading.",
-    monthly: 15,
-    yearly: 150,
-    backtestsPerMonth: 100,
-    aiPerMonth: 50,
+    monthly: 14.9,
+    yearly: 149,
+    backtestsPerMonth: 150,
+    aiPerMonth: 60,
     minInterval: "1m",
     historyDays: null,
     live: true,
     advanced: true,
-    proIndicators: false,
+    indicatorTier: 1,
     concurrentJobs: 2,
-    alerts: 3,
+    alerts: 5,
     journalAccounts: 20,
     journalDashboard: true,
-    journalCaptures: 100,
-    journalImages: 500,
+    journalCaptures: 150,
+    journalImages: 750,
+  },
+  advanced: {
+    id: "advanced",
+    label: "Avancé",
+    pitch: "Pour aller plus loin : les indicateurs avancés et plus de tests chaque mois.",
+    monthly: 29,
+    yearly: 290,
+    backtestsPerMonth: 500,
+    aiPerMonth: 120,
+    minInterval: "1m",
+    historyDays: null,
+    live: true,
+    advanced: true,
+    indicatorTier: 2,
+    concurrentJobs: 3,
+    alerts: 10,
+    journalAccounts: 20,
+    journalDashboard: true,
+    journalCaptures: 400,
+    journalImages: 2000,
   },
   pro: {
     id: "pro",
     label: "Pro",
     pitch: "Pour ceux qui testent tous les jours ou préparent un challenge prop firm.",
-    monthly: 39,
-    yearly: 390,
-    backtestsPerMonth: 1000,
-    // About 15 € of AI at most on a 39 € plan; recharges cover the heavy months.
-    aiPerMonth: 200,
+    monthly: 49,
+    yearly: 490,
+    backtestsPerMonth: 1500,
+    // About 15 to 25 € of AI at most on a 49 € plan; recharges cover the heavy months.
+    aiPerMonth: 250,
     minInterval: "1m",
     historyDays: null,
     live: true,
     advanced: true,
-    proIndicators: true,
-    concurrentJobs: 3,
-    alerts: 20,
-    journalAccounts: 20,
+    indicatorTier: 2,
+    concurrentJobs: 4,
+    alerts: 30,
+    journalAccounts: 50,
     journalDashboard: true,
-    journalCaptures: null,
-    journalImages: 3000,
+    // A ceiling all the same: each reading is a paid AI call.
+    journalCaptures: 1000,
+    journalImages: 5000,
   },
 };
 
-export const PAID_PLANS = [PLANS.trader, PLANS.pro];
+export const PAID_PLANS = [PLANS.trader, PLANS.advanced, PLANS.pro];
 
 /**
  * The offer priced on request. Not a plan: it has no quota of its own, the

@@ -1,6 +1,6 @@
 import "server-only";
 import { INTERVAL_MS } from "../types";
-import { proIndicatorsIn, type Strategy } from "../strategy/schema";
+import { indicatorTier, lockedIndicatorsIn, type Strategy } from "../strategy/schema";
 import { INDICATOR_LABELS } from "../strategy/describe";
 import type { PoolClient } from "pg";
 import { PACK_BY_ID, PLANS, earliestStart, historyMonths, type CreditKind, type PackId, type Plan, type PlanId } from "../plans";
@@ -122,15 +122,18 @@ function quotaSpent(text: string, plain: string, count: number, u: Usage, rechar
   return new QuotaError(text, [count, u.plan.label, u.resetsAt, p.label, p.price], { recharge, plain });
 }
 
-/** Throws when the strategy reads an indicator reserved to the Pro plan and the plan doesn't include it. */
+/** Throws when the strategy reads an indicator the plan doesn't include, naming the offer that opens it. */
 export function checkIndicators(plan: Plan, strategy: Pick<Strategy, "direction" | "entryLong" | "entryShort" | "exitLong" | "exitShort">) {
-  if (plan.proIndicators) return;
-  const [first] = proIndicatorsIn(strategy);
-  if (first) {
-    throw new QuotaError("L'indicateur {0:t} est réservé à l'offre Pro. Passe à l'offre Pro pour tester cette stratégie.", [INDICATOR_LABELS[first]], {
-      plain: "L'indicateur {0:t} est réservé à l'offre Pro.",
+  const [first] = lockedIndicatorsIn(strategy, plan.indicatorTier);
+  if (!first) return;
+  if (indicatorTier(first) === 1) {
+    throw new QuotaError("L'indicateur {0:t} est réservé aux offres payantes. Passe à l'offre Trader pour tester cette stratégie.", [INDICATOR_LABELS[first]], {
+      plain: "L'indicateur {0:t} est réservé aux offres payantes.",
     });
   }
+  throw new QuotaError("L'indicateur {0:t} est réservé aux offres Avancé et Pro. Passe à l'offre Avancé pour tester cette stratégie.", [INDICATOR_LABELS[first]], {
+    plain: "L'indicateur {0:t} est réservé aux offres Avancé et Pro.",
+  });
 }
 
 /**

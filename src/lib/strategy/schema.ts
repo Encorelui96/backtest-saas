@@ -83,7 +83,7 @@ export const INDICATORS = [
   "hour",
   "minute",
   "weekday",
-  // Pro plan: market structure, Heikin Ashi, divergences and more
+  // Paid plans: Heikin Ashi, Stoch RSI, Aroon, CMF from Trader; market structure, FVG, divergences from Avancé
   "swing_high",
   "swing_low",
   "bos",
@@ -112,8 +112,21 @@ export const INDICATORS = [
 ] as const;
 export type IndicatorName = (typeof INDICATORS)[number];
 
-/** Indicators reserved to the plans with `proIndicators` (the Pro plan). The ICT order blocks are in every plan. */
-export const PRO_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>([
+/** The indicators the Trader plan adds: every paid plan has them. */
+export const TRADER_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>([
+  "ha_open",
+  "ha_high",
+  "ha_low",
+  "ha_close",
+  "stoch_rsi_k",
+  "stoch_rsi_d",
+  "aroon_up",
+  "aroon_down",
+  "cmf",
+]);
+
+/** The indicators reserved to the Avancé and Pro plans: market structure, fair value gaps, divergences. The ICT order blocks are in every plan. */
+export const ADVANCED_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>([
   "swing_high",
   "swing_low",
   "bos",
@@ -123,18 +136,16 @@ export const PRO_INDICATORS: ReadonlySet<IndicatorName> = new Set<IndicatorName>
   "fvg_bull_bottom",
   "fvg_bear_top",
   "fvg_bear_bottom",
-  "ha_open",
-  "ha_high",
-  "ha_low",
-  "ha_close",
   "rsi_divergence",
   "macd_divergence",
-  "stoch_rsi_k",
-  "stoch_rsi_d",
-  "aroon_up",
-  "aroon_down",
-  "cmf",
 ]);
+
+/** Which plans an indicator needs: 0 every plan, 1 from Trader, 2 from Avancé. A plan's `indicatorTier` is the highest it opens. */
+export type IndicatorTier = 0 | 1 | 2;
+
+export function indicatorTier(i: IndicatorName): IndicatorTier {
+  return ADVANCED_INDICATORS.has(i) ? 2 : TRADER_INDICATORS.has(i) ? 1 : 0;
+}
 
 export const SOURCES = ["close", "open", "high", "low", "volume", "hl2", "hlc3", "ohlc4"] as const;
 
@@ -251,12 +262,15 @@ export const StrategySchema = z.object({
 });
 export type Strategy = z.infer<typeof StrategySchema>;
 
-/** The Pro indicators read by the rules a strategy uses (a long-only strategy ignores its short rules), in order, each once. */
-export function proIndicatorsIn(s: Pick<Strategy, "direction" | "entryLong" | "entryShort" | "exitLong" | "exitShort">): IndicatorName[] {
+/**
+ * The indicators a plan of `tier` can't use, read by the rules a strategy uses (a long-only strategy ignores
+ * its short rules), in order, each once.
+ */
+export function lockedIndicatorsIn(s: Pick<Strategy, "direction" | "entryLong" | "entryShort" | "exitLong" | "exitShort">, tier: IndicatorTier): IndicatorName[] {
   const found = new Set<IndicatorName>();
   const rules = [...(s.direction !== "short" ? [s.entryLong, s.exitLong] : []), ...(s.direction !== "long" ? [s.entryShort, s.exitShort] : [])];
   for (const groups of rules)
-    for (const g of groups) for (const c of g.conditions) for (const o of [c.left, c.right]) if (PRO_INDICATORS.has(o.indicator)) found.add(o.indicator);
+    for (const g of groups) for (const c of g.conditions) for (const o of [c.left, c.right]) if (indicatorTier(o.indicator) > tier) found.add(o.indicator);
   return [...found];
 }
 

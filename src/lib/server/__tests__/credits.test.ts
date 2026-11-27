@@ -50,28 +50,28 @@ beforeEach(() => {
 });
 
 describe("recharges", () => {
-  it("the Pro plan has 200 AI translations a month", () => {
-    expect(PLANS.pro.aiPerMonth).toBe(200);
+  it("the Pro plan has 250 AI translations a month", () => {
+    expect(PLANS.pro.aiPerMonth).toBe(250);
   });
 
   it("uses the monthly quota first, then a credit, then offers a recharge", async () => {
-    db.backtests = 99;
+    db.backtests = 149;
     expect(await checkBacktestAllowed(user, on("1h"), sql)).toEqual({ useCredit: false });
-    db.backtests = 100;
+    db.backtests = 150;
     await expect(checkBacktestAllowed(user, on("1h"), sql)).rejects.toMatchObject({ recharge: "bt100" });
     await grantCredits("u1", { backtest: 100 }, "pack:bt100");
     expect(await checkBacktestAllowed(user, on("1h"), sql)).toEqual({ useCredit: true });
   });
 
   it("says what the recharge costs when the quota is spent", async () => {
-    db.backtests = 100;
+    db.backtests = 150;
     const err = await checkBacktestAllowed(user, on("1h"), sql).catch((e) => e);
     expect(err).toBeInstanceOf(QuotaError);
     expect(err.message).toContain("+100 backtests pour 5 €");
   });
 
   it("sells nothing in the phone app's message", async () => {
-    db.backtests = 100;
+    db.backtests = 150;
     const err = await checkBacktestAllowed(user, on("1h"), sql).catch((e) => e);
     expect(err.inApp("fr")).toMatch(/^Tu as utilisé tes \d+ backtests du mois \(offre .+\)\. Ils reviennent le .+\.$/);
     expect(err.inApp("fr")).not.toMatch(/recharge|€/);
@@ -82,7 +82,7 @@ describe("recharges", () => {
     db.ai = 10;
     await consumeAi(user);
     expect(db.ledger).toHaveLength(0);
-    db.ai = 50;
+    db.ai = 60;
     await expect(consumeAi(user)).rejects.toMatchObject({ recharge: "ai50" });
     await grantCredits("u1", { ai: 50 }, "pack:ai50");
     await consumeAi(user);
@@ -138,19 +138,31 @@ describe("free plan limits", () => {
 describe("Pro indicators", () => {
   const withBos = { ...on("1h"), entryLong: [{ conditions: [{ left: operand("bos", { period: 5, period2: 5 }), op: "==" as const, right: num(1) }] }] };
 
-  it("are refused below the Pro plan, with the indicator's name", async () => {
+  it("are refused below the Avancé plan, with the indicator's name", async () => {
     for (const plan of ["free", "trader"]) {
       db.plan = plan;
       const err = await checkBacktestAllowed(user, withBos, sql).catch((e) => e);
       expect(err).toBeInstanceOf(QuotaError);
-      expect(err.inApp("fr")).toBe("L'indicateur Cassure de structure (BOS) est réservé à l'offre Pro.");
-      expect(err.inApp("en")).toBe("The Break of structure (BOS) indicator is reserved to the Pro plan.");
+      expect(err.inApp("fr")).toBe("L'indicateur Cassure de structure (BOS) est réservé aux offres Avancé et Pro.");
+      expect(err.inApp("en")).toBe("The Break of structure (BOS) indicator is reserved to the Advanced and Pro plans.");
     }
   });
 
-  it("are allowed on the Pro plan", async () => {
-    db.plan = "pro";
-    expect(await checkBacktestAllowed(user, withBos, sql)).toEqual({ useCredit: false });
+  it("open Heikin Ashi from Trader, and say so on the free plan", async () => {
+    const withHa = { ...on("1h"), entryLong: [{ conditions: [{ left: operand("ha_close"), op: ">" as const, right: operand("ha_open") }] }] };
+    db.plan = "free";
+    const err = await checkBacktestAllowed(user, withHa, sql).catch((e) => e);
+    expect(err).toBeInstanceOf(QuotaError);
+    expect(err.inApp("fr")).toBe("L'indicateur Heikin Ashi clôture est réservé aux offres payantes.");
+    db.plan = "trader";
+    expect(await checkBacktestAllowed(user, withHa, sql)).toEqual({ useCredit: false });
+  });
+
+  it("are allowed on the Avancé and Pro plans", async () => {
+    for (const plan of ["advanced", "pro"]) {
+      db.plan = plan;
+      expect(await checkBacktestAllowed(user, withBos, sql)).toEqual({ useCredit: false });
+    }
   });
 
   it("leave the ICT order blocks to every plan", async () => {

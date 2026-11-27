@@ -208,7 +208,7 @@ export function LiveView() {
         </Card>
       )}
       {error && <Alert tone="error">{error}</Alert>}
-      {plan && !plan.live && <PlanLock>{tl("Les graphiques restent ouverts à tous. Le suivi de tes stratégies est réservé aux offres Trader et Pro.")}</PlanLock>}
+      {plan && !plan.live && <PlanLock>{tl("Les graphiques restent ouverts à tous. Le suivi de tes stratégies est réservé aux offres payantes.")}</PlanLock>}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Card>

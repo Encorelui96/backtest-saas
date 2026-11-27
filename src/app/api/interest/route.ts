@@ -4,7 +4,7 @@ import { query } from "@/lib/server/db";
 import { handle } from "@/lib/server/http";
 
 const Body = z.union([
-  z.object({ plan: z.enum(["trader", "pro"]), billing: z.enum(["month", "year"]) }),
+  z.object({ plan: z.enum(["trader", "advanced", "pro"]), billing: z.enum(["month", "year"]) }),
   // Recharges are bought once: stored as "pack:<id>".
   z.object({ pack: z.enum(["ai50", "bt100", "combo"]) }).transform(({ pack }) => ({ plan: `pack:${pack}`, billing: "once" })),
 ]);
