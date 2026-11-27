@@ -25,7 +25,7 @@ function features(p: Plan) {
       ? tr("Journal de trading complet : {0} comptes, tableau de bord, courbe des R et analyses", [p.journalAccounts])
       : tr("Journal de trading : 1 compte, statistiques de base et calendrier"),
     tr("{0} graphiques gardés dans le journal", [num(p.journalImages, 0)]),
-    p.journalCaptures === null ? tr("Lectures par l'IA sans limite dans le journal : trades remplis par capture, graphiques analysés") : tr("{0} lectures par l'IA par mois dans le journal : trades remplis par capture, graphiques analysés", [p.journalCaptures]),
+    p.journalCaptures === null ? tr("Lectures par l'IA sans limite dans le journal : trades remplis par capture, graphiques analysés") : tr("{0} lectures par l'IA par mois dans le journal : trades remplis par capture, graphiques analysés", [num(p.journalCaptures, 0)]),
     ...(p.indicatorTier === 2
       ? [tr("Tous les indicateurs avancés : structure de marché, FVG, divergences RSI et MACD, Heikin Ashi, Stoch RSI, Aroon, CMF")]
       : p.indicatorTier === 1
