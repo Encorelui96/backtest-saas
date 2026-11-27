@@ -806,6 +806,13 @@ GLOSSARY.push(
     example: "4 entrées hors plan à −3R et 5 sorties trop tôt à −2,5R : le mois aurait donné 5,5R de plus en suivant le plan.",
   },
   {
+    id: "courbe-des-r",
+    term: "Courbe des R",
+    category: "journal",
+    short: "Tes résultats en R additionnés trade après trade. Elle ne dépend ni de la taille ni du compte : elle montre ta méthode telle quelle.",
+    long: "Une courbe qui monte par marches régulières vaut mieux qu'une courbe portée par deux gros trades. La zone rouge marque la baisse max : la pire série que ta méthode t'a fait traverser.",
+  },
+  {
     id: "valeur-du-point",
     term: "Valeur du point",
     category: "journal",

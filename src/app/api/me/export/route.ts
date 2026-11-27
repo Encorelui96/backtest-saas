@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   await connection();
   return handle(async () => {
     const user = await requireUser(req.headers);
-    const [account, plan, strategies, backtests, usage, sessions, feedback, interest, marketRequests, settings, telegram, alerts, credits, journalAccounts, journalSetups, journalTrades] =
+    const [account, plan, strategies, backtests, usage, sessions, feedback, interest, marketRequests, settings, telegram, alerts, credits, journalAccounts, journalSetups, journalTrades, journalNotes, journalImages] =
       await Promise.all([
         query(`SELECT email, name, "createdAt" AS created_at FROM "user" WHERE id = $1`, [user.id]),
         query("SELECT plan, updated_at FROM plans WHERE user_id = $1", [user.id]),
@@ -38,6 +38,9 @@ export async function GET(req: Request) {
             return t;
           }),
         ),
+        query("SELECT to_char(day, 'YYYY-MM-DD') AS day, text, updated_at FROM journal_notes WHERE user_id = $1 ORDER BY day", [user.id]),
+        // The chart images themselves stay in the journal, where each one opens: listing them keeps the file light.
+        query("SELECT id, trade_id, to_char(note_day, 'YYYY-MM-DD') AS note_day, bytes, created_at FROM journal_images WHERE user_id = $1 ORDER BY created_at", [user.id]),
       ]);
     const data = {
       exportedAt: new Date().toISOString(),
@@ -54,7 +57,7 @@ export async function GET(req: Request) {
       telegram: telegram[0] ?? null,
       alerts,
       credits,
-      journal: { accounts: journalAccounts, setups: journalSetups, trades: journalTrades },
+      journal: { accounts: journalAccounts, setups: journalSetups, trades: journalTrades, notes: journalNotes, images: journalImages },
     };
     return new Response(JSON.stringify(data, null, 2), {
       headers: {

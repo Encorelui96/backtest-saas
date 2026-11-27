@@ -4,25 +4,26 @@ import { useState } from "react";
 import { useT } from "@/lib/client/i18n";
 import { date, num, pct, price, r, tone } from "@/lib/client/format";
 import { ERROR_LABELS, EXIT_REASON_LABELS, PLAN_CHECK_LABELS, balance, closedResult, discipline, riskAmount, summarize, type JournalTrade } from "@/lib/journal";
+import { filterTrades, matchesSetup, statTrades, type TradeFilter } from "@/lib/journal-stats";
 import { Help, Tip } from "./learn";
 import { Button, Card, Stat } from "./ui";
 import { CaptureLink, SideBadge, amount, type JournalData } from "./journal-shared";
+import { FilterBar } from "./journal-filters";
 
 const PAGE = 30;
 
-/** The summary in R, the open trades to close and the closed ones, newest first. */
+/** The summary in R, the open trades to close and the closed ones, newest first, within the filters. */
 export function JournalTrades({
   data,
-  accountId,
-  onAccount,
+  filter,
+  onFilter,
   onNew,
   onClose,
   onEdit,
 }: {
   data: JournalData;
-  /** "" for every account. */
-  accountId: string;
-  onAccount: (id: string) => void;
+  filter: TradeFilter;
+  onFilter: (f: TradeFilter) => void;
   onNew: () => void;
   onClose: (t: JournalTrade) => void;
   onEdit: (t: JournalTrade) => void;
@@ -31,15 +32,22 @@ export function JournalTrades({
   const [shown, setShown] = useState(PAGE);
   const accounts = new Map(data.accounts.map((a) => [a.id, a]));
   const setups = new Map(data.setups.map((s) => [s.id, s.name]));
-  const trades = accountId ? data.trades.filter((t) => t.accountId === accountId) : data.trades;
-  const open = trades.filter((t) => !t.close);
-  const closed = trades.filter((t) => t.close).sort((a, b) => b.close!.closedAt - a.close!.closedAt);
+  // Open trades follow the account and the setup; the period and the plan only make sense once a trade is closed.
+  const open = data.trades.filter((t) => !t.close && (!filter.accountId || t.accountId === filter.accountId) && matchesSetup(t, filter.setupId));
+  const kept = new Set(filterTrades(statTrades(data.trades, data.accounts), filter).map((t) => t.id));
+  const closed = data.trades.filter((t) => t.close && kept.has(t.id)).sort((a, b) => b.close!.closedAt - a.close!.closedAt);
   const currencyOf = (t: JournalTrade) => accounts.get(t.accountId)?.currency ?? "USD";
   const results = new Map(closed.map((t) => [t.id, closedResult(t, currencyOf(t))!]));
   const s = summarize([...results.values()]);
   const d = discipline(closed.map((t) => ({ planFollowed: t.planFollowed, r: results.get(t.id)!.r, errors: t.errors })));
-  const account = accountId ? accounts.get(accountId) : data.accounts.length === 1 ? data.accounts[0] : undefined;
-  const capital = account ? balance(account.capital, closed.filter((t) => t.accountId === account.id).map((t) => results.get(t.id)!.amount)) : null;
+  const account = filter.accountId ? accounts.get(filter.accountId) : data.accounts.length === 1 ? data.accounts[0] : undefined;
+  // The capital counts every closed trade of the account, whatever the other filters.
+  const capital = account
+    ? balance(
+        account.capital,
+        data.trades.filter((t) => t.close && t.accountId === account.id).map((t) => closedResult(t, account.currency)!.amount),
+      )
+    : null;
 
   const setupName = (t: JournalTrade) => (t.setupId ? (setups.get(t.setupId) ?? "—") : t.offPlan ? tl("Hors plan") : tl("Sans configuration"));
 
@@ -59,16 +67,8 @@ export function JournalTrades({
 
   return (
     <div className="flex flex-col gap-4">
-      {data.accounts.length > 1 && (
-        <select value={accountId} onChange={(e) => onAccount(e.target.value)} className="self-start" aria-label={tl("Compte")}>
-          <option value="">{tl("Tous les comptes")}</option>
-          {data.accounts.map((a) => (
-            <option key={a.id} value={a.id}>
-              {a.name}
-            </option>
-          ))}
-        </select>
-      )}
+      <FilterBar data={data} filter={filter} onChange={onFilter} />
+      {!closed.length && !open.length && <p className="text-sm text-muted">{tl("Aucun trade ne correspond à ces filtres.")}</p>}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label={tl("Trades clôturés")} value={s.closed} term="trades" hint={open.length ? tl("{0} en cours", [open.length]) : undefined} />
@@ -138,6 +138,7 @@ export function JournalTrades({
                       <span className="font-medium">{t.market}</span>
                       <SideBadge side={t.side} />
                       <span className="text-xs text-muted">{setupName(t)}</span>
+                      {t.noStop && <span className="rounded border border-warn/40 px-1 text-[11px] text-warn">{tl("sans stop")}</span>}
                     </span>
                     <span className="num text-xs text-muted">
                       {date(t.openedAt)} · {tl("entrée {0}, stop {1}", [price(t.entry), price(t.stop)])} · 1R = {amount(riskAmount(t), currency)}
@@ -172,6 +173,9 @@ export function JournalTrades({
                         <SideBadge side={t.side} />
                         <span className="text-xs text-muted">{setupName(t)}</span>
                         {t.quality && <span className="rounded border border-line px-1 text-[11px] text-muted">{t.quality}</span>}
+                        {t.noStop && <span className="rounded border border-warn/40 px-1 text-[11px] text-warn">{tl("sans stop")}</span>}
+                        {t.images.length > 0 && <span className="text-[11px] text-muted">📷 {t.images.length}</span>}
+                        {t.analysis && <span className="text-[11px] text-muted">{tl("analysé")}</span>}
                       </span>
                       <span className="truncate text-xs text-muted">
                         {date(c.closedAt, false)} · {tl(EXIT_REASON_LABELS[c.exitReason])}

@@ -5,6 +5,7 @@ import {
   CURRENCIES,
   ERROR_CODES,
   EXIT_REASONS,
+  VERDICTS,
   MAX_SETUPS,
   MAX_TRADES,
   NO_ANSWERS,
@@ -122,6 +123,20 @@ export const TradeInput = z.object({
   plannedEntry: price.nullable(),
   announcement: text(200),
   captureUrl: link,
+  // Taken without a stop: the form then sends the stop of the planned risk.
+  noStop: z.boolean().default(false),
+  ticket: z.string().trim().max(40).nullable().default(null),
+  notes: text(5000).default(null),
+  // The AI's reading of a chart, as /api/journal/analysis gave it: kept with the trade, never asked again on its own.
+  analysis: z
+    .object({
+      verdict: z.enum(VERDICTS),
+      summary: z.string().max(600),
+      remarks: z.array(z.string().max(300)).max(5),
+      at: z.number().int(),
+    })
+    .nullable()
+    .default(null),
   close: CloseInput.nullable(),
   planAnswers: z.object({ setup: z.boolean().nullable(), entry: z.boolean().nullable(), exit: z.boolean().nullable() }),
   errors: z
@@ -220,6 +235,10 @@ interface TradeRow {
   planned_entry: number | null;
   announcement: string | null;
   capture_url: string | null;
+  no_stop: boolean;
+  ticket: string | null;
+  notes: string | null;
+  analysis: JournalTrade["analysis"];
   closed_at: Date | null;
   exit_price: number | null;
   exit_reason: string | null;
@@ -236,7 +255,7 @@ interface TradeRow {
   updated_at: Date;
 }
 
-const trade = (r: TradeRow): JournalTrade => ({
+const trade = (r: TradeRow, images: string[] = []): JournalTrade => ({
   id: r.id,
   accountId: r.account_id,
   setupId: r.setup_id,
@@ -255,6 +274,11 @@ const trade = (r: TradeRow): JournalTrade => ({
   plannedEntry: r.planned_entry,
   announcement: r.announcement,
   captureUrl: r.capture_url,
+  noStop: r.no_stop,
+  ticket: r.ticket,
+  notes: r.notes,
+  images,
+  analysis: r.analysis,
   close:
     r.closed_at && r.exit_price !== null
       ? {
@@ -279,12 +303,29 @@ const trade = (r: TradeRow): JournalTrade => ({
 // ---------- Reading ----------
 
 export async function loadJournal(userId: string) {
-  const [accounts, setups, trades] = await Promise.all([
+  const [accounts, setups, trades, notes, images] = await Promise.all([
     query<AccountRow>("SELECT * FROM journal_accounts WHERE user_id = $1 ORDER BY archived, created_at", [userId]),
     query<SetupRow>("SELECT * FROM journal_setups WHERE user_id = $1 ORDER BY archived, name", [userId]),
     query<TradeRow>("SELECT * FROM journal_trades WHERE user_id = $1 ORDER BY opened_at DESC", [userId]),
+    query<{ day: string; text: string; updated_at: Date }>("SELECT to_char(day, 'YYYY-MM-DD') AS day, text, updated_at FROM journal_notes WHERE user_id = $1 ORDER BY day DESC", [userId]),
+    // The ids only: each image is fetched by the page when shown.
+    query<{ id: string; trade_id: string | null; note_day: string | null }>(
+      "SELECT id, trade_id, to_char(note_day, 'YYYY-MM-DD') AS note_day FROM journal_images WHERE user_id = $1 ORDER BY created_at",
+      [userId],
+    ),
   ]);
-  return { accounts: accounts.map(account), setups: setups.map(setup), trades: trades.map(trade) };
+  const byTrade = new Map<string, string[]>();
+  const byDay = new Map<string, string[]>();
+  for (const i of images) {
+    const [map, key] = i.trade_id ? [byTrade, i.trade_id] : [byDay, i.note_day!];
+    map.set(key, [...(map.get(key) ?? []), i.id]);
+  }
+  return {
+    accounts: accounts.map(account),
+    setups: setups.map(setup),
+    trades: trades.map((t) => trade(t, byTrade.get(t.id))),
+    notes: notes.map((n) => ({ day: n.day, text: n.text, images: byDay.get(n.day) ?? [], updatedAt: n.updated_at.getTime() })),
+  };
 }
 
 /** Trades still open: the badge on the Journal tab. */
@@ -421,8 +462,8 @@ async function evaluate(userId: string, t: TradeInput, id: string | null): Promi
     ]),
   ]);
   const capital = a.capital + (sum?.pnl ?? 0);
-  const others = near.map(trade).map((o) => ({ openedAt: o.openedAt, closedAt: o.close?.closedAt ?? null, r: o.close ? resultR(o, o.close) : null }));
-  const checks = planChecks({ openedAt: t.openedAt, setupId: t.setupId, riskPct: riskPercent(riskAmount(t), capital) }, account(a), others);
+  const others = near.map((r) => trade(r)).map((o) => ({ openedAt: o.openedAt, closedAt: o.close?.closedAt ?? null, r: o.close ? resultR(o, o.close) : null }));
+  const checks = planChecks({ openedAt: t.openedAt, setupId: t.setupId, riskPct: riskPercent(riskAmount(t), capital), noStop: t.noStop }, account(a), others);
   return { checks, planFollowed: planStatus(checks, t.planAnswers) };
 }
 
@@ -444,6 +485,10 @@ const COLUMNS = [
   "planned_entry",
   "announcement",
   "capture_url",
+  "no_stop",
+  "ticket",
+  "notes",
+  "analysis",
   "closed_at",
   "exit_price",
   "exit_reason",
@@ -478,6 +523,10 @@ function values(t: TradeInput, plan: { checks: PlanCheck[]; planFollowed: boolea
     t.plannedEntry,
     t.announcement,
     t.captureUrl,
+    t.noStop,
+    t.ticket || null,
+    t.notes,
+    t.analysis ? JSON.stringify(t.analysis) : null,
     c ? new Date(c.closedAt) : null,
     c?.exit ?? null,
     c?.exitReason ?? null,

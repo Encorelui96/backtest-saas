@@ -41,9 +41,43 @@ export const MAX_SETUPS = 50;
 export const MAX_ACCOUNTS = 20;
 
 /**
+ * The CME futures the journal knows: the tick (smallest price step) and what one tick of one contract
+ * is worth, in dollars. The point value of a contract is their ratio (MGC: 1 $ / 0.1 = 10 $ a point).
+ */
+export const FUTURES: Record<string, { tick: number; tickValue: number; name: string }> = {
+  MGC: { tick: 0.1, tickValue: 1, name: "Micro Gold" },
+  GC: { tick: 0.1, tickValue: 10, name: "Gold" },
+  SIL: { tick: 0.005, tickValue: 5, name: "Micro Silver" },
+  SI: { tick: 0.005, tickValue: 25, name: "Silver" },
+  MNQ: { tick: 0.25, tickValue: 0.5, name: "Micro Nasdaq 100" },
+  NQ: { tick: 0.25, tickValue: 5, name: "Nasdaq 100" },
+  MES: { tick: 0.25, tickValue: 1.25, name: "Micro S&P 500" },
+  ES: { tick: 0.25, tickValue: 12.5, name: "S&P 500" },
+  MYM: { tick: 1, tickValue: 0.5, name: "Micro Dow" },
+  YM: { tick: 1, tickValue: 5, name: "Dow" },
+  M2K: { tick: 0.1, tickValue: 0.5, name: "Micro Russell 2000" },
+  RTY: { tick: 0.1, tickValue: 5, name: "Russell 2000" },
+  MCL: { tick: 0.01, tickValue: 1, name: "Micro WTI" },
+  CL: { tick: 0.01, tickValue: 10, name: "WTI" },
+  M6E: { tick: 0.0001, tickValue: 1.25, name: "Micro Euro FX" },
+  "6E": { tick: 0.00005, tickValue: 6.25, name: "Euro FX" },
+  MBT: { tick: 5, tickValue: 0.5, name: "Micro Bitcoin" },
+};
+
+/** The future a symbol names: "MGC", "MGCZ5", "MGCZ2025" or TradingView's continuous "MGC1!"; null for anything else. */
+export function futureOf(market: string): string | null {
+  const m = market.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const root = /^(MGC|GC|SIL|SI|MNQ|NQ|MES|ES|MYM|YM|M2K|RTY|MCL|CL|M6E|6E|MBT)(?:[FGHJKMNQUVXZ]\d{1,4}|1)?$/.exec(m)?.[1];
+  return root ?? null;
+}
+
+const FOREX = /^(EUR|GBP|USD|JPY|CHF|CAD|AUD|NZD){2}$/;
+
+/**
  * What one unit of size gains when the price moves by 1, in the account's currency, for the markets
  * where it doesn't depend on the broker: a standard forex lot quoted in dollars is 100 000 units,
- * a gold lot 100 ounces, a crypto or a share counts one for one. null: the trader says it.
+ * a gold lot 100 ounces, a crypto or a share counts one for one, a future its contract's point value
+ * (in dollars). null: the trader says it.
  */
 export function defaultPointValue(market: string): number | null {
   const m = market.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
@@ -51,13 +85,58 @@ export function defaultPointValue(market: string): number | null {
   if (m === "XAUUSD") return 100;
   if (m === "QQQ" || m === "SPY") return 1;
   if (/^[A-Z0-9]{2,10}(USDT|USDC|FDUSD)$/.test(m)) return 1;
+  const future = futureOf(m);
+  if (future) return Number((FUTURES[future].tickValue / FUTURES[future].tick).toPrecision(10));
   return null;
 }
 
-/** The size unit to name in the form: lots where brokers count in lots. */
-export function sizeUnit(market: string): "lots" | "units" {
+/** The size unit to name in the form: contracts for futures, lots where brokers count in lots. */
+export function sizeUnit(market: string): "contracts" | "lots" | "units" {
+  if (futureOf(market)) return "contracts";
   const v = defaultPointValue(market);
   return v !== null && v > 1 ? "lots" : "units";
+}
+
+/** The smallest size the broker takes, for a size worked out from the risk: a contract, a hundredth of a lot, a ten-thousandth of a coin. */
+export function sizeStep(market: string): number {
+  const unit = sizeUnit(market);
+  if (unit === "contracts") return 1;
+  if (/(USDT|USDC|FDUSD)$/.test(market.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""))) return 0.0001;
+  return 0.01;
+}
+
+/** The step a stop can be counted in: the tick of a future, the pip of a forex pair. null: in price only. */
+export function tickOf(market: string): { size: number; unit: "ticks" | "pips" } | null {
+  const future = futureOf(market);
+  if (future) return { size: FUTURES[future].tick, unit: "ticks" };
+  const m = market.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (FOREX.test(m) && m.slice(0, 3) !== m.slice(3)) return { size: m.endsWith("JPY") ? 0.01 : 0.0001, unit: "pips" };
+  return null;
+}
+
+const decimalsOf = (step: number) => Math.max(0, -Math.floor(Math.log10(step) + 1e-9));
+
+/** The stop that many ticks (or pips) away from the entry, on the losing side. */
+export function stopFromTicks(side: Side, entry: number, ticks: number, tick: number): number {
+  const stop = entry - (side === "long" ? 1 : -1) * ticks * tick;
+  return Number(stop.toFixed(decimalsOf(tick) + 1));
+}
+
+/** The distance between entry and stop, in ticks (or pips). */
+export function ticksBetween(entry: number, stop: number, tick: number): number {
+  return Math.round((Math.abs(entry - stop) / tick) * 100) / 100;
+}
+
+/**
+ * The size that risks `risk` (in the account's currency) with this stop, rounded down to the broker's
+ * step so the real risk never goes over it. 0 when even the smallest size risks more; null when it
+ * can't be worked out.
+ */
+export function sizeForRisk(risk: number, entry: number, stop: number, pointValue: number, step: number): number | null {
+  const perUnit = Math.abs(entry - stop) * pointValue;
+  if (!(risk > 0) || !(perUnit > 0) || !(step > 0)) return null;
+  const n = Math.floor(risk / perUnit / step + 1e-9) * step;
+  return Number(n.toFixed(decimalsOf(step)));
 }
 
 export interface OpenFields {
@@ -252,6 +331,16 @@ export interface JournalTrade {
   plannedEntry: number | null;
   announcement: string | null;
   captureUrl: string | null;
+  /** Taken without a stop: `stop` was then placed at the planned risk, so that 1R stays the risk the plan allows. */
+  noStop: boolean;
+  /** The broker's order or position number, when the trade came from a screenshot: it spots the same trade imported twice. */
+  ticket: string | null;
+  /** Free notes on the trade: context, feelings, what to remember. */
+  notes: string | null;
+  /** Ids of the chart images kept with the trade (GET /api/journal/images/[id]). */
+  images: string[];
+  /** What the AI made of a chart of the trade, when the trader asked for it. */
+  analysis: ChartAnalysis | null;
   close: TradeClose | null;
   /** The plan's rules this trade broke, checked when it was saved. */
   checks: PlanCheck[];
@@ -262,6 +351,38 @@ export interface JournalTrade {
   createdAt: number;
   updatedAt: number;
 }
+
+export const VERDICTS = ["respected", "partly", "not", "unclear"] as const;
+export type Verdict = (typeof VERDICTS)[number];
+export const VERDICT_LABELS: Record<Verdict, string> = {
+  respected: "Stratégie respectée",
+  partly: "Stratégie respectée en partie",
+  not: "Stratégie pas respectée",
+  unclear: "Impossible à dire sur ce graphique",
+};
+
+/** The AI's reading of a chart against the trade's setup and plan. */
+export interface ChartAnalysis {
+  /** The overall finding on following the strategy. */
+  verdict: Verdict;
+  /** One or two sentences that justify it. */
+  summary: string;
+  /** Three short remarks: entry, stop, target or management against the setup. */
+  remarks: string[];
+  at: number;
+}
+
+/** A day's note: the session's review, its lessons, the rules decided. One per day. */
+export interface JournalNote {
+  /** "2026-11-27". */
+  day: string;
+  text: string;
+  images: string[];
+  updatedAt: number;
+}
+
+/** Chart images kept per trade and per note. */
+export const MAX_IMAGES_PER_ITEM = 4;
 
 /** What the trades list shows for a closed trade: its result in R and in the account's currency. */
 export function closedResult(t: JournalTrade, currency: string): ClosedTrade | null {
@@ -293,10 +414,11 @@ export interface AccountPlan {
 export const ALL_DAYS = 0b1111111;
 export const WEEK_DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
 
-export const PLAN_CHECKS = ["no-setup", "risk", "day", "hours", "daily-loss", "max-trades"] as const;
+export const PLAN_CHECKS = ["no-setup", "no-stop", "risk", "day", "hours", "daily-loss", "max-trades"] as const;
 export type PlanCheck = (typeof PLAN_CHECKS)[number];
 export const PLAN_CHECK_LABELS: Record<PlanCheck, string> = {
   "no-setup": "Trade sans configuration du plan",
+  "no-stop": "Trade sans stop",
   risk: "Risque au-dessus du plan",
   day: "Jour non prévu par le plan",
   hours: "En dehors des horaires du plan",
@@ -331,9 +453,16 @@ export function isTimeZone(tz: string): boolean {
   }
 }
 
+/** One formatter per time zone: building one costs far more than using it, and the calendar reads thousands of trades. */
+const FORMATS = new Map<string, Intl.DateTimeFormat>();
+
 /** The day (2026-11-27), weekday (0 = Monday) and minute of the day of a moment, in a time zone. */
 export function localTime(t: number, timeZone: string) {
-  const f = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23" });
+  let f = FORMATS.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23" });
+    FORMATS.set(timeZone, f);
+  }
   const p = Object.fromEntries(f.formatToParts(new Date(t)).map((x) => [x.type, x.value]));
   return {
     day: `${p.year}-${p.month}-${p.day}`,
@@ -356,12 +485,13 @@ export interface OtherTrade {
  * the losses already closed and the trades already opened before this one.
  */
 export function planChecks(
-  t: { openedAt: number; setupId: string | null; riskPct: number | null },
+  t: { openedAt: number; setupId: string | null; riskPct: number | null; noStop?: boolean },
   plan: AccountPlan,
   others: OtherTrade[],
 ): PlanCheck[] {
   const failed: PlanCheck[] = [];
   if (!t.setupId) failed.push("no-setup");
+  if (t.noStop) failed.push("no-stop");
   if (t.riskPct !== null && t.riskPct > plan.riskPct * 1.1) failed.push("risk");
   const at = localTime(t.openedAt, plan.timeZone);
   if (plan.tradingDays !== null && !(plan.tradingDays & (1 << at.weekday))) failed.push("day");
@@ -417,6 +547,7 @@ export function suggestedErrors(checks: PlanCheck[], a: PlanAnswers): ErrorCode[
   const s = new Set<ErrorCode>();
   if (checks.includes("no-setup") || checks.includes("max-trades") || a.setup === false) s.add("E1");
   if (a.entry === false) s.add("E2");
+  if (checks.includes("no-stop")) s.add("E3");
   if (checks.includes("risk")) s.add("E4");
   if (a.exit === false) {
     s.add("E5");

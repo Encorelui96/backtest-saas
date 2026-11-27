@@ -260,3 +260,36 @@ ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS checks jsonb NOT NULL DEFAUL
 ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS plan_answers jsonb NOT NULL DEFAULT '{}';
 -- [{"code": "E5", "costR": -0.8}]: the error register (codes E1 to E8).
 ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS errors jsonb NOT NULL DEFAULT '[]';
+
+-- Trading journal, simplified entry: a trade taken without a stop (its stop is then put at the planned risk, so 1R stays the
+-- risk the plan allows), and the broker's ticket of a trade read from a screenshot, to spot the same trade imported twice.
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS no_stop boolean NOT NULL DEFAULT false;
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS ticket text;
+
+-- Trading journal, notes and charts: free notes on a trade, the AI's reading of its chart (when asked),
+-- a note per day (the session's review), and the chart images kept with trades and notes.
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS notes text;
+-- {"verdict": "partly", "summary": "…", "remarks": ["…"], "at": 1795790000000}
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS analysis jsonb;
+CREATE TABLE IF NOT EXISTS journal_notes (
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  day date NOT NULL,
+  text text NOT NULL DEFAULT '',
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, day)
+);
+-- JPEG shrunk in the browser (about 200 KB). Attached to a trade or to a day's note, and gone with it.
+CREATE TABLE IF NOT EXISTS journal_images (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  trade_id text REFERENCES journal_trades (id) ON DELETE CASCADE,
+  note_day date,
+  mime text NOT NULL,
+  bytes integer NOT NULL,
+  data bytea NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (user_id, note_day) REFERENCES journal_notes (user_id, day) ON DELETE CASCADE,
+  CHECK ((trade_id IS NULL) <> (note_day IS NULL))
+);
+CREATE INDEX IF NOT EXISTS journal_images_by_user ON journal_images (user_id, created_at);
+CREATE INDEX IF NOT EXISTS journal_images_by_trade ON journal_images (trade_id) WHERE trade_id IS NOT NULL;
