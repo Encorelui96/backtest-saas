@@ -13,6 +13,10 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
     month: "Novembre 2026",
     items: [
       {
+        title: "Un journal de trading",
+        text: "Note tes trades réels dans un espace à part, l'onglet Journal : résultat en R, respect de ton plan, registre des erreurs, calendrier et note du jour. Remplis un trade depuis une capture de MetaTrader ou cTrader, garde tes graphiques et fais-les analyser par l'IA si tu veux. Le tableau de bord complet (courbe des R, baisse max, analyses) vient avec les offres Trader et Pro.",
+      },
+      {
         title: "Un e-mail de bienvenue",
         text: "Chaque nouveau compte reçoit un e-mail de bienvenue dès que son adresse est confirmée : comment lancer son premier backtest et ce que comprend l'offre gratuite. Il n'est envoyé qu'une fois.",
       },
