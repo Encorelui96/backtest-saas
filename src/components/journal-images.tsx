@@ -171,7 +171,7 @@ export function ImageStrip({
       <span className="text-[11px] text-muted">
         {spent
           ? tl("Ton journal a ses {0} images : supprime-en ou passe à une offre au-dessus.", [quota.limit])
-          : tl("{0} images au plus par trade. {1} sur {2} gardées dans ton journal.", [MAX_IMAGES_PER_ITEM, quota.used, quota.limit])}
+          : tl("{0} images au plus par trade ou par note. {1} sur {2} gardées dans ton journal.", [MAX_IMAGES_PER_ITEM, quota.used, quota.limit])}
       </span>
       <input
         ref={input}

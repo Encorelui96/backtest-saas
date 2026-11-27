@@ -302,8 +302,10 @@ export function TradeForm({
   const inTicks = d.stopMode === "ticks" && tick !== null;
   const givenStop = inTicks ? (d.entry !== null && d.stopTicks ? stopFromTicks(d.side, d.entry, d.stopTicks, tick.size) : null) : d.stop;
   const byRisk = d.sizeMode === "risk" && !d.noStop;
+  // Left empty, the amount risked is the plan's.
+  const riskTarget = d.riskAmount ?? (plannedRisk ? Math.round(plannedRisk * 100) / 100 : null);
   const riskedSize =
-    byRisk && d.entry !== null && givenStop !== null && pointValue !== null && d.riskAmount !== null ? sizeForRisk(d.riskAmount, d.entry, givenStop, pointValue, sizeStep(d.market)) : null;
+    byRisk && d.entry !== null && givenStop !== null && pointValue !== null && riskTarget !== null ? sizeForRisk(riskTarget, d.entry, givenStop, pointValue, sizeStep(d.market)) : null;
   const size = byRisk ? (riskedSize ? riskedSize : null) : d.size;
   // Without a stop, 1R is the planned risk: the stop is put where it would cost exactly that. A trade saved that way keeps
   // its stop while its prices stay the same, so that editing it later doesn't move 1R with the capital.
@@ -388,7 +390,7 @@ export function TradeForm({
     if (d.entry === null) return setError(tl("Indique le prix d'entrée."));
     if (pointValue === null) return setError(tl("Indique la valeur du point pour ce marché."));
     if (!d.noStop && givenStop === null) return setError(tl("Indique le stop, ou coche « Pas de stop »."));
-    if (byRisk && d.riskAmount === null) return setError(tl("Indique le montant que tu risques."));
+    if (byRisk && riskTarget === null) return setError(tl("Indique le montant que tu risques."));
     if (byRisk && riskedSize === 0) return setError(tl("Avec ce risque, même la plus petite taille le dépasse : augmente le risque ou rapproche le stop."));
     if (size === null) return setError(tl("Indique la taille de la position."));
     if (stop === null) return setError(tl("Sans stop, il faut le risque par trade du compte pour mesurer 1R."));
@@ -615,7 +617,13 @@ export function TradeForm({
                   term={byRisk ? "risque-par-trade" : "taille"}
                 >
                   {byRisk ? (
-                    <NumberInput nullable value={d.riskAmount} onChange={(riskAmount) => set({ riskAmount })} min={0} />
+                    <NumberInput
+                      nullable
+                      value={d.riskAmount}
+                      onChange={(riskAmount) => set({ riskAmount })}
+                      min={0}
+                      placeholder={plannedRisk ? tl("{0} : le risque du plan", [num(plannedRisk, 0)]) : undefined}
+                    />
                   ) : (
                     <NumberInput nullable value={d.size} onChange={(v) => set({ size: v })} min={0} step={sizeStep(d.market)} />
                   )}
@@ -629,8 +637,7 @@ export function TradeForm({
                         ]}
                         onChange={(sizeMode) => {
                           const patch: Partial<Draft> = { sizeMode };
-                          // The plan's risk as a start; the size found stays when going back.
-                          if (sizeMode === "risk" && d.riskAmount === null && plannedRisk) patch.riskAmount = Math.round(plannedRisk);
+                          // The size found stays when going back; the risk starts empty, which means the plan's.
                           if (sizeMode === "size" && riskedSize) patch.size = riskedSize;
                           set(patch);
                           saveModes({ stop: d.stopMode, size: sizeMode });
