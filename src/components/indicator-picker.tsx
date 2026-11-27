@@ -125,12 +125,15 @@ export function IndicatorPicker({
   groups,
   labels,
   isLocked,
+  lockLabel,
   onChange,
 }: {
   value: IndicatorName;
   groups: IndicatorGroup[];
   labels: Record<IndicatorName, string>;
   isLocked: (i: IndicatorName) => boolean;
+  /** The offer that opens a locked indicator, shown next to it. */
+  lockLabel: (i: IndicatorName) => string;
   onChange: (i: IndicatorName) => void;
 }) {
   const tl = useT();
@@ -309,7 +312,7 @@ export function IndicatorPicker({
                         >
                           <span className="min-w-0 flex-1 truncate">{tl(labels[i])}</span>
                           {!g.label && <span className="shrink-0 text-[11px] text-muted">{tl(groupOf.get(i) ?? "")}</span>}
-                          {locked && <span className="shrink-0 rounded border border-line px-1 text-[10px] text-muted">{tl("Avancé")}</span>}
+                          {locked && <span className="shrink-0 rounded border border-line px-1 text-[10px] text-muted">{tl(lockLabel(i))}</span>}
                         </li>
                       );
                     })}

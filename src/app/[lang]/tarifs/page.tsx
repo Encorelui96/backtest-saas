@@ -24,7 +24,7 @@ const FAQ: { q: string; a: string }[] = [
   },
   {
     q: "Que réservent les offres payantes ?",
-    a: "Les unités 1 et 5 minutes, tout l'historique au lieu des 12 derniers mois, le détail des contrôles de robustesse (Monte Carlo, réglages voisins), le comparatif côte à côte des prop firms, le suivi Live de tes stratégies, les alertes Telegram et le journal complet. Les offres Avancé et Pro ajoutent les indicateurs avancés (structure de marché, FVG, Heikin Ashi, divergences) et plus de tests chaque mois. Le verdict reste lisible avec l'offre gratuite.",
+    a: "Les unités 1 et 5 minutes, tout l'historique au lieu des 12 derniers mois, le détail des contrôles de robustesse (Monte Carlo, réglages voisins), le comparatif côte à côte des prop firms, le suivi Live de tes stratégies, les alertes Telegram, le journal complet et des indicateurs en plus (Heikin Ashi, Stoch RSI, Aroon, CMF). Les offres Avancé et Pro ajoutent la structure de marché, les FVG, les divergences et plus de tests chaque mois. Le verdict reste lisible avec l'offre gratuite.",
   },
   {
     q: "Qu'est-ce qu'un backtest compte ?",

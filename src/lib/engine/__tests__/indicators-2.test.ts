@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { rowsToCandles, type CandleRow } from "../../types";
-import { PRO_INDICATORS, defaultStrategy, num, operand, proIndicatorsIn, type Strategy } from "../../strategy/schema";
+import { ADVANCED_INDICATORS, TRADER_INDICATORS, defaultStrategy, indicatorTier, lockedIndicatorsIn, num, operand, type Strategy } from "../../strategy/schema";
 import { operandLabel } from "../../strategy/describe";
 import { PLANS } from "../../plans";
 import { adx, aroon, cci, cmf, divergence, dmi, fairValueGaps, heikinAshi, hma, orderBlocks, sma, stochRsi, structure, swings, williamsR, wma } from "../indicators";
@@ -245,27 +245,30 @@ describe("engine wiring", () => {
   });
 });
 
-describe("Pro indicators", () => {
+describe("Paid indicators", () => {
   const rule = (indicator: Parameters<typeof operand>[0]) => [{ conditions: [{ left: operand(indicator), op: "==" as const, right: num(1) }] }];
 
-  it("only the Avancé and Pro plans include them", () => {
-    expect([PLANS.free.proIndicators, PLANS.trader.proIndicators, PLANS.advanced.proIndicators, PLANS.pro.proIndicators]).toEqual([false, false, true, true]);
-    expect(PRO_INDICATORS.has("bos")).toBe(true);
-    expect(PRO_INDICATORS.has("fvg")).toBe(true);
-    expect(PRO_INDICATORS.has("hma")).toBe(false);
+  it("open Heikin Ashi, Stoch RSI, Aroon and CMF from Trader, structure, FVG and divergences from Avancé", () => {
+    expect(Object.values(PLANS).map((p) => p.indicatorTier)).toEqual([0, 1, 2, 2]);
+    expect(["ha_close", "stoch_rsi_k", "aroon_up", "cmf"].map((i) => indicatorTier(i as never))).toEqual([1, 1, 1, 1]);
+    expect(["bos", "fvg", "swing_high", "rsi_divergence"].map((i) => indicatorTier(i as never))).toEqual([2, 2, 2, 2]);
+    expect(indicatorTier("hma")).toBe(0);
+    for (const i of TRADER_INDICATORS) expect(ADVANCED_INDICATORS.has(i), i).toBe(false);
   });
 
   it("leave the ICT order blocks to every plan", () => {
-    for (const i of ["order_block", "ob_bull_top", "ob_bull_bottom", "ob_bear_top", "ob_bear_bottom"] as const) expect(PRO_INDICATORS.has(i), i).toBe(false);
+    for (const i of ["order_block", "ob_bull_top", "ob_bull_bottom", "ob_bear_top", "ob_bear_bottom"] as const) expect(indicatorTier(i), i).toBe(0);
   });
 
-  it("are found in the rules a strategy uses, each once", () => {
-    const s: Strategy = { ...defaultStrategy(), direction: "both", entryLong: rule("bos"), entryShort: rule("bos"), exitLong: rule("fvg"), exitShort: rule("rsi") };
-    expect(proIndicatorsIn(s)).toEqual(["bos", "fvg"]);
+  it("are found in the rules a strategy uses, each once, above what the plan opens", () => {
+    const s: Strategy = { ...defaultStrategy(), direction: "both", entryLong: rule("bos"), entryShort: rule("ha_close"), exitLong: rule("fvg"), exitShort: rule("rsi") };
+    expect(lockedIndicatorsIn(s, 0)).toEqual(["bos", "fvg", "ha_close"]);
+    expect(lockedIndicatorsIn(s, 1)).toEqual(["bos", "fvg"]);
+    expect(lockedIndicatorsIn(s, 2)).toEqual([]);
   });
 
   it("a long-only strategy ignores its short rules", () => {
-    const s: Strategy = { ...defaultStrategy(), direction: "long", entryLong: rule("rsi"), exitShort: rule("ha_close") };
-    expect(proIndicatorsIn(s)).toEqual([]);
+    const s: Strategy = { ...defaultStrategy(), direction: "long", entryLong: rule("rsi"), exitShort: rule("bos") };
+    expect(lockedIndicatorsIn(s, 0)).toEqual([]);
   });
 });

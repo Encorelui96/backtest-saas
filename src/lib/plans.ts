@@ -1,4 +1,5 @@
 import { currentLang, formatEuros, type Lang } from "@/lib/i18n";
+import type { IndicatorTier } from "./strategy/schema";
 import type { Interval } from "./types";
 
 /**
@@ -28,8 +29,8 @@ export interface Plan {
   live: boolean;
   /** The detail of the robustness checks and the side-by-side prop firm comparison. */
   advanced: boolean;
-  /** Market structure, fair value gaps, Heikin Ashi, divergences and the other indicators of PRO_INDICATORS (strategy/schema): Avancé and Pro. */
-  proIndicators: boolean;
+  /** The paid indicators it opens (strategy/schema): 1 = Heikin Ashi, Stoch RSI, Aroon, CMF; 2 = also market structure, FVG, divergences. */
+  indicatorTier: IndicatorTier;
   /** Backtests running or waiting at the same time. */
   concurrentJobs: number;
   alerts: number;
@@ -59,7 +60,7 @@ export const PLANS: Record<PlanId, Plan> = {
     historyDays: 365,
     live: false,
     advanced: false,
-    proIndicators: false,
+    indicatorTier: 0,
     concurrentJobs: 1,
     alerts: 0,
     journalAccounts: 1,
@@ -71,15 +72,15 @@ export const PLANS: Record<PlanId, Plan> = {
     id: "trader",
     label: "Trader",
     pitch: "Pour tester sérieusement, y compris le scalp et le day trading.",
-    monthly: 15,
-    yearly: 150,
+    monthly: 14.9,
+    yearly: 149,
     backtestsPerMonth: 150,
     aiPerMonth: 60,
     minInterval: "1m",
     historyDays: null,
     live: true,
     advanced: true,
-    proIndicators: false,
+    indicatorTier: 1,
     concurrentJobs: 2,
     alerts: 5,
     journalAccounts: 20,
@@ -99,7 +100,7 @@ export const PLANS: Record<PlanId, Plan> = {
     historyDays: null,
     live: true,
     advanced: true,
-    proIndicators: true,
+    indicatorTier: 2,
     concurrentJobs: 3,
     alerts: 10,
     journalAccounts: 20,
@@ -120,12 +121,13 @@ export const PLANS: Record<PlanId, Plan> = {
     historyDays: null,
     live: true,
     advanced: true,
-    proIndicators: true,
+    indicatorTier: 2,
     concurrentJobs: 4,
     alerts: 30,
     journalAccounts: 50,
     journalDashboard: true,
-    journalCaptures: null,
+    // A ceiling all the same: each reading is a paid AI call.
+    journalCaptures: 1000,
     journalImages: 5000,
   },
 };

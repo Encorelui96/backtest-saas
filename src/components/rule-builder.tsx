@@ -2,7 +2,7 @@
 
 import { useT } from "@/lib/client/i18n";
 import { createContext, useContext, useState } from "react";
-import { COMPARATORS, PRO_INDICATORS, SOURCES, num, operand, type Comparator, type Condition, type Group, type IndicatorName, type Operand } from "@/lib/strategy/schema";
+import { COMPARATORS, SOURCES, indicatorTier, num, operand, type Comparator, type Condition, type Group, type IndicatorName, type IndicatorTier, type Operand } from "@/lib/strategy/schema";
 import { COMPARATOR_LABELS, DEFAULT_PERIODS, FIELD_HINTS, INDICATOR_FIELDS, INDICATOR_LABELS } from "@/lib/strategy/describe";
 import { INTERVALS } from "@/lib/types";
 import { INDICATOR_TERMS } from "@/lib/learn/glossary";
@@ -53,19 +53,20 @@ const GROUPS: { label: string; items: IndicatorName[] }[] = [
   { label: "Figures de bougies", items: ["inside_bar", "engulfing", "pin_bar", "narrow_range"] },
   { label: "Temps", items: ["hour", "minute", "weekday"] },
   { label: "ICT : order blocks", items: ["order_block", "ob_bull_top", "ob_bull_bottom", "ob_bear_top", "ob_bear_bottom"] },
+  { label: "Heikin Ashi (Trader)", items: ["ha_open", "ha_high", "ha_low", "ha_close"] },
+  { label: "Stoch RSI, Aroon, CMF (Trader)", items: ["stoch_rsi_k", "stoch_rsi_d", "aroon_up", "aroon_down", "cmf"] },
   {
     label: "Structure de marché (Avancé)",
     items: ["swing_high", "swing_low", "bos", "structure", "fvg", "fvg_bull_top", "fvg_bull_bottom", "fvg_bear_top", "fvg_bear_bottom"],
   },
-  { label: "Heikin Ashi (Avancé)", items: ["ha_open", "ha_high", "ha_low", "ha_close"] },
-  { label: "Divergences et plus (Avancé)", items: ["rsi_divergence", "macd_divergence", "stoch_rsi_k", "stoch_rsi_d", "aroon_up", "aroon_down", "cmf"] },
+  { label: "Divergences (Avancé)", items: ["rsi_divergence", "macd_divergence"] },
 ];
 
 /** Labels of the averaged prices; the plain ones show as they are. */
 const SOURCE_LABELS: Partial<Record<(typeof SOURCES)[number], string>> = { hl2: "hl2 (h+l)/2", hlc3: "hlc3 (h+l+c)/3", ohlc4: "ohlc4 (o+h+l+c)/4" };
 
-/** True when the signed-in plan doesn't include the Pro indicators: they show greyed out in the lists. */
-export const ProIndicatorsLocked = createContext(false);
+/** The paid indicators the signed-in plan opens (2: all of them); the others show greyed out in the lists. */
+export const PlanIndicatorTier = createContext<IndicatorTier>(2);
 
 const FIELD_LABELS = { period: "Période", period2: "Période 2", period3: "Période 3", multiplier: "Écart-type", value: "Valeur" } as const;
 
@@ -73,11 +74,14 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
   const tl = useT();
   const fields = INDICATOR_FIELDS[value.indicator];
   const [advanced, setAdvanced] = useState(value.timeframe !== null || value.offset > 0);
-  const locked = useContext(ProIndicatorsLocked);
+  const tier = useContext(PlanIndicatorTier);
   const setIndicator = (indicator: IndicatorName) => onChange({ ...operand(indicator, DEFAULT_PERIODS[indicator] ?? {}), offset: value.offset, timeframe: value.timeframe });
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <IndicatorPicker value={value.indicator} groups={GROUPS} labels={INDICATOR_LABELS} isLocked={(i) => locked && PRO_INDICATORS.has(i)} onChange={setIndicator} />
+      <IndicatorPicker value={value.indicator} groups={GROUPS} labels={INDICATOR_LABELS} isLocked={(i) => indicatorTier(i) > tier}
+        lockLabel={(i) => (indicatorTier(i) === 1 ? "Trader" : "Avancé")}
+        onChange={setIndicator}
+      />
       <Why id={INDICATOR_TERMS[value.indicator]} />
       {fields.map((f) => {
         if (f === "source")

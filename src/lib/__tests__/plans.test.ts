@@ -46,8 +46,8 @@ describe("free plan", () => {
     ]);
   });
 
-  it("counts the journal's screenshots apart: 5 a month to try, then 150, 400, and no monthly limit in Pro", () => {
-    expect(Object.values(PLANS).map((p) => p.journalCaptures)).toEqual([5, 150, 400, null]);
+  it("counts the journal's screenshots apart: 5 a month to try, then 150, 400 and 1 000", () => {
+    expect(Object.values(PLANS).map((p) => p.journalCaptures)).toEqual([5, 150, 400, 1000]);
   });
 
   it("keeps 20 chart images in the free journal, then 750, 2 000 and 5 000", () => {
@@ -57,7 +57,7 @@ describe("free plan", () => {
   it("keeps the prices, two months free when paid yearly", () => {
     expect(Object.values(PLANS).map((p) => [p.monthly, p.yearly])).toEqual([
       [0, 0],
-      [15, 150],
+      [14.9, 149],
       [29, 290],
       [49, 490],
     ]);
@@ -71,8 +71,8 @@ describe("paid plans", () => {
     for (const k of keys) for (let i = 1; i < plans.length; i++) expect(plans[i][k], `${plans[i].id} ${k}`).toBeGreaterThan(plans[i - 1][k]);
   });
 
-  it("open the advanced indicators from the Avancé plan", () => {
-    expect(Object.values(PLANS).map((p) => p.proIndicators)).toEqual([false, false, true, true]);
+  it("open some indicators from Trader, all of them from Avancé", () => {
+    expect(Object.values(PLANS).map((p) => p.indicatorTier)).toEqual([0, 1, 2, 2]);
   });
 });
 

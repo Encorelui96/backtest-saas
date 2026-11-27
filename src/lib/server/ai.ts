@@ -1,7 +1,7 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { PRO_INDICATORS, StrategySchema, normalizeStrategy, type Strategy } from "../strategy/schema";
+import { ADVANCED_INDICATORS, StrategySchema, TRADER_INDICATORS, normalizeStrategy, type IndicatorTier, type Strategy } from "../strategy/schema";
 import type { AiUsage } from "./quotas";
 import { UserError } from "./backtests";
 import type { Lang } from "@/lib/i18n";
@@ -53,15 +53,16 @@ How the engine works:
   - hour, minute, weekday (1 = Monday … 7 = Sunday): of the bar OPEN time, in the strategy timezone.
   - ICT order blocks (every plan):
     - order_block, ob_bull_top, ob_bull_bottom, ob_bear_top, ob_bear_bottom(period = bars before, period2 = bars after the swing, default 5 and 5). When a close breaks the latest swing high, the last bearish candle before the rise that broke it is the bullish order block; the mirror for bearish. ob_bull_top / ob_bull_bottom: high and low of the latest bullish block, until a close goes below it or a newer bullish block replaces it (no value otherwise); ob_bear_top / ob_bear_bottom the same for bearish blocks. order_block: 1 on the first bar that comes back into the bullish block (its low reaches ob_bull_top without closing below ob_bull_bottom), −1 the same for the bearish block, 0 otherwise; each block fires once. "Buy the retest of a bullish order block" = "order_block == 1". To exit when a close goes under the block: exitLong "close < ob_bull_bottom" with offset 1 on ob_bull_bottom (the zone has no value from the bar that closes through it).
-  - Avancé and Pro plans only (${[...PRO_INDICATORS].join(", ")}):
-    - swing_high / swing_low(period = bars before, period2 = bars after, default 5 and 5): level of the latest confirmed swing high / low, known period2 bars after it. "close crosses_above swing_high" = breakout of the last swing high.
-    - bos(period, period2): break of structure on the bar that just closed, 1 = close above the latest swing high, −1 = below the latest swing low, 0 = none; each swing breaks once. structure(period, period2): side of the last break, 1 bullish, −1 bearish, 0 before any. A change of character (CHoCH) = "bos == 1 and structure at offset 1 == −1".
-    - fvg: fair value gap formed by the bar that just closed (3 candles), 1 bullish (its low above the high two bars earlier), −1 bearish, 0. fvg_bull_top / fvg_bull_bottom: zone of the latest bullish gap, until a close goes below it (no value otherwise); fvg_bear_top / fvg_bear_bottom the same for bearish gaps. A retest of a bullish gap = "low <= fvg_bull_top" and "close > fvg_bull_bottom".
+  - Trader, Avancé and Pro plans (${[...TRADER_INDICATORS].join(", ")}):
     - ha_open, ha_high, ha_low, ha_close: Heikin Ashi candle. Green Heikin Ashi = "ha_close > ha_open".
-    - rsi_divergence(period = RSI period, period2 = bars each side of the RSI swing, default 14 and 5) and macd_divergence(period = fast, period2 = slow, period3 = swing bars, default 12, 26, 5): 1 = regular bullish divergence (lower low in price, higher low in the oscillator), −1 = regular bearish, 0 = none. Signalled when the second swing is confirmed, period2 (or period3) bars after it.
     - stoch_rsi_k / stoch_rsi_d(period = RSI period, period2 = stochastic period, period3 = %K smoothing; default 14, 14, 3; %D = 3-bar average of %K): 0 to 100.
     - aroon_up / aroon_down(period, default 14): 100 when the N-bar high (low) is on this bar, down to 0 when it is N bars old.
     - cmf(period, default 20): Chaikin Money Flow, −1 to 1, above 0 = volume traded near the highs.
+  - Avancé and Pro plans only (${[...ADVANCED_INDICATORS].join(", ")}):
+    - swing_high / swing_low(period = bars before, period2 = bars after, default 5 and 5): level of the latest confirmed swing high / low, known period2 bars after it. "close crosses_above swing_high" = breakout of the last swing high.
+    - bos(period, period2): break of structure on the bar that just closed, 1 = close above the latest swing high, −1 = below the latest swing low, 0 = none; each swing breaks once. structure(period, period2): side of the last break, 1 bullish, −1 bearish, 0 before any. A change of character (CHoCH) = "bos == 1 and structure at offset 1 == −1".
+    - fvg: fair value gap formed by the bar that just closed (3 candles), 1 bullish (its low above the high two bars earlier), −1 bearish, 0. fvg_bull_top / fvg_bull_bottom: zone of the latest bullish gap, until a close goes below it (no value otherwise); fvg_bear_top / fvg_bear_bottom the same for bearish gaps. A retest of a bullish gap = "low <= fvg_bull_top" and "close > fvg_bull_bottom".
+    - rsi_divergence(period = RSI period, period2 = bars each side of the RSI swing, default 14 and 5) and macd_divergence(period = fast, period2 = slow, period3 = swing bars, default 12, 26, 5): 1 = regular bullish divergence (lower low in price, higher low in the oscillator), −1 = regular bearish, 0 = none. Signalled when the second swing is confirmed, period2 (or period3) bars after it.
   - offset: bars back (0 = the bar that just closed).
   - timeframe: compute the operand on a higher timeframe (e.g. a daily 200 SMA trend filter on a 15m strategy: sma, period 200, timeframe "1d"). Only completed higher-timeframe bars are used. Leave null for the strategy timeframe.
 - Prefer tradingWindow (HH:MM–HH:MM on the signal bar close, local time) and tradingDays to express sessions, and exitAtTime to flatten intraday positions, rather than hour conditions.
@@ -111,11 +112,16 @@ function systemPrompt(lang: Lang) {
 }
 
 /** `usage` accumulates the tokens of every attempt, even when the translation fails. */
-/** Told to the AI when the user's plan doesn't include the advanced indicators. */
-const NO_PRO = `This user's plan does not include the advanced indicators of the Avancé and Pro plans: never use them. Approximate the idea with the other building blocks when you can, and say in assumptions which indicator you replaced and that it is reserved to the Avancé and Pro plans (in English: the Advanced and Pro plans).`;
+/** Told to the AI when the user's plan doesn't include every indicator: the free plan has none of the paid ones, Trader not those of Avancé and Pro. */
+const LOCKED_NOTE: Record<IndicatorTier, string | null> = {
+  0: `This user is on the free plan: it includes none of the Trader plan indicators (${[...TRADER_INDICATORS].join(", ")}) nor those of the Avancé and Pro plans (${[...ADVANCED_INDICATORS].join(", ")}): never use them. Approximate the idea with the other building blocks when you can, and say in assumptions which indicator you replaced and which plan includes it (in English, Avancé is the Advanced plan).`,
+  1: `This user's plan (Trader) does not include the indicators of the Avancé and Pro plans (${[...ADVANCED_INDICATORS].join(", ")}): never use them. Approximate the idea with the other building blocks when you can, and say in assumptions which indicator you replaced and that it is reserved to the Avancé and Pro plans (in English: the Advanced and Pro plans).`,
+  2: null,
+};
 
-/** `usage` accumulates the tokens of every attempt, even when the translation fails. `pro`: the plan includes the Pro indicators. */
-export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage, lang: Lang = "fr", pro = true): Promise<ParseResult & { problems: string[] }> {
+/** `usage` accumulates the tokens of every attempt, even when the translation fails. `tier`: the paid indicators the plan opens. */
+export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage, lang: Lang = "fr", tier: IndicatorTier = 2): Promise<ParseResult & { problems: string[] }> {
+  const locked = LOCKED_NOTE[tier];
   const client = new Anthropic();
   const userContent = current
     ? lang === "en"
@@ -133,7 +139,7 @@ export async function parseStrategyText(text: string, current: Strategy | undefi
       // The rules and the schema (about 4 000 tokens) are the same for every call: cached, they cost a tenth from the second call on.
       system: [
         { type: "text", text: systemPrompt(lang), cache_control: { type: "ephemeral" } },
-        ...(pro ? [] : [{ type: "text" as const, text: NO_PRO }]),
+        ...(locked ? [{ type: "text" as const, text: locked }] : []),
       ],
       messages,
     });

@@ -148,6 +148,16 @@ describe("Pro indicators", () => {
     }
   });
 
+  it("open Heikin Ashi from Trader, and say so on the free plan", async () => {
+    const withHa = { ...on("1h"), entryLong: [{ conditions: [{ left: operand("ha_close"), op: ">" as const, right: operand("ha_open") }] }] };
+    db.plan = "free";
+    const err = await checkBacktestAllowed(user, withHa, sql).catch((e) => e);
+    expect(err).toBeInstanceOf(QuotaError);
+    expect(err.inApp("fr")).toBe("L'indicateur Heikin Ashi clôture est réservé aux offres payantes.");
+    db.plan = "trader";
+    expect(await checkBacktestAllowed(user, withHa, sql)).toEqual({ useCredit: false });
+  });
+
   it("are allowed on the Avancé and Pro plans", async () => {
     for (const plan of ["advanced", "pro"]) {
       db.plan = plan;

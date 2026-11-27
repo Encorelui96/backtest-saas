@@ -26,7 +26,11 @@ function features(p: Plan) {
       : tr("Journal de trading : 1 compte, statistiques de base et calendrier"),
     tr("{0} graphiques gardés dans le journal", [num(p.journalImages, 0)]),
     p.journalCaptures === null ? tr("Lectures par l'IA sans limite dans le journal : trades remplis par capture, graphiques analysés") : tr("{0} lectures par l'IA par mois dans le journal : trades remplis par capture, graphiques analysés", [p.journalCaptures]),
-    ...(p.proIndicators ? [tr("Indicateurs avancés : structure de marché, FVG, Heikin Ashi, divergences RSI et MACD, Stoch RSI, Aroon, CMF")] : []),
+    ...(p.indicatorTier === 2
+      ? [tr("Tous les indicateurs avancés : structure de marché, FVG, divergences RSI et MACD, Heikin Ashi, Stoch RSI, Aroon, CMF")]
+      : p.indicatorTier === 1
+        ? [tr("Indicateurs en plus : Heikin Ashi, Stoch RSI, Aroon, CMF")]
+        : []),
     ...(p.live ? [tr("Suivi Live des stratégies")] : []),
     ...(p.alerts ? [tr("{0} alertes Telegram", [p.alerts])] : []),
   ];

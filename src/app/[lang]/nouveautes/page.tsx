@@ -14,7 +14,7 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
     items: [
       {
         title: "Une offre Avancé, et plus dans chaque offre payante",
-        text: "Entre Trader et Pro, l'offre Avancé (29 € par mois) ouvre les indicateurs avancés : structure de marché, FVG, Heikin Ashi, divergences. Les offres payantes gagnent aussi des backtests, des traductions par l'IA, des alertes et de la place dans le journal. Le détail est sur la page Tarifs.",
+        text: "Trader passe à 14,90 € par mois et gagne des indicateurs : Heikin Ashi, Stoch RSI, Aroon, CMF. Entre Trader et Pro, l'offre Avancé (29 € par mois) ouvre la structure de marché, les FVG et les divergences. Les offres payantes gagnent aussi des backtests, des traductions par l'IA, des alertes et de la place dans le journal. Le détail est sur la page Tarifs.",
       },
       {
         title: "Importe ton journal",
