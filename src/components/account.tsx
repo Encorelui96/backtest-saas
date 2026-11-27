@@ -87,7 +87,7 @@ export function Account() {
             <p className="web-only text-sm">
               {tl("Plus de tests, le scalp dès 1 minute :")}{" "}
               <Link href="/tarifs" className="text-accent hover:underline">
-                {tl("voir les offres Trader et Pro →")}</Link>
+                {tl("voir les offres payantes →")}</Link>
             </p>
           ) : (
             (u.backtests >= u.plan.backtestsPerMonth * 0.8 || u.ai >= u.plan.aiPerMonth * 0.8) && (

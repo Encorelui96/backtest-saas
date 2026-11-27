@@ -299,7 +299,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                     onClick={() => chooseInterval(i)}
                     aria-pressed={strategy.interval === i}
                     disabled={reservedInterval(i)}
-                    title={reservedInterval(i) ? tl("Réservé aux offres Trader et Pro") : undefined}
+                    title={reservedInterval(i) ? tl("Réservé aux offres payantes") : undefined}
                     className={`shrink-0 rounded-md border px-3 py-1.5 text-sm disabled:opacity-40 ${strategy.interval === i ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                   >
                     {beginner ? tl(INTERVAL_LABELS[i]) : i}
@@ -382,9 +382,9 @@ export function StrategyEditor({ id }: { id?: string }) {
           {proUsed.length > 0 && (
             <div className="mt-3">
               <Alert tone="warn">
-                {tl("{0} est réservé à l'offre Pro : le backtest sera refusé tant que la règle l'utilise.", [tl(INDICATOR_LABELS[proUsed[0]])])}
+                {tl("{0} est réservé aux offres Avancé et Pro : le backtest sera refusé tant que la règle l'utilise.", [tl(INDICATOR_LABELS[proUsed[0]])])}
                 <Link href="/tarifs" className="web-only mt-1 block font-semibold underline">
-                  {tl("Voir l'offre Pro →")}</Link>
+                  {tl("Voir l'offre Avancé →")}</Link>
               </Alert>
             </div>
           )}
@@ -541,7 +541,7 @@ export function StrategyEditor({ id }: { id?: string }) {
                       key={p.label}
                       onClick={() => choosePeriod(p.days)}
                       disabled={reserved}
-                      title={reserved ? tl("Réservé aux offres Trader et Pro") : undefined}
+                      title={reserved ? tl("Réservé aux offres payantes") : undefined}
                       className={`flex-1 rounded-md border px-2 py-1.5 text-xs disabled:opacity-40 ${on ? "border-accent bg-accent/10 text-fg" : "border-line text-muted hover:text-fg"}`}
                     >
                       {tl(p.label)}

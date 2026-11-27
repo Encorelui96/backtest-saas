@@ -53,7 +53,7 @@ How the engine works:
   - hour, minute, weekday (1 = Monday … 7 = Sunday): of the bar OPEN time, in the strategy timezone.
   - ICT order blocks (every plan):
     - order_block, ob_bull_top, ob_bull_bottom, ob_bear_top, ob_bear_bottom(period = bars before, period2 = bars after the swing, default 5 and 5). When a close breaks the latest swing high, the last bearish candle before the rise that broke it is the bullish order block; the mirror for bearish. ob_bull_top / ob_bull_bottom: high and low of the latest bullish block, until a close goes below it or a newer bullish block replaces it (no value otherwise); ob_bear_top / ob_bear_bottom the same for bearish blocks. order_block: 1 on the first bar that comes back into the bullish block (its low reaches ob_bull_top without closing below ob_bull_bottom), −1 the same for the bearish block, 0 otherwise; each block fires once. "Buy the retest of a bullish order block" = "order_block == 1". To exit when a close goes under the block: exitLong "close < ob_bull_bottom" with offset 1 on ob_bull_bottom (the zone has no value from the bar that closes through it).
-  - Pro plan only (${[...PRO_INDICATORS].join(", ")}):
+  - Avancé and Pro plans only (${[...PRO_INDICATORS].join(", ")}):
     - swing_high / swing_low(period = bars before, period2 = bars after, default 5 and 5): level of the latest confirmed swing high / low, known period2 bars after it. "close crosses_above swing_high" = breakout of the last swing high.
     - bos(period, period2): break of structure on the bar that just closed, 1 = close above the latest swing high, −1 = below the latest swing low, 0 = none; each swing breaks once. structure(period, period2): side of the last break, 1 bullish, −1 bearish, 0 before any. A change of character (CHoCH) = "bos == 1 and structure at offset 1 == −1".
     - fvg: fair value gap formed by the bar that just closed (3 candles), 1 bullish (its low above the high two bars earlier), −1 bearish, 0. fvg_bull_top / fvg_bull_bottom: zone of the latest bullish gap, until a close goes below it (no value otherwise); fvg_bear_top / fvg_bear_bottom the same for bearish gaps. A retest of a bullish gap = "low <= fvg_bull_top" and "close > fvg_bull_bottom".
@@ -111,8 +111,8 @@ function systemPrompt(lang: Lang) {
 }
 
 /** `usage` accumulates the tokens of every attempt, even when the translation fails. */
-/** Told to the AI when the user's plan doesn't include the Pro indicators. */
-const NO_PRO = `This user's plan does not include the Pro plan indicators: never use them. Approximate the idea with the other building blocks when you can, and say in assumptions which indicator you replaced and that it is reserved to the Pro plan.`;
+/** Told to the AI when the user's plan doesn't include the advanced indicators. */
+const NO_PRO = `This user's plan does not include the advanced indicators of the Avancé and Pro plans: never use them. Approximate the idea with the other building blocks when you can, and say in assumptions which indicator you replaced and that it is reserved to the Avancé and Pro plans (in English: the Advanced and Pro plans).`;
 
 /** `usage` accumulates the tokens of every attempt, even when the translation fails. `pro`: the plan includes the Pro indicators. */
 export async function parseStrategyText(text: string, current: Strategy | undefined, usage: AiUsage, lang: Lang = "fr", pro = true): Promise<ParseResult & { problems: string[] }> {

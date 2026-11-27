@@ -359,7 +359,7 @@ export async function createAccount(user: SessionUser, input: AccountInput): Pro
     const [{ n }] = await run<{ n: string }>("SELECT count(*) AS n FROM journal_accounts WHERE user_id = $1", [user.id]);
     if (Number(n) >= plan.journalAccounts) {
       throw plan.journalAccounts === 1
-        ? new QuotaError("L'offre {0:t} garde un seul compte dans le journal. Les offres Trader et Pro en suivent plusieurs : réel, démo, challenge…", [plan.label], {
+        ? new QuotaError("L'offre {0:t} garde un seul compte dans le journal. Les offres payantes en suivent plusieurs : réel, démo, challenge…", [plan.label], {
             plain: "L'offre {0:t} garde un seul compte dans le journal.",
           })
         : new QuotaError("Tu as atteint {0} comptes dans le journal : archive ou supprime un compte pour en ajouter un.", [plan.journalAccounts]);

@@ -127,8 +127,8 @@ export function checkIndicators(plan: Plan, strategy: Pick<Strategy, "direction"
   if (plan.proIndicators) return;
   const [first] = proIndicatorsIn(strategy);
   if (first) {
-    throw new QuotaError("L'indicateur {0:t} est réservé à l'offre Pro. Passe à l'offre Pro pour tester cette stratégie.", [INDICATOR_LABELS[first]], {
-      plain: "L'indicateur {0:t} est réservé à l'offre Pro.",
+    throw new QuotaError("L'indicateur {0:t} est réservé aux offres Avancé et Pro. Passe à l'offre Avancé pour tester cette stratégie.", [INDICATOR_LABELS[first]], {
+      plain: "L'indicateur {0:t} est réservé aux offres Avancé et Pro.",
     });
   }
 }

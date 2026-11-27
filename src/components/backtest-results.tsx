@@ -653,7 +653,7 @@ function RobustnessSummary({ report }: { report: BacktestReport }) {
           ))}
         </ul>
       </Card>
-      <PlanLock>{tl("Le détail des contrôles (Monte Carlo, réglages voisins) est réservé aux offres Trader et Pro.")}</PlanLock>
+      <PlanLock>{tl("Le détail des contrôles (Monte Carlo, réglages voisins) est réservé aux offres payantes.")}</PlanLock>
     </div>
   );
 }

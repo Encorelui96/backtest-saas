@@ -248,8 +248,8 @@ describe("engine wiring", () => {
 describe("Pro indicators", () => {
   const rule = (indicator: Parameters<typeof operand>[0]) => [{ conditions: [{ left: operand(indicator), op: "==" as const, right: num(1) }] }];
 
-  it("only the Pro plan includes them", () => {
-    expect([PLANS.free.proIndicators, PLANS.trader.proIndicators, PLANS.pro.proIndicators]).toEqual([false, false, true]);
+  it("only the Avancé and Pro plans include them", () => {
+    expect([PLANS.free.proIndicators, PLANS.trader.proIndicators, PLANS.advanced.proIndicators, PLANS.pro.proIndicators]).toEqual([false, false, true, true]);
     expect(PRO_INDICATORS.has("bos")).toBe(true);
     expect(PRO_INDICATORS.has("fvg")).toBe(true);
     expect(PRO_INDICATORS.has("hma")).toBe(false);

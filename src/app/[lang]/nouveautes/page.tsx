@@ -13,6 +13,10 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
     month: "Novembre 2026",
     items: [
       {
+        title: "Une offre Avancé, et plus dans chaque offre payante",
+        text: "Entre Trader et Pro, l'offre Avancé (29 € par mois) ouvre les indicateurs avancés : structure de marché, FVG, Heikin Ashi, divergences. Les offres payantes gagnent aussi des backtests, des traductions par l'IA, des alertes et de la place dans le journal. Le détail est sur la page Tarifs.",
+      },
+      {
         title: "Importe ton journal",
         text: "Dans le journal, « Importer » lit un fichier CSV ou Excel de n'importe quel journal, l'historique de MetaTrader 4 ou 5, ou l'export de TradeZella, Tradervue et Edgewonk. Les colonnes sont trouvées toutes seules, le fichier reste dans ton navigateur, et un fichier importé deux fois n'ajoute rien.",
       },

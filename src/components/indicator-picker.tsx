@@ -309,7 +309,7 @@ export function IndicatorPicker({
                         >
                           <span className="min-w-0 flex-1 truncate">{tl(labels[i])}</span>
                           {!g.label && <span className="shrink-0 text-[11px] text-muted">{tl(groupOf.get(i) ?? "")}</span>}
-                          {locked && <span className="shrink-0 rounded border border-line px-1 text-[10px] text-muted">Pro</span>}
+                          {locked && <span className="shrink-0 rounded border border-line px-1 text-[10px] text-muted">{tl("Avancé")}</span>}
                         </li>
                       );
                     })}
