@@ -202,13 +202,12 @@ export function balance(capital: number, amounts: number[]): number {
 }
 
 /** The journal as the API sends it. Times are milliseconds since 1970. */
-export interface JournalAccount {
+export interface JournalAccount extends AccountPlan {
   id: string;
   name: string;
   kind: AccountKind;
   currency: string;
   capital: number;
-  riskPct: number;
   archived: boolean;
   createdAt: number;
 }
@@ -227,8 +226,6 @@ export interface TradeClose {
   exit: number;
   exitReason: ExitReason;
   fees: number;
-  /** Did the trade follow the plan, as the trader judges it. */
-  planFollowed: boolean | null;
   comment: string | null;
   captureUrl: string | null;
   /** How far the trade went against (MAE) and for (MFE) the trader before closing, in R. */
@@ -256,6 +253,12 @@ export interface JournalTrade {
   announcement: string | null;
   captureUrl: string | null;
   close: TradeClose | null;
+  /** The plan's rules this trade broke, checked when it was saved. */
+  checks: PlanCheck[];
+  planAnswers: PlanAnswers;
+  errors: TradeError[];
+  /** In the plan (true), out of it (false), or not known yet (null): see planStatus. */
+  planFollowed: boolean | null;
   createdAt: number;
   updatedAt: number;
 }
@@ -265,4 +268,216 @@ export function closedResult(t: JournalTrade, currency: string): ClosedTrade | n
   if (!t.close) return null;
   const c = { exit: t.close.exit, closedAt: t.close.closedAt, fees: t.close.fees };
   return { r: resultR(t, c), amount: resultAmount(t, c), currency };
+}
+
+// ---------- The account's plan and its automatic checks ----------
+
+/**
+ * The few rules of a trading plan the journal can check by itself. null: no rule.
+ * The days and hours are read in the plan's time zone.
+ */
+export interface AccountPlan {
+  /** Planned risk per trade, % of the capital. */
+  riskPct: number;
+  /** Stop trading for the day after losing this many R. */
+  maxDailyLossR: number | null;
+  maxTradesDay: number | null;
+  /** Days allowed, bit 0 for Monday to bit 6 for Sunday. */
+  tradingDays: number | null;
+  /** "09:00" to "17:30"; a window that crosses midnight works too ("22:00" to "02:00"). */
+  sessionStart: string | null;
+  sessionEnd: string | null;
+  timeZone: string;
+}
+
+export const ALL_DAYS = 0b1111111;
+export const WEEK_DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
+
+export const PLAN_CHECKS = ["no-setup", "risk", "day", "hours", "daily-loss", "max-trades"] as const;
+export type PlanCheck = (typeof PLAN_CHECKS)[number];
+export const PLAN_CHECK_LABELS: Record<PlanCheck, string> = {
+  "no-setup": "Trade sans configuration du plan",
+  risk: "Risque au-dessus du plan",
+  day: "Jour non prévu par le plan",
+  hours: "En dehors des horaires du plan",
+  "daily-loss": "Perte max du jour déjà atteinte",
+  "max-trades": "Nombre max de trades du jour déjà atteint",
+};
+
+/** The trader's own answers to the three points the app can't check (see J4.1 in the book). */
+export interface PlanAnswers {
+  /** The setup was complete, with all its conditions. */
+  setup: boolean | null;
+  /** Entered at the planned trigger, neither early nor chasing. */
+  entry: boolean | null;
+  /** Managed and closed as the plan says. */
+  exit: boolean | null;
+}
+
+export const NO_ANSWERS: PlanAnswers = { setup: null, entry: null, exit: null };
+
+/** "09:30" → 570, null when it isn't an hour. */
+export function minutesOf(hhmm: string | null): number | null {
+  const m = hhmm ? /^([01]\d|2[0-3]):([0-5]\d)$/.exec(hhmm) : null;
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+export function isTimeZone(tz: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-GB", { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The day (2026-11-27), weekday (0 = Monday) and minute of the day of a moment, in a time zone. */
+export function localTime(t: number, timeZone: string) {
+  const f = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23" });
+  const p = Object.fromEntries(f.formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  return {
+    day: `${p.year}-${p.month}-${p.day}`,
+    weekday: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].indexOf(p.weekday),
+    minutes: Number(p.hour) * 60 + Number(p.minute),
+  };
+}
+
+/** Another trade of the same account, as the daily checks need it. */
+export interface OtherTrade {
+  openedAt: number;
+  closedAt: number | null;
+  /** Result in R once closed. */
+  r: number | null;
+}
+
+/**
+ * The plan's rules a trade breaks, at the moment it opens. `riskPct` is its risk as a % of the
+ * capital (null when unknown). The daily rules count the account's other trades of the same day:
+ * the losses already closed and the trades already opened before this one.
+ */
+export function planChecks(
+  t: { openedAt: number; setupId: string | null; riskPct: number | null },
+  plan: AccountPlan,
+  others: OtherTrade[],
+): PlanCheck[] {
+  const failed: PlanCheck[] = [];
+  if (!t.setupId) failed.push("no-setup");
+  if (t.riskPct !== null && t.riskPct > plan.riskPct * 1.1) failed.push("risk");
+  const at = localTime(t.openedAt, plan.timeZone);
+  if (plan.tradingDays !== null && !(plan.tradingDays & (1 << at.weekday))) failed.push("day");
+  const start = minutesOf(plan.sessionStart);
+  const end = minutesOf(plan.sessionEnd);
+  if (start !== null && end !== null && start !== end) {
+    const inside = start < end ? at.minutes >= start && at.minutes < end : at.minutes >= start || at.minutes < end;
+    if (!inside) failed.push("hours");
+  }
+  const sameDay = (x: number) => localTime(x, plan.timeZone).day === at.day;
+  if (plan.maxDailyLossR !== null) {
+    const lost = others
+      .filter((o) => o.closedAt !== null && o.r !== null && o.closedAt <= t.openedAt && sameDay(o.closedAt))
+      .reduce((a, o) => a + (o.r ?? 0), 0);
+    if (lost <= -plan.maxDailyLossR) failed.push("daily-loss");
+  }
+  if (plan.maxTradesDay !== null) {
+    const before = others.filter((o) => o.openedAt < t.openedAt && sameDay(o.openedAt)).length;
+    if (before >= plan.maxTradesDay) failed.push("max-trades");
+  }
+  return failed;
+}
+
+/** In the plan only if no rule broke and the three answers are yes; out of it at the first no. */
+export function planStatus(checks: PlanCheck[], a: PlanAnswers): boolean | null {
+  if (checks.length || a.setup === false || a.entry === false || a.exit === false) return false;
+  return a.setup && a.entry && a.exit ? true : null;
+}
+
+// ---------- The error register (J4.5 in the book) ----------
+
+export const ERROR_CODES = ["E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8"] as const;
+export type ErrorCode = (typeof ERROR_CODES)[number];
+export const ERROR_LABELS: Record<ErrorCode, string> = {
+  E1: "Entrée hors plan",
+  E2: "Entrée anticipée ou en rattrapage",
+  E3: "Stop déplacé ou retiré",
+  E4: "Taille trop grosse",
+  E5: "Sortie trop tôt",
+  E6: "Sortie trop tard",
+  E7: "Trade en période interdite",
+  E8: "Revenge trade",
+};
+
+export interface TradeError {
+  code: ErrorCode;
+  /** What the error cost, in R: the real result minus what the plan would have given. A winning error costs a positive R. */
+  costR: number | null;
+}
+
+/** The errors the checks and the answers point to; the trader picks. */
+export function suggestedErrors(checks: PlanCheck[], a: PlanAnswers): ErrorCode[] {
+  const s = new Set<ErrorCode>();
+  if (checks.includes("no-setup") || checks.includes("max-trades") || a.setup === false) s.add("E1");
+  if (a.entry === false) s.add("E2");
+  if (checks.includes("risk")) s.add("E4");
+  if (a.exit === false) {
+    s.add("E5");
+    s.add("E6");
+  }
+  if (checks.includes("day") || checks.includes("hours")) s.add("E7");
+  if (checks.includes("daily-loss")) s.add("E8");
+  return ERROR_CODES.filter((c) => s.has(c));
+}
+
+/**
+ * The cost the app can work out, null when the trader has to estimate it. `r`: the trade's result;
+ * `riskRatio`: its risk divided by the planned risk.
+ * A trade the plan wouldn't have taken (E1, E7, E8) costs its whole result; a moved stop the loss
+ * beyond −1R; a too big size the extra loss (or gain), measured in the plan's R.
+ */
+export function proposedCost(code: ErrorCode, r: number | null, riskRatio: number | null): number | null {
+  const cost = (() => {
+    if (r === null) return null;
+    if (code === "E1" || code === "E7" || code === "E8") return r;
+    if (code === "E3") return r < -1 ? r + 1 : 0;
+    if (code === "E4") return riskRatio !== null && riskRatio > 1 ? r * (riskRatio - 1) : null;
+    return null;
+  })();
+  // Two decimals: −0.5000000000000568 is what floating point makes of −1.5 + 1.
+  return cost === null ? null : Math.round(cost * 100) / 100 || 0;
+}
+
+export interface Discipline {
+  /** Trades whose plan status is known. */
+  judged: number;
+  inPlan: number;
+  /** Share of judged trades in the plan, 0 to 1. */
+  rate: number | null;
+  /** Average R of the trades in the plan (the method) and out of it (the discipline). */
+  inPlanR: number | null;
+  offPlanR: number | null;
+  /** Per error code: how many and what they cost; total of the known costs. */
+  register: { code: ErrorCode; count: number; costR: number }[];
+  costR: number;
+}
+
+/** Splits the method from the discipline, over closed trades. */
+export function discipline(trades: { planFollowed: boolean | null; r: number | null; errors: TradeError[] }[]): Discipline {
+  const judged = trades.filter((t) => t.planFollowed !== null);
+  const avg = (xs: (number | null)[]) => {
+    const v = xs.filter((x): x is number => x !== null);
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+  };
+  const register = ERROR_CODES.map((code) => {
+    const hits = trades.flatMap((t) => t.errors.filter((e) => e.code === code));
+    return { code, count: hits.length, costR: hits.reduce((a, e) => a + (e.costR ?? 0), 0) };
+  }).filter((x) => x.count > 0);
+  const inPlan = judged.filter((t) => t.planFollowed);
+  return {
+    judged: judged.length,
+    inPlan: inPlan.length,
+    rate: judged.length ? inPlan.length / judged.length : null,
+    inPlanR: avg(inPlan.map((t) => t.r)),
+    offPlanR: avg(judged.filter((t) => !t.planFollowed).map((t) => t.r)),
+    register,
+    costR: register.reduce((a, x) => a + x.costR, 0),
+  };
 }

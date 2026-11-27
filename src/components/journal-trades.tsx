@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useT } from "@/lib/client/i18n";
 import { date, num, pct, price, r, tone } from "@/lib/client/format";
-import { EXIT_REASON_LABELS, balance, closedResult, riskAmount, summarize, type JournalTrade } from "@/lib/journal";
-import { Tip } from "./learn";
+import { ERROR_LABELS, EXIT_REASON_LABELS, PLAN_CHECK_LABELS, balance, closedResult, discipline, riskAmount, summarize, type JournalTrade } from "@/lib/journal";
+import { Help, Tip } from "./learn";
 import { Button, Card, Stat } from "./ui";
 import { CaptureLink, SideBadge, amount, type JournalData } from "./journal-shared";
 
@@ -37,6 +37,7 @@ export function JournalTrades({
   const currencyOf = (t: JournalTrade) => accounts.get(t.accountId)?.currency ?? "USD";
   const results = new Map(closed.map((t) => [t.id, closedResult(t, currencyOf(t))!]));
   const s = summarize([...results.values()]);
+  const d = discipline(closed.map((t) => ({ planFollowed: t.planFollowed, r: results.get(t.id)!.r, errors: t.errors })));
   const account = accountId ? accounts.get(accountId) : data.accounts.length === 1 ? data.accounts[0] : undefined;
   const capital = account ? balance(account.capital, closed.filter((t) => t.accountId === account.id).map((t) => results.get(t.id)!.amount)) : null;
 
@@ -85,6 +86,46 @@ export function JournalTrades({
         <Tip>{tl("Sous 30 trades, ces chiffres bougent encore beaucoup d'un trade à l'autre : continue à tout noter avant de juger ta méthode.")}</Tip>
       )}
 
+      {(d.judged > 0 || d.register.length > 0) && (
+        <Card
+          title={
+            <span>
+              {tl("Discipline")}
+              <Help id="respect-du-plan" />
+            </span>
+          }
+        >
+          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+            <Stat label={tl("Respect du plan")} value={d.rate === null ? "—" : pct(d.rate * 100, 0, false)} hint={tl("{0} trades sur {1}", [d.inPlan, d.judged])} />
+            <Stat label={tl("Espérance dans le plan")} value={r(d.inPlanR)} className={tone(d.inPlanR)} hint={tl("ta méthode")} />
+            <Stat label={tl("Espérance hors plan")} value={r(d.offPlanR)} className={tone(d.offPlanR)} hint={tl("ta discipline")} />
+            <Stat label={tl("Coût des erreurs")} value={r(d.costR, 1)} className={tone(d.costR)} term="registre-des-erreurs" />
+          </div>
+          {d.register.length > 0 && (
+            <table className="mt-3 w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted">
+                  <th className="py-1 font-normal">{tl("Erreur")}</th>
+                  <th className="py-1 text-right font-normal">{tl("Nombre")}</th>
+                  <th className="py-1 text-right font-normal">{tl("Coût")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.register.map((x) => (
+                  <tr key={x.code} className="border-t border-line/60">
+                    <td className="py-1">
+                      <span className="font-mono text-xs text-muted">{x.code}</span> {tl(ERROR_LABELS[x.code])}
+                    </td>
+                    <td className="num py-1 text-right">{x.count}</td>
+                    <td className={`num py-1 text-right ${tone(x.costR)}`}>{r(x.costR, 1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      )}
+
       {open.length > 0 && (
         <Card title={tl("En cours ({0})", [open.length])}>
           <ul className="flex flex-col divide-y divide-line/60">
@@ -101,6 +142,7 @@ export function JournalTrades({
                     <span className="num text-xs text-muted">
                       {date(t.openedAt)} · {tl("entrée {0}, stop {1}", [price(t.entry), price(t.stop)])} · 1R = {amount(riskAmount(t), currency)}
                     </span>
+                    {t.checks.length > 0 && <span className="text-xs text-warn">⚠ {t.checks.map((x) => tl(PLAN_CHECK_LABELS[x])).join(" · ")}</span>}
                   </div>
                   <span className="flex gap-2">
                     <Button variant="ghost" onClick={() => onEdit(t)}>
@@ -133,8 +175,13 @@ export function JournalTrades({
                       </span>
                       <span className="truncate text-xs text-muted">
                         {date(c.closedAt, false)} · {tl(EXIT_REASON_LABELS[c.exitReason])}
-                        {c.planFollowed === true && <> · <span className="text-up">{tl("plan suivi")}</span></>}
-                        {c.planFollowed === false && <> · <span className="text-down">{tl("plan non suivi")}</span></>}
+                        {t.planFollowed === true && <> · <span className="text-up">{tl("plan suivi")}</span></>}
+                        {t.planFollowed === false && (
+                          <>
+                            {" "}
+                            · <span className="text-down">{t.errors.length ? tl("hors plan : {0}", [t.errors.map((e) => e.code).join(" ")]) : tl("hors plan")}</span>
+                          </>
+                        )}
                         {c.comment && <> · {c.comment}</>}
                       </span>
                     </span>

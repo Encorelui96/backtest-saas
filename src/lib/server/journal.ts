@@ -3,15 +3,26 @@ import { z } from "zod";
 import {
   ACCOUNT_KINDS,
   CURRENCIES,
+  ERROR_CODES,
   EXIT_REASONS,
   MAX_SETUPS,
   MAX_TRADES,
+  NO_ANSWERS,
   closeProblem,
+  isTimeZone,
   isWebLink,
+  minutesOf,
   openProblem,
+  planChecks,
+  planStatus,
+  resultR,
+  riskAmount,
+  riskPercent,
   type JournalAccount,
   type JournalSetup,
   type JournalTrade,
+  type PlanAnswers,
+  type PlanCheck,
 } from "../journal";
 import type { SessionUser } from "./auth";
 import { newId, query, queryOne } from "./db";
@@ -52,12 +63,24 @@ const time = z
   .int()
   .refine((t) => t >= Date.UTC(2000, 0, 1) && t <= Date.now() + 86_400_000, { message: "date hors limites" });
 
+const hour = z
+  .string()
+  .nullable()
+  .refine((h) => h === null || minutesOf(h) !== null, { message: "heure attendue (HH:MM)" });
+
 export const AccountInput = z.object({
   name: z.string().trim().min(1).max(60),
   kind: z.enum(ACCOUNT_KINDS),
   currency: z.enum(CURRENCIES),
   capital: z.number().positive().max(1e12),
   riskPct: z.number().positive().max(100),
+  // The plan: null for "no rule".
+  maxDailyLossR: z.number().positive().max(100).nullable(),
+  maxTradesDay: z.number().int().min(1).max(100).nullable(),
+  tradingDays: z.number().int().min(1).max(127).nullable(),
+  sessionStart: hour,
+  sessionEnd: hour,
+  timeZone: z.string().max(64).refine(isTimeZone, { message: "fuseau horaire inconnu" }),
   archived: z.boolean().optional(),
 });
 export type AccountInput = z.infer<typeof AccountInput>;
@@ -75,7 +98,6 @@ export const CloseInput = z.object({
   exit: price,
   exitReason: z.enum(EXIT_REASONS),
   fees: z.number().min(0).max(1e9),
-  planFollowed: z.boolean().nullable(),
   comment: text(280),
   captureUrl: link,
   maeR: z.number().min(-100).max(100).nullable(),
@@ -101,6 +123,21 @@ export const TradeInput = z.object({
   announcement: text(200),
   captureUrl: link,
   close: CloseInput.nullable(),
+  planAnswers: z.object({ setup: z.boolean().nullable(), entry: z.boolean().nullable(), exit: z.boolean().nullable() }),
+  errors: z
+    .array(
+      z.object({
+        code: z.enum(ERROR_CODES),
+        costR: z
+          .number()
+          .min(-1000)
+          .max(1000)
+          .nullable()
+          .transform((x) => (x === null ? null : Math.round(x * 100) / 100)),
+      }),
+    )
+    .max(ERROR_CODES.length)
+    .refine((e) => new Set(e.map((x) => x.code)).size === e.length, { message: "code d'erreur en double" }),
 });
 export type TradeInput = z.infer<typeof TradeInput>;
 
@@ -119,6 +156,12 @@ interface AccountRow {
   currency: string;
   capital: number;
   risk_pct: number;
+  max_daily_loss_r: number | null;
+  max_trades_day: number | null;
+  trading_days: number | null;
+  session_start: string | null;
+  session_end: string | null;
+  time_zone: string;
   archived: boolean;
   created_at: Date;
 }
@@ -130,6 +173,12 @@ const account = (r: AccountRow): JournalAccount => ({
   currency: r.currency,
   capital: r.capital,
   riskPct: r.risk_pct,
+  maxDailyLossR: r.max_daily_loss_r,
+  maxTradesDay: r.max_trades_day,
+  tradingDays: r.trading_days,
+  sessionStart: r.session_start,
+  sessionEnd: r.session_end,
+  timeZone: r.time_zone,
   archived: r.archived,
   createdAt: r.created_at.getTime(),
 });
@@ -180,6 +229,9 @@ interface TradeRow {
   exit_capture_url: string | null;
   mae_r: number | null;
   mfe_r: number | null;
+  checks: PlanCheck[];
+  plan_answers: Partial<PlanAnswers>;
+  errors: JournalTrade["errors"];
   created_at: Date;
   updated_at: Date;
 }
@@ -210,13 +262,16 @@ const trade = (r: TradeRow): JournalTrade => ({
           exit: r.exit_price,
           exitReason: (r.exit_reason ?? "manual-plan") as NonNullable<JournalTrade["close"]>["exitReason"],
           fees: r.fees,
-          planFollowed: r.plan_followed,
           comment: r.comment,
           captureUrl: r.exit_capture_url,
           maeR: r.mae_r,
           mfeR: r.mfe_r,
         }
       : null,
+  checks: r.checks,
+  planAnswers: { ...NO_ANSWERS, ...r.plan_answers },
+  errors: r.errors,
+  planFollowed: r.plan_followed,
   createdAt: r.created_at.getTime(),
   updatedAt: r.updated_at.getTime(),
 });
@@ -240,6 +295,22 @@ export async function openTrades(userId: string): Promise<number> {
 
 // ---------- Accounts ----------
 
+const ACCOUNT_COLUMNS = ["name", "kind", "currency", "capital", "risk_pct", "max_daily_loss_r", "max_trades_day", "trading_days", "session_start", "session_end", "time_zone"];
+
+const accountValues = (a: AccountInput) => [
+  a.name,
+  a.kind,
+  a.currency,
+  a.capital,
+  a.riskPct,
+  a.maxDailyLossR,
+  a.maxTradesDay,
+  a.tradingDays,
+  a.sessionStart,
+  a.sessionEnd,
+  a.timeZone,
+];
+
 export async function createAccount(user: SessionUser, input: AccountInput): Promise<JournalAccount> {
   const plan = await planOf(user);
   return withUserLock(user, async (run) => {
@@ -252,18 +323,20 @@ export async function createAccount(user: SessionUser, input: AccountInput): Pro
         : new QuotaError("Tu as atteint {0} comptes dans le journal : archive ou supprime un compte pour en ajouter un.", [plan.journalAccounts]);
     }
     const [r] = await run<Record<string, unknown>>(
-      "INSERT INTO journal_accounts (id, user_id, name, kind, currency, capital, risk_pct) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
-      [newId(), user.id, input.name, input.kind, input.currency, input.capital, input.riskPct],
+      `INSERT INTO journal_accounts (id, user_id, ${ACCOUNT_COLUMNS.join(", ")})
+       VALUES ($1, $2, ${ACCOUNT_COLUMNS.map((_, i) => `$${i + 3}`).join(", ")}) RETURNING *`,
+      [newId(), user.id, ...accountValues(input)],
     );
     return account(r as unknown as AccountRow);
   });
 }
 
 export async function updateAccount(userId: string, id: string, input: AccountInput): Promise<JournalAccount | null> {
+  const n = ACCOUNT_COLUMNS.length;
   const r = await queryOne<AccountRow>(
-    `UPDATE journal_accounts SET name = $3, kind = $4, currency = $5, capital = $6, risk_pct = $7, archived = coalesce($8, archived)
+    `UPDATE journal_accounts SET ${ACCOUNT_COLUMNS.map((c, i) => `${c} = $${i + 3}`).join(", ")}, archived = coalesce($${n + 3}, archived)
      WHERE id = $1 AND user_id = $2 RETURNING *`,
-    [id, userId, input.name, input.kind, input.currency, input.capital, input.riskPct, input.archived ?? null],
+    [id, userId, ...accountValues(input), input.archived ?? null],
   );
   return r ? account(r) : null;
 }
@@ -318,14 +391,39 @@ export async function deleteSetup(userId: string, id: string): Promise<{ archive
 
 // ---------- Trades ----------
 
-/** The account and setup must be the user's. */
-async function checkLinks(userId: string, t: TradeInput) {
-  const a = await queryOne("SELECT 1 FROM journal_accounts WHERE id = $1 AND user_id = $2", [t.accountId, userId]);
+const DAY = 86_400_000;
+
+/**
+ * Checks the account and setup are the user's, then runs the plan's checks as they stand now:
+ * the risk against the capital before this trade, the day, the hours and the day's other trades.
+ * The result is stored with the trade and not recomputed when the plan changes afterwards.
+ */
+async function evaluate(userId: string, t: TradeInput, id: string | null): Promise<{ checks: PlanCheck[]; planFollowed: boolean | null }> {
+  const a = await queryOne<AccountRow>("SELECT * FROM journal_accounts WHERE id = $1 AND user_id = $2", [t.accountId, userId]);
   if (!a) throw new UserError("Compte introuvable");
   if (t.setupId) {
     const s = await queryOne("SELECT 1 FROM journal_setups WHERE id = $1 AND user_id = $2", [t.setupId, userId]);
     if (!s) throw new UserError("Configuration introuvable");
   }
+  const [sum, near] = await Promise.all([
+    queryOne<{ pnl: number }>(
+      `SELECT coalesce(sum((exit_price - entry) * (CASE WHEN side = 'long' THEN 1 ELSE -1 END) * size * point_value - fees), 0)::float8 AS pnl
+       FROM journal_trades WHERE account_id = $1 AND user_id = $2 AND closed_at IS NOT NULL AND id <> $3`,
+      [a.id, userId, id ?? ""],
+    ),
+    // The day's other trades, with margin for the time zones.
+    query<TradeRow>("SELECT * FROM journal_trades WHERE account_id = $1 AND user_id = $2 AND id <> $3 AND opened_at > $4 AND opened_at < $5", [
+      a.id,
+      userId,
+      id ?? "",
+      new Date(t.openedAt - 3 * DAY),
+      new Date(t.openedAt + DAY),
+    ]),
+  ]);
+  const capital = a.capital + (sum?.pnl ?? 0);
+  const others = near.map(trade).map((o) => ({ openedAt: o.openedAt, closedAt: o.close?.closedAt ?? null, r: o.close ? resultR(o, o.close) : null }));
+  const checks = planChecks({ openedAt: t.openedAt, setupId: t.setupId, riskPct: riskPercent(riskAmount(t), capital) }, account(a), others);
+  return { checks, planFollowed: planStatus(checks, t.planAnswers) };
 }
 
 const COLUMNS = [
@@ -351,13 +449,16 @@ const COLUMNS = [
   "exit_reason",
   "fees",
   "plan_followed",
+  "checks",
+  "plan_answers",
+  "errors",
   "comment",
   "exit_capture_url",
   "mae_r",
   "mfe_r",
 ];
 
-function values(t: TradeInput): unknown[] {
+function values(t: TradeInput, plan: { checks: PlanCheck[]; planFollowed: boolean | null }): unknown[] {
   const c = t.close;
   return [
     t.accountId,
@@ -381,7 +482,11 @@ function values(t: TradeInput): unknown[] {
     c?.exit ?? null,
     c?.exitReason ?? null,
     c?.fees ?? 0,
-    c?.planFollowed ?? null,
+    plan.planFollowed,
+    // jsonb: pg would send a JS array as a Postgres array.
+    JSON.stringify(plan.checks),
+    JSON.stringify(t.planAnswers),
+    JSON.stringify(t.errors),
     c?.comment ?? null,
     c?.captureUrl ?? null,
     c?.maeR ?? null,
@@ -391,10 +496,10 @@ function values(t: TradeInput): unknown[] {
 
 export async function createTrade(userId: string, input: TradeInput): Promise<JournalTrade> {
   checkTrade(input);
-  await checkLinks(userId, input);
+  const plan = await evaluate(userId, input, null);
   const n = await queryOne<{ n: string }>("SELECT count(*) AS n FROM journal_trades WHERE user_id = $1", [userId]);
   if (Number(n?.n ?? 0) >= MAX_TRADES) throw new UserError("Ton journal a atteint {0} trades : écris-nous pour aller plus loin.", [MAX_TRADES]);
-  const params = values(input);
+  const params = values(input, plan);
   const r = await queryOne<TradeRow>(
     `INSERT INTO journal_trades (id, user_id, ${COLUMNS.join(", ")}) VALUES ($1, $2, ${COLUMNS.map((_, i) => `$${i + 3}`).join(", ")}) RETURNING *`,
     [newId(), userId, ...params],
@@ -405,11 +510,11 @@ export async function createTrade(userId: string, input: TradeInput): Promise<Jo
 /** Replaces the whole trade: the form sends everything, a closed trade can be reopened by sending close: null. */
 export async function updateTrade(userId: string, id: string, input: TradeInput): Promise<JournalTrade | null> {
   checkTrade(input);
-  await checkLinks(userId, input);
+  const plan = await evaluate(userId, input, id);
   const r = await queryOne<TradeRow>(
     `UPDATE journal_trades SET ${COLUMNS.map((c, i) => `${c} = $${i + 3}`).join(", ")}, updated_at = now()
      WHERE id = $1 AND user_id = $2 RETURNING *`,
-    [id, userId, ...values(input)],
+    [id, userId, ...values(input, plan)],
   );
   return r ? trade(r) : null;
 }

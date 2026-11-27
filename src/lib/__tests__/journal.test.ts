@@ -1,17 +1,28 @@
 import { describe, expect, it } from "vitest";
 import {
+  ALL_DAYS,
+  NO_ANSWERS,
   balance,
   closeProblem,
   defaultPointValue,
+  discipline,
+  isTimeZone,
   isWebLink,
+  localTime,
+  minutesOf,
   openProblem,
+  planChecks,
+  planStatus,
+  proposedCost,
   resultAmount,
   resultR,
   riskAmount,
   riskPercent,
   sizeUnit,
+  suggestedErrors,
   summarize,
   targetR,
+  type AccountPlan,
   type OpenFields,
 } from "../journal";
 
@@ -125,5 +136,108 @@ describe("summary", () => {
 
   it("adds the closed trades to the starting capital", () => {
     expect(balance(10_000, [200, -100])).toBe(10_100);
+  });
+});
+
+describe("the account's plan", () => {
+  // Friday 27 November 2026, 10:00 in Paris (09:00 UTC).
+  const FRI_10H = Date.parse("2026-11-27T09:00:00Z");
+  const HOUR = 3_600_000;
+  const plan: AccountPlan = {
+    riskPct: 1,
+    maxDailyLossR: 2,
+    maxTradesDay: 3,
+    tradingDays: 0b0011111,
+    sessionStart: "09:00",
+    sessionEnd: "17:30",
+    timeZone: "Europe/Paris",
+  };
+  const trade = { openedAt: FRI_10H, setupId: "s1", riskPct: 1 };
+
+  it("reads hours and days in the plan's time zone", () => {
+    expect(localTime(FRI_10H, "Europe/Paris")).toEqual({ day: "2026-11-27", weekday: 4, minutes: 600 });
+    expect(localTime(FRI_10H, "America/New_York")).toEqual({ day: "2026-11-27", weekday: 4, minutes: 240 });
+    expect(minutesOf("17:30")).toBe(1050);
+    expect(minutesOf("25:00")).toBeNull();
+    expect(isTimeZone("Europe/Paris")).toBe(true);
+    expect(isTimeZone("Mars/Olympus")).toBe(false);
+  });
+
+  it("passes a trade that follows every rule", () => {
+    expect(planChecks(trade, plan, [])).toEqual([]);
+  });
+
+  it("flags a missing setup, a too big risk, a closed day and the hours", () => {
+    expect(planChecks({ ...trade, setupId: null }, plan, [])).toEqual(["no-setup"]);
+    expect(planChecks({ ...trade, riskPct: 1.05 }, plan, [])).toEqual([]);
+    expect(planChecks({ ...trade, riskPct: 1.5 }, plan, [])).toEqual(["risk"]);
+    expect(planChecks({ ...trade, openedAt: FRI_10H + 24 * HOUR }, plan, [])).toEqual(["day"]);
+    expect(planChecks({ ...trade, openedAt: FRI_10H + 8 * HOUR }, plan, [])).toEqual(["hours"]);
+  });
+
+  it("handles a session across midnight and a plan without rules", () => {
+    const night = { ...plan, sessionStart: "22:00", sessionEnd: "02:00", tradingDays: ALL_DAYS };
+    expect(planChecks({ ...trade, openedAt: FRI_10H + 14 * HOUR }, night, [])).toEqual([]);
+    expect(planChecks(trade, night, [])).toEqual(["hours"]);
+    const none: AccountPlan = { riskPct: 1, maxDailyLossR: null, maxTradesDay: null, tradingDays: null, sessionStart: null, sessionEnd: null, timeZone: "UTC" };
+    expect(planChecks({ ...trade, openedAt: FRI_10H + 24 * HOUR }, none, [])).toEqual([]);
+  });
+
+  it("stops the day after the max loss or the max number of trades", () => {
+    const lost = [
+      { openedAt: FRI_10H - 3 * HOUR, closedAt: FRI_10H - 2 * HOUR, r: -1 },
+      { openedAt: FRI_10H - 2 * HOUR, closedAt: FRI_10H - HOUR, r: -1 },
+    ];
+    expect(planChecks(trade, plan, lost)).toEqual(["daily-loss"]);
+    // The day before doesn't count, nor a loss closed after this trade opened.
+    expect(planChecks(trade, plan, lost.map((o) => ({ ...o, closedAt: o.closedAt - 24 * HOUR })))).toEqual([]);
+    expect(planChecks(trade, plan, [{ openedAt: FRI_10H - HOUR, closedAt: FRI_10H + HOUR, r: -3 }])).toEqual([]);
+    const three = [1, 2, 3].map((h) => ({ openedAt: FRI_10H - h * 10 * 60_000, closedAt: null, r: null }));
+    expect(planChecks(trade, plan, three)).toEqual(["max-trades"]);
+    expect(planChecks(trade, plan, three.slice(1))).toEqual([]);
+  });
+
+  it("puts a trade in the plan only when every answer is yes and no rule broke", () => {
+    const yes = { setup: true, entry: true, exit: true };
+    expect(planStatus([], yes)).toBe(true);
+    expect(planStatus([], NO_ANSWERS)).toBeNull();
+    expect(planStatus([], { ...yes, exit: null })).toBeNull();
+    expect(planStatus([], { ...yes, entry: false })).toBe(false);
+    expect(planStatus(["hours"], yes)).toBe(false);
+  });
+});
+
+describe("error register", () => {
+  it("points to the errors the checks and answers suggest", () => {
+    expect(suggestedErrors(["risk", "hours"], NO_ANSWERS)).toEqual(["E4", "E7"]);
+    expect(suggestedErrors([], { setup: false, entry: true, exit: false })).toEqual(["E1", "E5", "E6"]);
+    expect(suggestedErrors(["daily-loss"], NO_ANSWERS)).toEqual(["E8"]);
+  });
+
+  it("proposes the cost it can work out", () => {
+    expect(proposedCost("E1", 2, null)).toBe(2);
+    expect(proposedCost("E3", -1.6, null)).toBe(-0.6);
+    expect(proposedCost("E3", -1.5000000000000568, null)).toBe(-0.5);
+    expect(proposedCost("E4", -1.5, 1.9621)).toBe(-1.44);
+    expect(proposedCost("E3", -0.4, null)).toBe(0);
+    expect(proposedCost("E4", -1, 2)).toBe(-1);
+    expect(proposedCost("E4", -1, null)).toBeNull();
+    expect(proposedCost("E5", 0.5, null)).toBeNull();
+    expect(proposedCost("E1", null, null)).toBeNull();
+  });
+
+  it("splits the method from the discipline", () => {
+    const d = discipline([
+      { planFollowed: true, r: 2, errors: [] },
+      { planFollowed: true, r: -1, errors: [] },
+      { planFollowed: false, r: -2, errors: [{ code: "E3", costR: -1 }, { code: "E8", costR: -2 }] },
+      { planFollowed: false, r: 1, errors: [{ code: "E1", costR: 1 }] },
+      { planFollowed: null, r: 0.5, errors: [] },
+    ]);
+    expect([d.judged, d.inPlan, d.rate]).toEqual([4, 2, 0.5]);
+    expect(d.inPlanR).toBeCloseTo(0.5, 9);
+    expect(d.offPlanR).toBeCloseTo(-0.5, 9);
+    expect(d.register.map((x) => x.code)).toEqual(["E1", "E3", "E8"]);
+    expect(d.costR).toBeCloseTo(-2, 9);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useT } from "@/lib/client/i18n";
 import { formatLocale } from "@/lib/client/format";
-import type { JournalAccount, JournalSetup, JournalTrade, Side } from "@/lib/journal";
+import { closedResult, type JournalAccount, type JournalSetup, type JournalTrade, type OtherTrade, type Side } from "@/lib/journal";
 import type { PlanId } from "@/lib/plans";
 
 /** What GET /api/journal answers. */
@@ -73,4 +73,38 @@ export function Choice<T extends string>({ value, options, onChange }: { value: 
       ))}
     </div>
   );
+}
+
+/** What PUT /api/journal/accounts/[id] expects, from an account as the API sends it. */
+export function accountBody(a: JournalAccount, patch: { archived?: boolean } = {}) {
+  return {
+    name: a.name,
+    kind: a.kind,
+    currency: a.currency,
+    capital: a.capital,
+    riskPct: a.riskPct,
+    maxDailyLossR: a.maxDailyLossR,
+    maxTradesDay: a.maxTradesDay,
+    tradingDays: a.tradingDays,
+    sessionStart: a.sessionStart,
+    sessionEnd: a.sessionEnd,
+    timeZone: a.timeZone,
+    ...patch,
+  };
+}
+
+/** This device's time zone, for a new account's plan. */
+export function deviceTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Europe/Paris";
+  } catch {
+    return "Europe/Paris";
+  }
+}
+
+/** The account's other trades as the plan's daily checks need them. */
+export function otherTrades(data: JournalData, accountId: string, except: string | null, currency: string): OtherTrade[] {
+  return data.trades
+    .filter((t) => t.accountId === accountId && t.id !== except)
+    .map((t) => ({ openedAt: t.openedAt, closedAt: t.close?.closedAt ?? null, r: closedResult(t, currency)?.r ?? null }));
 }

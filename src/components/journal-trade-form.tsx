@@ -7,35 +7,52 @@ import { num, pct, price, r, tone } from "@/lib/client/format";
 import { MARKETS } from "@/lib/markets";
 import { INTERVALS } from "@/lib/types";
 import {
+  ERROR_CODES,
+  ERROR_LABELS,
   EXIT_REASONS,
   EXIT_REASON_LABELS,
+  NO_ANSWERS,
+  PLAN_CHECK_LABELS,
   balance,
   closeProblem,
   closedResult,
   defaultPointValue,
   isWebLink,
   openProblem,
+  planChecks,
+  planStatus,
+  proposedCost,
   resultAmount,
   resultR,
   riskAmount,
   riskPercent,
   sizeUnit,
+  suggestedErrors,
   targetR,
   type ExitReason,
   type JournalTrade,
   type OpenFields,
+  type PlanAnswers,
   type Quality,
   type Side,
   type TradeClose,
+  type TradeError,
 } from "@/lib/journal";
 import { FieldHelp, Help, useBeginner } from "./learn";
 import { NumberInput } from "./number-input";
 import { Alert, Button, Field } from "./ui";
-import { Choice, amount, fromLocalInput, toLocalInput, type JournalData } from "./journal-shared";
+import { Choice, amount, fromLocalInput, otherTrades, toLocalInput, type JournalData } from "./journal-shared";
 
 /** The setup field's two choices that aren't setups. */
 const OFF_PLAN = "__off";
 const NO_SETUP = "__none";
+
+/** The three points of the plan the trader answers (J4.1 in the book); the risk is checked by the app. */
+const QUESTIONS: [keyof PlanAnswers, string][] = [
+  ["setup", "Configuration complète, avec toutes ses conditions ?"],
+  ["entry", "Entrée au déclencheur prévu, ni avant ni en rattrapage ?"],
+  ["exit", "Gestion et sortie comme le plan le dit ?"],
+];
 
 const POPULAR = ["BTCUSDT", "ETHUSDT", "SOLUSDT", ...MARKETS.map((m) => m.symbol)];
 
@@ -64,7 +81,6 @@ interface CloseDraft {
   exit: number | null;
   exitReason: ExitReason | "";
   fees: number | null;
-  planFollowed: boolean | null;
   comment: string;
   captureUrl: string;
   maeR: number | null;
@@ -122,7 +138,6 @@ function closeDraft(t: JournalTrade | null, now: number): CloseDraft {
     exit: c?.exit ?? null,
     exitReason: c?.exitReason ?? "",
     fees: c?.fees ?? null,
-    planFollowed: c?.planFollowed ?? null,
     comment: c?.comment ?? "",
     captureUrl: c?.captureUrl ?? "",
     maeR: c?.maeR ?? null,
@@ -159,6 +174,8 @@ export function TradeForm({
   const [c, setC] = useState<CloseDraft>(() => closeDraft(trade, now));
   const [withClose, setWithClose] = useState(mode === "close" || Boolean(trade?.close));
   const [showOpen, setShowOpen] = useState(mode !== "close");
+  const [answers, setAnswers] = useState<PlanAnswers>(trade?.planAnswers ?? NO_ANSWERS);
+  const [errors, setErrors] = useState<TradeError[]>(trade?.errors ?? []);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const setOpen = (patch: Partial<OpenDraft>) => setO((x) => ({ ...x, ...patch }));
@@ -195,6 +212,15 @@ export function TradeForm({
   const tooMuch = planRisk !== null && riskPct !== null && riskPct > planRisk * 1.1;
   const toTarget = fields && !shape ? targetR(fields) : null;
 
+  // The plan's rules, checked live as the server will check them on saving.
+  const setupId = o.setup && o.setup !== OFF_PLAN && o.setup !== NO_SETUP ? o.setup : null;
+  const checks =
+    account && fields && !shape ? planChecks({ openedAt: fields.openedAt, setupId, riskPct }, account, otherTrades(data, o.accountId, trade?.id ?? null, currency)) : [];
+  const ruleBreaks = checks.filter((x) => x !== "risk");
+  const status = planStatus(checks, answers);
+  const suggested = suggestedErrors(checks, answers);
+  const riskRatio = riskPct !== null && planRisk ? riskPct / planRisk : null;
+
   const exitFields = c.exit !== null ? { exit: c.exit, closedAt: fromLocalInput(c.closedAt) ?? now, fees: c.fees ?? 0 } : null;
   const result = fields && !shape && exitFields ? { r: resultR(fields, exitFields), amount: resultAmount(fields, exitFields) } : null;
 
@@ -223,7 +249,6 @@ export function TradeForm({
         exit: c.exit,
         exitReason: c.exitReason,
         fees: c.fees ?? 0,
-        planFollowed: c.planFollowed,
         comment: c.comment.trim() || null,
         captureUrl: c.captureUrl.trim() || null,
         maeR: c.maeR,
@@ -249,6 +274,9 @@ export function TradeForm({
       announcement: o.announcement.trim() || null,
       captureUrl: o.captureUrl.trim() || null,
       close,
+      planAnswers: answers,
+      // The register is for trades out of the plan.
+      errors: status === false ? errors : [],
     };
     setBusy(true);
     try {
@@ -408,6 +436,17 @@ export function TradeForm({
                   ])}
                 </Alert>
               )}
+              {ruleBreaks.length > 0 && (
+                <Alert tone="warn">
+                  {tl("Hors des règles de ton plan :")}
+                  <ul className="mt-1 list-disc pl-5">
+                    {ruleBreaks.map((x) => (
+                      <li key={x}>{tl(PLAN_CHECK_LABELS[x])}</li>
+                    ))}
+                  </ul>
+                </Alert>
+              )}
+              {fields && !shape && account && checks.length === 0 && <p className="text-xs text-up">✓ {tl("Conforme aux règles de ton plan.")}</p>}
             </section>
           ) : (
             <section className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-line bg-panel-2/60 px-3 py-2 text-sm">
@@ -451,16 +490,6 @@ export function TradeForm({
                 <Field label={tl("Frais (commission, swap), en {0}", [currency])} term="frais">
                   <NumberInput nullable value={c.fees} onChange={(fees) => setClose({ fees })} min={0} placeholder="0" />
                 </Field>
-                <Field label={tl("As-tu suivi ton plan ?")} term="respect-du-plan">
-                  <Choice
-                    value={c.planFollowed === null ? null : c.planFollowed ? "yes" : "no"}
-                    onChange={(v) => setClose({ planFollowed: v === "yes" })}
-                    options={[
-                      { id: "yes", label: tl("Oui"), tone: "border-up bg-up/15 text-up" },
-                      { id: "no", label: tl("Non"), tone: "border-down bg-down/15 text-down" },
-                    ]}
-                  />
-                </Field>
                 {!beginner && (
                   <>
                     <Field label={tl("Pire moment (MAE), en R")} term="mae-mfe" hint={tl("−0,6 si le prix est allé à 0,6R contre toi.")}>
@@ -470,6 +499,74 @@ export function TradeForm({
                       <NumberInput nullable value={c.mfeR} onChange={(mfeR) => setClose({ mfeR })} step={0.1} />
                     </Field>
                   </>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 rounded-md border border-line p-3">
+                <h4 className="text-sm font-semibold">
+                  {tl("Respect du plan")}
+                  <Help id="respect-du-plan" />
+                </h4>
+                {QUESTIONS.map(([key, question]) => (
+                  <div key={key} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="min-w-0 flex-1">{tl(question)}</span>
+                    <div className="w-36">
+                      <Choice
+                        value={answers[key] === null ? null : answers[key] ? "yes" : "no"}
+                        onChange={(v) => setAnswers({ ...answers, [key]: v === "yes" })}
+                        options={[
+                          { id: "yes", label: tl("Oui"), tone: "border-up bg-up/15 text-up" },
+                          { id: "no", label: tl("Non"), tone: "border-down bg-down/15 text-down" },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                ))}
+                {checks.length > 0 && <p className="text-xs text-down">{tl("Règles du plan non respectées : {0}.", [checks.map((x) => tl(PLAN_CHECK_LABELS[x])).join(", ")])}</p>}
+                <p className={`text-sm font-medium ${status === true ? "text-up" : status === false ? "text-down" : "text-muted"}`}>
+                  {status === true ? tl("Dans le plan.") : status === false ? tl("Hors plan.") : tl("Réponds aux trois questions pour classer le trade.")}
+                </p>
+                {status === false && (
+                  <div className="flex flex-col gap-1.5 border-t border-line pt-2">
+                    <h4 className="text-sm font-semibold">
+                      {tl("Registre des erreurs")}
+                      <Help id="registre-des-erreurs" />
+                    </h4>
+                    <p className="text-xs text-muted">
+                      {tl("Coche ce qui s'est passé. Le coût est en R : le résultat réel moins ce qu'aurait donné le plan. Une erreur qui gagne coûte un R positif.")}
+                    </p>
+                    {ERROR_CODES.map((code) => {
+                      const picked = errors.find((e) => e.code === code);
+                      return (
+                        <div key={code} className="flex flex-wrap items-center gap-2 text-sm">
+                          <label className="flex min-w-0 flex-1 items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(picked)}
+                              onChange={(e) =>
+                                setErrors(
+                                  e.target.checked ? [...errors, { code, costR: proposedCost(code, result?.r ?? null, riskRatio) }] : errors.filter((x) => x.code !== code),
+                                )
+                              }
+                            />
+                            <span className="font-mono text-xs text-muted">{code}</span>
+                            {tl(ERROR_LABELS[code])}
+                            {suggested.includes(code) && <span className="rounded bg-warn/15 px-1 text-[10px] text-warn">{tl("proposé")}</span>}
+                          </label>
+                          {picked && (
+                            <NumberInput
+                              nullable
+                              value={picked.costR}
+                              onChange={(v) => setErrors(errors.map((x) => (x.code === code ? { ...x, costR: v } : x)))}
+                              step={0.1}
+                              className="w-24"
+                              aria-label={tl("Coût en R")}
+                              placeholder={tl("coût en R")}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
               <Field label={tl("Ce que tu retiens, en une phrase")}>

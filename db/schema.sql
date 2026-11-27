@@ -244,3 +244,19 @@ CREATE TABLE IF NOT EXISTS journal_trades (
 );
 CREATE INDEX IF NOT EXISTS journal_trades_by_user ON journal_trades (user_id, opened_at DESC);
 CREATE INDEX IF NOT EXISTS journal_trades_open ON journal_trades (user_id) WHERE closed_at IS NULL;
+
+-- Trading journal, step 2: each account's plan, and per trade the plan's checks, the trader's answers and the errors.
+ALTER TABLE journal_accounts ADD COLUMN IF NOT EXISTS max_daily_loss_r double precision;
+ALTER TABLE journal_accounts ADD COLUMN IF NOT EXISTS max_trades_day integer;
+-- Days allowed: bit 0 = Monday … bit 6 = Sunday; NULL = every day.
+ALTER TABLE journal_accounts ADD COLUMN IF NOT EXISTS trading_days integer;
+-- "HH:MM" in the account's time zone; the window may cross midnight.
+ALTER TABLE journal_accounts ADD COLUMN IF NOT EXISTS session_start text;
+ALTER TABLE journal_accounts ADD COLUMN IF NOT EXISTS session_end text;
+ALTER TABLE journal_accounts ADD COLUMN IF NOT EXISTS time_zone text NOT NULL DEFAULT 'Europe/Paris';
+-- The plan's rules the trade broke when it was saved, e.g. ["risk", "hours"]. Not recomputed when the plan changes.
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS checks jsonb NOT NULL DEFAULT '[]';
+-- {"setup": true, "entry": true, "exit": false}: the three points the trader answers.
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS plan_answers jsonb NOT NULL DEFAULT '{}';
+-- [{"code": "E5", "costR": -0.8}]: the error register (codes E1 to E8).
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS errors jsonb NOT NULL DEFAULT '[]';

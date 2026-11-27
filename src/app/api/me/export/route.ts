@@ -28,7 +28,8 @@ export async function GET(req: Request) {
           [user.id],
         ),
         query("SELECT kind, delta, reason, created_at FROM credit_ledger WHERE user_id = $1 ORDER BY created_at", [user.id]),
-        query("SELECT id, name, kind, currency, capital, risk_pct, archived, created_at FROM journal_accounts WHERE user_id = $1 ORDER BY created_at", [user.id]),
+        query(`SELECT id, name, kind, currency, capital, risk_pct, max_daily_loss_r, max_trades_day, trading_days, session_start, session_end, time_zone, archived, created_at
+           FROM journal_accounts WHERE user_id = $1 ORDER BY created_at`, [user.id]),
         query("SELECT id, name, description, strategy_id, archived, created_at FROM journal_setups WHERE user_id = $1 ORDER BY created_at", [user.id]),
         // Every column but the owner: the trades are the trader's own notes.
         query("SELECT * FROM journal_trades WHERE user_id = $1 ORDER BY opened_at", [user.id]).then((rows) =>

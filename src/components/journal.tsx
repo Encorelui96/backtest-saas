@@ -89,7 +89,7 @@ export function Journal() {
         tabs={[
           { id: "trades", label: openCount ? tl("Trades ({0} en cours)", [openCount]) : tl("Trades") },
           { id: "setups", label: tl("Configurations") },
-          { id: "accounts", label: tl("Comptes") },
+          { id: "accounts", label: tl("Comptes et plan") },
         ]}
       />
 
