@@ -174,6 +174,8 @@ export function JournalTrades({
                         <span className="text-xs text-muted">{setupName(t)}</span>
                         {t.quality && <span className="rounded border border-line px-1 text-[11px] text-muted">{t.quality}</span>}
                         {t.noStop && <span className="rounded border border-warn/40 px-1 text-[11px] text-warn">{tl("sans stop")}</span>}
+                        {t.images.length > 0 && <span className="text-[11px] text-muted">📷 {t.images.length}</span>}
+                        {t.analysis && <span className="text-[11px] text-muted">{tl("analysé")}</span>}
                       </span>
                       <span className="truncate text-xs text-muted">
                         {date(c.closedAt, false)} · {tl(EXIT_REASON_LABELS[c.exitReason])}

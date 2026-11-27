@@ -219,12 +219,12 @@ export async function consumeJournalCapture(user: SessionUser): Promise<string> 
     const plan = await planOf(user);
     const u = await captureUsage(user, run);
     if (u.limit !== null && u.used >= u.limit) {
-      throw new QuotaError("Tu as utilisé tes {0} captures du journal ce mois-ci (offre {1:t}). Elles reviennent le {2:date} ; la saisie à la main reste ouverte.", [u.limit, plan.label, u.resetsAt]);
+      throw new QuotaError("Tu as utilisé tes {0} lectures par l'IA du journal ce mois-ci (offre {1:t}). Elles reviennent le {2:date} ; la saisie à la main reste ouverte.", [u.limit, plan.label, u.resetsAt]);
     }
     const [recent] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'journal-capture' AND created_at > now() - interval '1 minute'", [user.id]);
-    if (Number(recent.n) >= CAPTURES_PER_MINUTE) throw new QuotaError("Trop de captures d'affilée : attends une minute.");
+    if (Number(recent.n) >= CAPTURES_PER_MINUTE) throw new QuotaError("Trop de lectures par l'IA d'affilée : attends une minute.");
     const [mine] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'journal-capture' AND created_at > now() - interval '1 day'", [user.id]);
-    if (Number(mine.n) >= CAPTURE_USER_DAILY_CAP) throw new QuotaError("Tu as atteint la limite de {0} captures sur 24 heures : réessaie demain, ou note le trade à la main.", [CAPTURE_USER_DAILY_CAP]);
+    if (Number(mine.n) >= CAPTURE_USER_DAILY_CAP) throw new QuotaError("Tu as atteint la limite de {0} lectures par l'IA sur 24 heures : réessaie demain, ou note le trade à la main.", [CAPTURE_USER_DAILY_CAP]);
     await run("SELECT pg_advisory_xact_lock(hashtext('journal-capture:daily'))", []);
     const [today] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE kind = 'journal-capture' AND created_at > now() - interval '1 day'", []);
     if (Number(today.n) >= CAPTURE_DAILY_CAP) throw new QuotaError("La lecture des captures est très demandée aujourd'hui : réessaie demain, ou note le trade à la main.");

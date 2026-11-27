@@ -8,6 +8,7 @@ import { calendarMonth, filterTrades, shiftMonth, statTrades, type CalendarDay, 
 import { Button, Card, Stat } from "./ui";
 import { SideBadge, amount, deviceTimeZone, type JournalData } from "./journal-shared";
 import { FilterBar, setupLabel } from "./journal-filters";
+import { NoteEditor } from "./journal-notes";
 
 /** "novembre 2026", "jeudi 27 novembre": the page's language, read as a calendar date (no time zone shift). */
 function monthName(month: string) {
@@ -41,6 +42,7 @@ export function JournalCalendar({
   onFilter,
   now,
   onEdit,
+  onChanged,
 }: {
   data: JournalData;
   filter: TradeFilter;
@@ -48,6 +50,8 @@ export function JournalCalendar({
   /** When the calendar was opened: its first month and "today". */
   now: number;
   onEdit: (t: JournalTrade) => void;
+  /** A day's note was written: the journal reloads. */
+  onChanged: () => void;
 }) {
   const tl = useT();
   const today = localTime(now, deviceTimeZone()).day;
@@ -61,6 +65,7 @@ export function JournalCalendar({
   const byId = new Map(data.trades.map((t) => [t.id, t]));
   const setupName = setupLabel(data, tl);
   const open = data.trades.filter((t) => !t.close).length;
+  const noted = new Set(data.notes.map((n) => n.day));
 
   const go = (by: number) => {
     setMonth(shiftMonth(month, by));
@@ -125,6 +130,11 @@ export function JournalCalendar({
                     } ${d.day === selected ? "ring-2 ring-accent" : d.day === today ? "ring-1 ring-accent/60" : ""} hover:border-accent`}
                   >
                     <span className={`absolute top-1 left-1.5 text-[10px] sm:text-[11px] ${d.day === today ? "font-semibold text-accent" : "text-muted"}`}>{d.date}</span>
+                    {noted.has(d.day) && (
+                      <span className="absolute top-1 right-1.5 text-[10px] text-muted" aria-hidden>
+                        ✎
+                      </span>
+                    )}
                     {d.trades.length > 0 && (
                       <>
                         <span className="num mt-2 text-[11px] font-semibold text-fg sm:text-sm">{signed(d.r)}</span>
@@ -186,6 +196,10 @@ export function JournalCalendar({
           ) : (
             <p className="text-sm text-muted">{tl("Aucun trade clôturé ce jour-là.")}</p>
           )}
+          <div className="mt-4 border-t border-line pt-3">
+            <h3 className="mb-2 text-sm font-semibold">{tl("Note du jour")}</h3>
+            <NoteEditor key={chosen.day} data={data} day={chosen.day} onChanged={onChanged} review={false} />
+          </div>
         </Card>
       )}
     </div>

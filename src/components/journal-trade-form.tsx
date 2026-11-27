@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { rich, useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
-import { date, num, pct, r, tone } from "@/lib/client/format";
+import { date, num, pct, price, r, tone } from "@/lib/client/format";
 import { MARKETS } from "@/lib/markets";
 import { INTERVALS } from "@/lib/types";
 import {
@@ -26,9 +26,16 @@ import {
   resultR,
   riskAmount,
   riskPercent,
+  sizeForRisk,
+  sizeStep,
   sizeUnit,
+  stopFromTicks,
   suggestedErrors,
   targetR,
+  tickOf,
+  ticksBetween,
+  VERDICT_LABELS,
+  type ChartAnalysis,
   type ExitReason,
   type JournalTrade,
   type OpenFields,
@@ -43,6 +50,34 @@ import { NumberInput } from "./number-input";
 import { Alert, Button, Field } from "./ui";
 import { Choice, amount, fromLocalInput, otherTrades, toLocalInput, type CaptureQuota, type JournalData } from "./journal-shared";
 import { CaptureButton, CaptureImport, OffsetSelect, savedOffset } from "./journal-capture";
+import { ImageStrip, type PendingImage } from "./journal-images";
+
+/** How the trader likes to give the stop and the size, remembered in this browser. */
+const MODES_KEY = "backtest-lab:journal-entry-modes";
+
+function savedModes(): { stop: "price" | "ticks"; size: "size" | "risk" } {
+  try {
+    const m = JSON.parse(localStorage.getItem(MODES_KEY) ?? "{}") as { stop?: string; size?: string };
+    return { stop: m.stop === "ticks" ? "ticks" : "price", size: m.size === "risk" ? "risk" : "size" };
+  } catch {
+    return { stop: "price", size: "size" };
+  }
+}
+
+function saveModes(m: { stop: "price" | "ticks"; size: "size" | "risk" }) {
+  try {
+    localStorage.setItem(MODES_KEY, JSON.stringify(m));
+  } catch {
+    // Private browsing: the choice lasts for this form only.
+  }
+}
+
+const VERDICT_TONES: Record<ChartAnalysis["verdict"], string> = {
+  respected: "border-up/40 bg-up/10 text-up",
+  partly: "border-warn/40 bg-warn/10 text-warn",
+  not: "border-down/40 bg-down/10 text-down",
+  unclear: "border-line bg-panel-2/60 text-muted",
+};
 
 /** The setup field's two choices that aren't setups. */
 const OFF_PLAN = "__off";
@@ -66,9 +101,16 @@ interface Draft {
   openedAt: string;
   entry: number | null;
   stop: number | null;
+  /** The stop given in price, or in ticks (pips) from the entry. */
+  stopMode: "price" | "ticks";
+  stopTicks: number | null;
   /** No stop on this trade: 1R is the planned risk. */
   noStop: boolean;
   size: number | null;
+  /** The size given directly, or worked out from the amount risked. */
+  sizeMode: "size" | "risk";
+  riskAmount: number | null;
+  notes: string;
   /** null: the market's usual value (defaultPointValue), when it has one. */
   pointValue: number | null;
   target: number | null;
@@ -104,8 +146,13 @@ function draftOf(t: JournalTrade | null, data: JournalData, accountId: string, n
       openedAt: toLocalInput(t.openedAt),
       entry: t.entry,
       stop: t.noStop ? null : t.stop,
+      stopMode: "price",
+      stopTicks: null,
       noStop: t.noStop,
       size: t.size,
+      sizeMode: "size",
+      riskAmount: null,
+      notes: t.notes ?? "",
       pointValue: t.pointValue,
       target: t.target,
       timeframe: t.timeframe ?? "",
@@ -125,6 +172,7 @@ function draftOf(t: JournalTrade | null, data: JournalData, accountId: string, n
     };
   }
   const hasSetups = data.setups.some((s) => !s.archived);
+  const modes = savedModes();
   return {
     accountId,
     setup: hasSetups ? "" : NO_SETUP,
@@ -134,8 +182,13 @@ function draftOf(t: JournalTrade | null, data: JournalData, accountId: string, n
     openedAt: toLocalInput(now),
     entry: null,
     stop: null,
+    stopMode: modes.stop,
+    stopTicks: null,
     noStop: false,
     size: null,
+    sizeMode: modes.size,
+    riskAmount: null,
+    notes: "",
     pointValue: null,
     target: null,
     timeframe: "",
@@ -160,6 +213,25 @@ function followedOf(a: PlanAnswers): { followed: boolean | null; broke: (keyof P
   const broke = BREAKS.map(([k]) => k).filter((k) => a[k] === false);
   if (broke.length) return { followed: false, broke };
   return { followed: a.setup && a.entry && a.exit ? true : null, broke: [] };
+}
+
+/** Two small choices side by side: how a field is given. */
+function Modes<T extends string>({ value, options, onChange }: { value: T; options: { id: T; label: string }[]; onChange: (v: T) => void }) {
+  return (
+    <span className="inline-flex rounded border border-line p-0.5">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          aria-pressed={value === o.id}
+          onClick={() => value !== o.id && onChange(o.id)}
+          className={`rounded px-1.5 py-0.5 ${value === o.id ? "bg-panel-2 text-fg" : "text-muted hover:text-fg"}`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </span>
+  );
 }
 
 /**
@@ -194,6 +266,11 @@ export function TradeForm({
   const [captured, setCaptured] = useState<CaptureResult | null>(null);
   const [quota, setQuota] = useState<CaptureQuota>(data.plan.captures);
   const [offset, setOffset] = useState(savedOffset);
+  const [keptImages, setKeptImages] = useState<string[]>(trade?.images ?? []);
+  const [pending, setPending] = useState<PendingImage[]>([]);
+  const [images, setImages] = useState(data.plan.images);
+  const [analysis, setAnalysis] = useState<ChartAnalysis | null>(trade?.analysis ?? null);
+  const [analysing, setAnalysing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const set = (patch: Partial<Draft>) => setD((x) => ({ ...x, ...patch }));
@@ -211,7 +288,8 @@ export function TradeForm({
   const usualPointValue = defaultPointValue(d.market);
   const pointValue = d.pointValue ?? usualPointValue;
   const showPointValue = usualPointValue === null || !beginner || (d.pointValue !== null && d.pointValue !== usualPointValue);
-  const lots = sizeUnit(d.market) === "lots";
+  const unit = sizeUnit(d.market);
+  const tick = tickOf(d.market);
   const markets = [...new Set([...data.trades.map((t) => t.market), ...POPULAR])];
 
   // The capital before this trade: the start plus the account's other closed trades.
@@ -219,15 +297,23 @@ export function TradeForm({
   const capital = account ? balance(account.capital, others.map((t) => closedResult(t, currency)?.amount ?? 0)) : 0;
   const planRisk = account?.riskPct ?? null;
   const plannedRisk = planRisk !== null ? (capital * planRisk) / 100 : null;
+  // The stop given in ticks (or pips) becomes a price; the size given as an amount risked becomes lots or contracts,
+  // rounded down so the real risk stays under the amount.
+  const inTicks = d.stopMode === "ticks" && tick !== null;
+  const givenStop = inTicks ? (d.entry !== null && d.stopTicks ? stopFromTicks(d.side, d.entry, d.stopTicks, tick.size) : null) : d.stop;
+  const byRisk = d.sizeMode === "risk" && !d.noStop;
+  const riskedSize =
+    byRisk && d.entry !== null && givenStop !== null && pointValue !== null && d.riskAmount !== null ? sizeForRisk(d.riskAmount, d.entry, givenStop, pointValue, sizeStep(d.market)) : null;
+  const size = byRisk ? (riskedSize ? riskedSize : null) : d.size;
   // Without a stop, 1R is the planned risk: the stop is put where it would cost exactly that. A trade saved that way keeps
   // its stop while its prices stay the same, so that editing it later doesn't move 1R with the capital.
   const keptStop =
-    trade?.noStop && d.noStop && d.entry === trade.entry && d.size === trade.size && d.side === trade.side && pointValue === trade.pointValue ? trade.stop : null;
-  const stop = d.noStop ? (keptStop ?? plannedStop(d.side, d.entry, d.size, pointValue, plannedRisk)) : d.stop;
+    trade?.noStop && d.noStop && d.entry === trade.entry && size === trade.size && d.side === trade.side && pointValue === trade.pointValue ? trade.stop : null;
+  const stop = d.noStop ? (keptStop ?? plannedStop(d.side, d.entry, size, pointValue, plannedRisk)) : givenStop;
 
   const openedAt = fromLocalInput(d.openedAt) ?? now;
   const fields: OpenFields | null =
-    d.entry !== null && stop !== null && d.size !== null && pointValue !== null ? { side: d.side, entry: d.entry, stop, size: d.size, pointValue, target: d.target, openedAt } : null;
+    d.entry !== null && stop !== null && size !== null && pointValue !== null ? { side: d.side, entry: d.entry, stop, size, pointValue, target: d.target, openedAt } : null;
   const shape = fields && openProblem(fields);
   const risk = fields && !shape ? riskAmount(fields) : null;
   const riskPct = risk !== null ? riskPercent(risk, capital) : null;
@@ -271,7 +357,9 @@ export function TradeForm({
       size: c.size,
       entry: c.entry,
       stop: c.stop,
+      stopMode: "price",
       noStop: false,
+      sizeMode: "size",
       pointValue: c.pointValue,
       target: c.target ?? d.target,
       exit: c.exit,
@@ -298,9 +386,11 @@ export function TradeForm({
     if (!d.setup) return setError(tl("Choisis la configuration du trade, ou « Hors plan »."));
     if (fromLocalInput(d.openedAt) === null) return setError(tl("Indique la date et l'heure d'entrée."));
     if (d.entry === null) return setError(tl("Indique le prix d'entrée."));
-    if (d.size === null) return setError(tl("Indique la taille de la position."));
     if (pointValue === null) return setError(tl("Indique la valeur du point pour ce marché."));
-    if (!d.noStop && d.stop === null) return setError(tl("Indique le stop, ou coche « Pas de stop »."));
+    if (!d.noStop && givenStop === null) return setError(tl("Indique le stop, ou coche « Pas de stop »."));
+    if (byRisk && d.riskAmount === null) return setError(tl("Indique le montant que tu risques."));
+    if (byRisk && riskedSize === 0) return setError(tl("Avec ce risque, même la plus petite taille le dépasse : augmente le risque ou rapproche le stop."));
+    if (size === null) return setError(tl("Indique la taille de la position."));
     if (stop === null) return setError(tl("Sans stop, il faut le risque par trade du compte pour mesurer 1R."));
     if (shape) return setError(tl(shape));
     for (const link of [d.captureUrl, d.exitCaptureUrl]) if (link.trim() && !isWebLink(link.trim())) return setError(tl("Le lien de capture doit être une adresse web (https://…)."));
@@ -333,7 +423,7 @@ export function TradeForm({
       openedAt: fromLocalInput(d.openedAt),
       entry: d.entry,
       stop,
-      size: d.size,
+      size,
       pointValue,
       target: d.target,
       timeframe: d.timeframe.trim() || null,
@@ -343,6 +433,8 @@ export function TradeForm({
       captureUrl: d.captureUrl.trim() || null,
       noStop: d.noStop,
       ticket: d.ticket,
+      notes: d.notes.trim() || null,
+      analysis,
       close,
       planAnswers: close ? answers : NO_ANSWERS,
       // The register is for trades out of the plan.
@@ -350,11 +442,48 @@ export function TradeForm({
     };
     setBusy(true);
     try {
-      await api(trade ? `/api/journal/trades/${trade.id}` : "/api/journal/trades", { method: trade ? "PUT" : "POST", json: body });
+      const saved = await api<JournalTrade>(trade ? `/api/journal/trades/${trade.id}` : "/api/journal/trades", { method: trade ? "PUT" : "POST", json: body });
+      // The charts chosen go with the trade once it exists.
+      for (const p of pending) {
+        await api("/api/journal/images", { json: { image: p.data, tradeId: saved.id } });
+        setPending((list) => list.filter((x) => x.key !== p.key));
+      }
       onDone();
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
+    }
+  };
+
+  const removeImage = async (id: string) => {
+    if (!confirm(tl("Supprimer ce graphique du journal ? C'est définitif."))) return;
+    try {
+      const res = await api<{ images: { used: number; limit: number } }>(`/api/journal/images/${id}`, { method: "DELETE" });
+      setKeptImages((list) => list.filter((x) => x !== id));
+      setImages(res.images);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  /** The AI's reading of one chart against the setup: kept with the trade when it is saved. */
+  const analyse = async (image: { id?: string; pending?: PendingImage }) => {
+    setError(null);
+    setAnalysing(true);
+    try {
+      const res = await api<{ analysis: ChartAnalysis; captures: CaptureQuota }>("/api/journal/analysis", {
+        json: {
+          ...(image.id ? { imageId: image.id } : { image: image.pending!.data }),
+          setupId,
+          trade: { market: d.market.trim() || "?", side: d.side, entry: d.entry, stop: d.noStop ? null : stop, noStop: d.noStop, target: d.target, exit: d.exit, r: result?.r ?? null, checks },
+        },
+      });
+      setAnalysis(res.analysis);
+      setQuota(res.captures);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setAnalysing(false);
     }
   };
 
@@ -437,16 +566,86 @@ export function TradeForm({
                 <Field label={tl("Stop initial")} term="stop">
                   {d.noStop ? (
                     <span className="rounded-md border border-line bg-panel-2/60 px-3 py-1.5 text-sm text-muted">{tl("Pas de stop")}</span>
+                  ) : inTicks ? (
+                    <span className="flex items-center gap-2">
+                      <NumberInput nullable value={d.stopTicks} onChange={(v) => set({ stopTicks: v })} min={0} className="min-w-0 flex-1" aria-label={tl("Stop en {0}", [tl(tick.unit)])} />
+                      <span className="text-sm text-muted">{tl(tick.unit)}</span>
+                    </span>
                   ) : (
                     <NumberInput nullable value={d.stop} onChange={(v) => set({ stop: v })} min={0} />
+                  )}
+                  {!d.noStop && tick && (
+                    <span className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <Modes
+                        value={d.stopMode}
+                        options={[
+                          { id: "price", label: tl("en prix") },
+                          { id: "ticks", label: tl("en {0}", [tl(tick.unit)]) },
+                        ]}
+                        onChange={(stopMode) => {
+                          // Keep the same stop when switching: its price becomes ticks and back.
+                          const patch: Partial<Draft> = { stopMode };
+                          if (stopMode === "ticks" && d.entry !== null && d.stop !== null) patch.stopTicks = ticksBetween(d.entry, d.stop, tick.size);
+                          if (stopMode === "price" && givenStop !== null) patch.stop = givenStop;
+                          set(patch);
+                          saveModes({ stop: stopMode, size: d.sizeMode });
+                        }}
+                      />
+                      {inTicks && givenStop !== null && <span className="text-muted">{tl("stop à {0}", [price(givenStop)])}</span>}
+                      {!inTicks && d.entry !== null && d.stop !== null && d.stop !== d.entry && (
+                        <span className="text-muted">{tl("soit {0} {1}", [num(ticksBetween(d.entry, d.stop, tick.size), 0), tl(tick.unit)])}</span>
+                      )}
+                    </span>
                   )}
                   <label className="flex items-center gap-1.5 text-[11px]">
                     <input type="checkbox" checked={d.noStop} onChange={(e) => set({ noStop: e.target.checked })} />
                     {tl("Pas de stop sur ce trade : 1R = le risque prévu par le plan")}
                   </label>
                 </Field>
-                <Field label={lots ? tl("Taille (lots)") : tl("Taille (quantité)")} term="taille">
-                  <NumberInput nullable value={d.size} onChange={(size) => set({ size })} min={0} step={lots ? 0.01 : 1} />
+                <Field
+                  label={
+                    byRisk
+                      ? tl("Risque en {0}", [currency])
+                      : unit === "contracts"
+                        ? tl("Taille (contrats)")
+                        : unit === "lots"
+                          ? tl("Taille (lots)")
+                          : tl("Taille (quantité)")
+                  }
+                  term={byRisk ? "risque-par-trade" : "taille"}
+                >
+                  {byRisk ? (
+                    <NumberInput nullable value={d.riskAmount} onChange={(riskAmount) => set({ riskAmount })} min={0} />
+                  ) : (
+                    <NumberInput nullable value={d.size} onChange={(v) => set({ size: v })} min={0} step={sizeStep(d.market)} />
+                  )}
+                  {!d.noStop && (
+                    <span className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <Modes
+                        value={d.sizeMode}
+                        options={[
+                          { id: "size", label: tl("taille") },
+                          { id: "risk", label: tl("risque en {0}", [currency]) },
+                        ]}
+                        onChange={(sizeMode) => {
+                          const patch: Partial<Draft> = { sizeMode };
+                          // The plan's risk as a start; the size found stays when going back.
+                          if (sizeMode === "risk" && d.riskAmount === null && plannedRisk) patch.riskAmount = Math.round(plannedRisk);
+                          if (sizeMode === "size" && riskedSize) patch.size = riskedSize;
+                          set(patch);
+                          saveModes({ stop: d.stopMode, size: sizeMode });
+                        }}
+                      />
+                      {byRisk && riskedSize !== null && riskedSize > 0 && (
+                        <span className="text-fg">
+                          → {num(riskedSize, sizeStep(d.market) >= 1 ? 0 : String(sizeStep(d.market)).split(".")[1]?.length ?? 2)}{" "}
+                          {unit === "contracts" ? tl("contrats") : unit === "lots" ? tl("lots") : tl("unités")}
+                        </span>
+                      )}
+                      {byRisk && riskedSize === 0 && <span className="text-warn">{tl("risque trop petit pour ce stop")}</span>}
+                      {byRisk && pointValue === null && <span className="text-muted">{tl("indique la valeur du point")}</span>}
+                    </span>
+                  )}
                 </Field>
                 {showPointValue && (
                   <Field label={tl("Valeur du point")} term="valeur-du-point" hint={tl("Gain pour 1 de taille quand le prix bouge de 1, en {0}.", [currency])}>
@@ -613,6 +812,56 @@ export function TradeForm({
                   )}
                 </section>
               )}
+
+              <Field label={tl("Notes")}>
+                <textarea
+                  rows={3}
+                  maxLength={5000}
+                  value={d.notes}
+                  placeholder={tl("Ce que tu as vu, ce que tu as ressenti, ce que tu ferais autrement…")}
+                  onChange={(e) => set({ notes: e.target.value })}
+                />
+              </Field>
+
+              <section className="flex flex-col gap-2">
+                <span className="text-xs text-muted">{tl("Graphiques du trade (facultatif)")}</span>
+                <ImageStrip
+                  kept={keptImages}
+                  pending={pending}
+                  quota={images}
+                  busy={busy}
+                  onPick={(list) => setPending((p) => [...p, ...list.map((data) => ({ key: crypto.randomUUID(), data }))])}
+                  onRemoveKept={removeImage}
+                  onRemovePending={(key) => setPending((p) => p.filter((x) => x.key !== key))}
+                  actions={(image) => (
+                    <button
+                      type="button"
+                      onClick={() => analyse(image)}
+                      disabled={analysing || busy || (quota.limit !== null && quota.used >= quota.limit)}
+                      className="text-left text-[11px] text-accent hover:underline disabled:text-muted disabled:no-underline"
+                    >
+                      {analysing ? tl("Analyse…") : tl("Analyser avec l'IA")}
+                    </button>
+                  )}
+                />
+                {analysis && (
+                  <div className={`flex flex-col gap-1.5 rounded-md border px-3 py-2 text-sm ${VERDICT_TONES[analysis.verdict]}`}>
+                    <span className="font-semibold">{tl(VERDICT_LABELS[analysis.verdict])}</span>
+                    <span className="text-fg">{analysis.summary}</span>
+                    <ul className="list-disc pl-5 text-fg/90">
+                      {analysis.remarks.map((x, i) => (
+                        <li key={i}>{x}</li>
+                      ))}
+                    </ul>
+                    <span className="flex flex-wrap items-center gap-3 text-[11px] text-muted">
+                      {tl("Analyse de l'IA, le {0} : un avis, pas une vérité.", [date(analysis.at)])}
+                      <button type="button" onClick={() => setAnalysis(null)} className="hover:text-fg">
+                        {tl("Retirer l'analyse")}
+                      </button>
+                    </span>
+                  </div>
+                )}
+              </section>
 
               <section className="flex flex-col gap-3">
                 <button type="button" onClick={() => setDetails(!details)} aria-expanded={details} className="flex items-center gap-1 self-start text-sm text-accent hover:underline">

@@ -46,6 +46,10 @@ describe("free plan", () => {
     expect([PLANS.free.journalCaptures, PLANS.trader.journalCaptures, PLANS.pro.journalCaptures]).toEqual([5, 100, null]);
   });
 
+  it("keeps 20 chart images in the free journal, 500 in Trader, 3 000 in Pro", () => {
+    expect([PLANS.free.journalImages, PLANS.trader.journalImages, PLANS.pro.journalImages]).toEqual([20, 500, 3000]);
+  });
+
   it("keeps the prices", () => {
     expect([PLANS.trader.monthly, PLANS.trader.yearly, PLANS.pro.monthly, PLANS.pro.yearly]).toEqual([15, 150, 39, 390]);
   });

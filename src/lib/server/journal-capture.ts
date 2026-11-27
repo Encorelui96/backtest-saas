@@ -115,3 +115,92 @@ export async function readTradeCapture(data: string, type: CaptureType, usage: A
   }
   throw new UserError("L'IA n'a pas réussi à lire cette capture. Réessaie avec une capture plus nette, ou note le trade à la main.");
 }
+
+// ---------- Reading a chart against the setup ----------
+
+const AnalysisSchema = z.object({
+  verdict: z.enum(["respected", "partly", "not", "unclear"]).describe("Was the trader's strategy followed on this trade, judged on the chart and the data"),
+  summary: z.string().max(600).describe("One or two sentences that justify the verdict, in the requested language"),
+  remarks: z.array(z.string().max(300)).min(1).max(3).describe("Three short remarks, in the requested language: the entry, the stop, the target or the management, each against the setup"),
+});
+export type AnalysisResult = z.infer<typeof AnalysisSchema>;
+
+const COACH = `You review one real trade for a trader's journal, as a demanding but fair trading coach. You get a chart screenshot of the trade (often TradingView) and the trade's data: market, side, entry, stop, target, exit, result in R, the rules of the trader's plan the journal found broken, and the description of the setup the trader says the trade belongs to.
+
+Judge whether the trade followed the trader's OWN strategy, not yours:
+- Compare what the chart shows (trend, levels, zones, where the entry, stop and target sit, how the trade was managed) with the setup's description, condition by condition.
+- verdict: "respected" when the entry, stop and management match the setup; "partly" when one point departs from it; "not" when the trade isn't the setup or breaks it clearly; "unclear" when the chart doesn't show enough to tell (no setup description, unreadable chart, levels not visible).
+- A losing trade can respect the strategy and a winning one break it: judge the decision, never the result.
+- summary: one or two sentences giving the reason for the verdict.
+- remarks: exactly three short, concrete remarks (entry, stop, target or management), each saying what matched the setup or what to do differently next time.
+- Never invent a price or a level you can't see or weren't given. Don't give financial advice beyond the trader's own rules.`;
+
+const ANALYSIS_FORMAT = `Answer with ONE JSON object and nothing else (no Markdown, no code fence), matching this JSON Schema:\n${JSON.stringify(z.toJSONSchema(AnalysisSchema))}`;
+
+export interface AnalysisContext {
+  market: string;
+  side: "long" | "short";
+  entry: number | null;
+  stop: number | null;
+  noStop: boolean;
+  target: number | null;
+  exit: number | null;
+  r: number | null;
+  checks: string[];
+  setup: { name: string; description: string | null } | null;
+}
+
+/** Reads a chart against the trade's setup. The image is sent to the AI and kept by this call nowhere. */
+export async function analyseChart(data: string, type: CaptureType, context: AnalysisContext, usage: AiUsage, lang: Lang = "fr"): Promise<AnalysisResult> {
+  checkCapture(data, type);
+  const client = new Anthropic();
+  const facts = [
+    `Market: ${context.market}. Side: ${context.side === "long" ? "buy" : "sell"}.`,
+    `Entry: ${context.entry ?? "not given"}. Stop: ${context.noStop ? "none (no stop on this trade)" : (context.stop ?? "not given")}. Target: ${context.target ?? "not given"}. Exit: ${context.exit ?? "still open"}.`,
+    `Result: ${context.r === null ? "unknown" : `${context.r.toFixed(2)} R`}.`,
+    `Plan rules the journal found broken: ${context.checks.length ? context.checks.join(", ") : "none"}.`,
+    context.setup
+      ? `Setup: "${context.setup.name}". Its description by the trader: ${context.setup.description?.trim() || "(none written)"}`
+      : "Setup: none, the trader filed this trade off plan.",
+  ].join("\n");
+  const ask = lang === "en" ? "Review this trade. Write summary and remarks in English." : "Analyse ce trade. Écris summary et remarks en français, en tutoyant le trader.";
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
+    {
+      role: "user",
+      content: [
+        { type: "image", source: { type: "base64", media_type: type, data } },
+        { type: "text", text: `${facts}\n\n${ask}` },
+      ],
+    },
+  ];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await client.beta.messages.create({
+      model: MODEL,
+      max_tokens: 3000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "medium" },
+      system: [{ type: "text", text: `${COACH}\n\n${ANALYSIS_FORMAT}`, cache_control: { type: "ephemeral" } }],
+      messages,
+    });
+    const u = response.usage;
+    usage.inputTokens += Math.round(u.input_tokens + 1.25 * (u.cache_creation_input_tokens ?? 0) + 0.1 * (u.cache_read_input_tokens ?? 0));
+    usage.outputTokens += u.output_tokens;
+    usage.model = response.model;
+    if (response.stop_reason === "refusal") throw new UserError("L'IA n'a pas pu analyser cette image. Essaie une autre capture du graphique.");
+    const raw = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+    let error: string;
+    try {
+      const parsed = AnalysisSchema.safeParse(readJson(raw));
+      if (parsed.success) return parsed.data;
+      error = z.prettifyError(parsed.error);
+    } catch {
+      error = "The answer is not a valid JSON object.";
+    }
+    messages.push(
+      { role: "assistant", content: raw || "(empty)" },
+      { role: "user", content: `Your JSON does not match the schema:\n${error}\nSend the corrected JSON object only.` },
+    );
+  }
+  throw new UserError("L'IA n'a pas réussi à analyser ce graphique. Réessaie dans un instant.");
+}

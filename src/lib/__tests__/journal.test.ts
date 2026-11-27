@@ -20,8 +20,14 @@ import {
   riskPercent,
   sizeUnit,
   suggestedErrors,
+  sizeForRisk,
+  sizeStep,
+  stopFromTicks,
   summarize,
   targetR,
+  tickOf,
+  ticksBetween,
+  futureOf,
   type AccountPlan,
   type OpenFields,
 } from "../journal";
@@ -245,5 +251,44 @@ describe("error register", () => {
     expect(d.offPlanR).toBeCloseTo(-0.5, 9);
     expect(d.register.map((x) => x.code)).toEqual(["E1", "E3", "E8"]);
     expect(d.costR).toBeCloseTo(-2, 9);
+  });
+});
+
+describe("futures, ticks and sizing from the risk", () => {
+  it("knows the CME micros and minis, whatever the contract month", () => {
+    expect(futureOf("MGC")).toBe("MGC");
+    expect(futureOf("MGCZ5")).toBe("MGC");
+    expect(futureOf("mgc1!")).toBe("MGC");
+    expect(futureOf("ES")).toBe("ES");
+    expect(futureOf("MESH26")).toBe("MES");
+    expect(futureOf("ESUSDT")).toBeNull();
+    expect(futureOf("EURUSD")).toBeNull();
+    // A Micro Gold point is 10 $ (1 $ a tick of 0.1); a Micro Nasdaq point 2 $.
+    expect(defaultPointValue("MGC")).toBe(10);
+    expect(defaultPointValue("MNQZ5")).toBe(2);
+    expect(sizeUnit("MGC")).toBe("contracts");
+    expect(sizeStep("MGC")).toBe(1);
+    expect(sizeStep("EURUSD")).toBe(0.01);
+    expect(sizeStep("BTCUSDT")).toBe(0.0001);
+  });
+
+  it("counts a stop in ticks for futures and in pips for forex", () => {
+    expect(tickOf("MGC")).toEqual({ size: 0.1, unit: "ticks" });
+    expect(tickOf("EURUSD")).toEqual({ size: 0.0001, unit: "pips" });
+    expect(tickOf("USDJPY")).toEqual({ size: 0.01, unit: "pips" });
+    expect(tickOf("BTCUSDT")).toBeNull();
+    expect(stopFromTicks("short", 3324.1, 23, 0.1)).toBe(3326.4);
+    expect(stopFromTicks("long", 1.08, 20, 0.0001)).toBe(1.078);
+    expect(ticksBetween(3324.1, 3326.4, 0.1)).toBe(23);
+  });
+
+  it("works out the size from the risk, rounded down so the risk is never exceeded", () => {
+    // 230 $ of risk, 23 ticks of Micro Gold at 1 $ each: 10 contracts.
+    expect(sizeForRisk(230, 3324.1, 3326.4, 10, 1)).toBe(10);
+    expect(sizeForRisk(229, 3324.1, 3326.4, 10, 1)).toBe(9);
+    // 100 $ on EURUSD with a 20-pip stop: 0.5 lot.
+    expect(sizeForRisk(100, 1.08, 1.078, 100_000, 0.01)).toBe(0.5);
+    expect(sizeForRisk(10, 3324.1, 3326.4, 10, 1)).toBe(0);
+    expect(sizeForRisk(100, 1.08, 1.08, 100_000, 0.01)).toBeNull();
   });
 });

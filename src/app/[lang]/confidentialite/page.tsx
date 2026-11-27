@@ -41,7 +41,7 @@ function French() {
           </li>
           <li>
             <strong>Ce que tu crées</strong> : tes stratégies (règles et texte de description), tes backtests (réglages et résultats) et ton journal de trading (tes comptes,
-            tes configurations et les trades que tu y notes, avec les liens de capture que tu donnes).
+            tes configurations, les trades et les notes que tu y écris, les images de graphique que tu y joins et les liens de capture que tu donnes).
           </li>
           <li>
             <strong>Ton utilisation</strong> : le nombre de backtests, de traductions par l&apos;IA et de captures lues pour le journal, pour appliquer les limites de ton
@@ -85,7 +85,8 @@ function French() {
           </li>
           <li>
             <strong>Anthropic</strong> (l&apos;IA Claude) reçoit le texte de stratégie que tu demandes de traduire, et les captures d&apos;écran que tu donnes au journal
-            pour remplir un trade, sans ton e-mail ni ton nom. Nous ne gardons pas ces captures : seuls les chiffres que tu enregistres restent dans ton journal.
+            pour remplir un trade ou analyser un graphique, sans ton e-mail ni ton nom. Une capture lue pour remplir un trade n&apos;est pas gardée ; un graphique
+            que tu joins à un trade ou à une note reste dans ton journal jusqu&apos;à ce que tu le supprimes.
             D&apos;après ses conditions commerciales, Anthropic n&apos;utilise pas les données reçues par son API pour entraîner ses modèles. N&apos;écris pas
             d&apos;informations personnelles dans tes descriptions, et masque ton numéro de compte sur une capture si tu préfères.
           </li>
@@ -161,7 +162,7 @@ function English() {
           </li>
           <li>
             <strong>What you create</strong>: your strategies (rules and description text), your backtests (settings and results) and your trading journal (your accounts,
-            your setups and the trades you write down in it, with the capture links you give).
+            your setups, the trades and notes you write in it, the chart images you attach and the capture links you give).
           </li>
           <li>
             <strong>Your usage</strong>: the number of backtests, AI translations and screenshots read for the journal, to apply the limits of your plan, and what
@@ -199,8 +200,9 @@ function English() {
             <strong>Resend</strong> sends the service&apos;s emails: it receives your address and the content of the message, such as the key results of a finished test.
           </li>
           <li>
-            <strong>Anthropic</strong> (the Claude AI) receives the strategy text you ask to translate, and the screenshots you give the journal to fill in a trade,
-            without your email or your name. We don&apos;t keep those screenshots: only the figures you save stay in your journal. Under its commercial terms, Anthropic
+            <strong>Anthropic</strong> (the Claude AI) receives the strategy text you ask to translate, and the screenshots you give the journal to fill in a trade or
+            analyse a chart, without your email or your name. A screenshot read to fill in a trade isn&apos;t kept; a chart you attach to a trade or a note stays in your
+            journal until you delete it. Under its commercial terms, Anthropic
             doesn&apos;t use data received through its API to train its models. Don&apos;t write personal information in your descriptions, and hide your account number
             on a screenshot if you prefer.
           </li>

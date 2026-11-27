@@ -2,7 +2,7 @@
 
 import { useT } from "@/lib/client/i18n";
 import { formatLocale } from "@/lib/client/format";
-import { closedResult, type JournalAccount, type JournalSetup, type JournalTrade, type OtherTrade, type Side } from "@/lib/journal";
+import { closedResult, type JournalAccount, type JournalNote, type JournalSetup, type JournalTrade, type OtherTrade, type Side } from "@/lib/journal";
 import type { PlanId } from "@/lib/plans";
 
 /** What GET /api/journal answers. */
@@ -10,8 +10,9 @@ export interface JournalData {
   accounts: JournalAccount[];
   setups: JournalSetup[];
   trades: JournalTrade[];
-  /** What the plan allows: how many accounts, the full dashboard or only its basic figures, and the screenshots read this month. */
-  plan: { id: PlanId; label: string; accounts: number; dashboard: boolean; captures: CaptureQuota };
+  notes: JournalNote[];
+  /** What the plan allows: how many accounts, the full dashboard or only its basic figures, the AI readings this month and the images kept. */
+  plan: { id: PlanId; label: string; accounts: number; dashboard: boolean; captures: CaptureQuota; images: { used: number; limit: number } };
 }
 
 /** Screenshots read this month; limit null: none. */

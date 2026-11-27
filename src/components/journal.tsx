@@ -12,11 +12,12 @@ import { JournalSetups } from "./journal-setups";
 import { JournalTrades } from "./journal-trades";
 import { JournalCalendar } from "./journal-calendar";
 import { JournalDashboard } from "./journal-dashboard";
+import { JournalNotes } from "./journal-notes";
 import { TradeForm, type TradeFormMode } from "./journal-trade-form";
 import { JOURNAL_CHANGED, type JournalData } from "./journal-shared";
 import { NO_FILTER, type TradeFilter } from "@/lib/journal-stats";
 
-type Section = "trades" | "calendar" | "dashboard" | "setups" | "accounts";
+type Section = "trades" | "calendar" | "notes" | "dashboard" | "setups" | "accounts";
 
 const SECTIONS: { id: Section; label: string; short: string; intro: string; icon: string }[] = [
   {
@@ -32,6 +33,13 @@ const SECTIONS: { id: Section; label: string; short: string; intro: string; icon
     short: "Calendrier",
     intro: "Chaque jour en R : tes bonnes et tes mauvaises séances d'un coup d'œil.",
     icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  },
+  {
+    id: "notes",
+    label: "Notes",
+    short: "Notes",
+    intro: "Le bilan de chaque séance : ce qui a marché, ce que tu changes, les règles que tu te fixes.",
+    icon: "M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4",
   },
   {
     id: "dashboard",
@@ -92,7 +100,7 @@ export function JournalFrame({
   const nav = current && onSection && onNew ? { current, onSection, onNew } : null;
   const byId = (id: Section) => SECTIONS.find((s) => s.id === id)!;
   // Five places on a phone: the three sections used every day, the new trade, and the rest behind "More".
-  const extra = [byId("setups"), byId("accounts")];
+  const extra = [byId("notes"), byId("setups"), byId("accounts")];
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 -mx-3 border-b border-line bg-panel/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:-mx-4 sm:px-4">
@@ -301,9 +309,17 @@ export function Journal() {
         />
       )}
       {section === "calendar" && (
-        <JournalCalendar data={data} filter={filter} onFilter={chooseFilter} now={openedAt} onEdit={(trade) => setForm({ trade, mode: "edit", now: Date.now() })} />
+        <JournalCalendar
+          data={data}
+          filter={filter}
+          onFilter={chooseFilter}
+          now={openedAt}
+          onEdit={(trade) => setForm({ trade, mode: "edit", now: Date.now() })}
+          onChanged={load}
+        />
       )}
       {section === "dashboard" && <JournalDashboard data={data} filter={filter} onFilter={chooseFilter} />}
+      {section === "notes" && <JournalNotes data={data} now={openedAt} onChanged={load} />}
       {section === "setups" && <JournalSetups data={data} onChanged={load} />}
       {section === "accounts" && <JournalAccounts data={data} onChanged={load} />}
 

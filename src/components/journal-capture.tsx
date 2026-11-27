@@ -5,6 +5,7 @@ import { useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { date, price, r, tone } from "@/lib/client/format";
 import { NO_ANSWERS, balance, closedResult, resultAmount, resultR, type JournalAccount } from "@/lib/journal";
+import { shrinkImage } from "./journal-images";
 import { CAPTURE_MAX_SIDE, captureDraft, guessExitReason, plannedStop, reachedTarget, type CaptureDraft, type CaptureResult } from "@/lib/journal-capture";
 import { NumberInput } from "./number-input";
 import { Alert, Button } from "./ui";
@@ -30,31 +31,11 @@ export function saveOffset(n: number) {
   }
 }
 
-/** The screenshot shrunk to what the AI reads, as JPEG: a phone screenshot goes from a few MB to about 200 KB. */
-async function shrink(file: Blob): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, CAPTURE_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  const blob = await new Promise<Blob | null>((done) => canvas.toBlob(done, "image/jpeg", 0.9));
-  if (!blob) throw new Error("image");
-  const url = await new Promise<string>((done, fail) => {
-    const reader = new FileReader();
-    reader.onload = () => done(String(reader.result));
-    reader.onerror = () => fail(reader.error);
-    reader.readAsDataURL(blob);
-  });
-  return url.slice(url.indexOf(",") + 1);
-}
-
 /** "3 captures left this month", "unlimited captures". */
 export function quotaLine(q: CaptureQuota, tl: ReturnType<typeof useT>) {
-  if (q.limit === null) return tl("Captures illimitées avec ton offre.");
+  if (q.limit === null) return tl("Lectures par l'IA illimitées avec ton offre (captures et analyses).");
   const left = Math.max(0, q.limit - q.used);
-  return left ? tl("{0} captures sur {1} restantes ce mois-ci.", [left, q.limit]) : tl("Plus de capture ce mois-ci : elles reviennent le {0:date}.", [q.resetsAt]);
+  return left ? tl("{0} lectures par l'IA sur {1} restantes ce mois-ci (captures et analyses).", [left, q.limit]) : tl("Plus de lecture par l'IA ce mois-ci : elles reviennent le {0:date}.", [q.resetsAt]);
 }
 
 /**
@@ -75,7 +56,7 @@ export function CaptureButton({ quota, onRead, disabled }: { quota: CaptureQuota
     try {
       let image: string;
       try {
-        image = await shrink(file);
+        image = await shrinkImage(file, CAPTURE_MAX_SIDE, 0.9);
       } catch {
         throw new Error(tl("Cette image ne s'ouvre pas. Essaie une capture d'écran en PNG ou JPEG."));
       }
