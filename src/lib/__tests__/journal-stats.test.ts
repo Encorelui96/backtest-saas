@@ -55,6 +55,8 @@ function trade(id: string, closedAt: string, r: number, extra: Partial<JournalTr
     plannedEntry: null,
     announcement: null,
     captureUrl: null,
+    noStop: false,
+    ticket: null,
     close: { closedAt: closed, exit: 100 + r, exitReason: "manual-plan", fees: 0, comment: null, captureUrl: null, maeR: null, mfeR: null },
     checks: [],
     planAnswers: NO_ANSWERS,
