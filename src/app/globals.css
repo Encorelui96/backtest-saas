@@ -110,3 +110,15 @@ textarea:focus {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* The trading journal is a space of its own, with its own bar and a way back:
+   on its pages the site's top bar, tab bar and footer step aside.
+   Next keeps a page left behind mounted but hidden (React Activity sets display: none on it),
+   so only a journal that is showing counts. */
+body:has([data-journal-space]:not([style*="display: none"]):not([style*="display: none"] *)) .app-chrome {
+  display: none;
+}
+body:has([data-journal-space]:not([style*="display: none"]):not([style*="display: none"] *)) main {
+  max-width: none;
+  padding-top: 0;
+}

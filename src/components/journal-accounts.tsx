@@ -185,7 +185,7 @@ export function FirstAccount({ onCreated }: { onCreated: () => void }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-4">
       <div>
-        <h1 className="text-xl font-semibold">{tl("Journal de trading")}</h1>
+        <h1 className="text-xl font-semibold">{tl("Bienvenue dans ton journal")}</h1>
         <p className="mt-1 text-sm text-muted">
           {tl("Note tes trades réels à l'entrée, clôture-les à la sortie : le journal calcule tes résultats en R et montre si tu suis ton plan.")}
         </p>

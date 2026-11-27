@@ -97,8 +97,8 @@ export function Nav() {
             </Link>
           ))}
           <span className="ml-auto flex items-center gap-3">
-            {/* Only where the level changes the page: the dashboard, the editor, the results and the journal. */}
-            {(path === "/" || path.startsWith("/strategies") || path.startsWith("/backtests") || path.startsWith("/journal")) && <LevelToggle />}
+            {/* Only where the level changes the page: the dashboard, the editor and the results. The journal has its own bar. */}
+            {(path === "/" || path.startsWith("/strategies") || path.startsWith("/backtests")) && <LevelToggle />}
             <LanguageSwitch />
           </span>
         </nav>
