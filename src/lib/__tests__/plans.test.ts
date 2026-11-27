@@ -42,6 +42,10 @@ describe("free plan", () => {
     for (const p of [PLANS.trader, PLANS.pro]) expect([p.journalAccounts, p.journalDashboard]).toEqual([20, true]);
   });
 
+  it("counts the journal's screenshots apart: 5 a month to try, 100 in Trader, no monthly limit in Pro", () => {
+    expect([PLANS.free.journalCaptures, PLANS.trader.journalCaptures, PLANS.pro.journalCaptures]).toEqual([5, 100, null]);
+  });
+
   it("keeps the prices", () => {
     expect([PLANS.trader.monthly, PLANS.trader.yearly, PLANS.pro.monthly, PLANS.pro.yearly]).toEqual([15, 150, 39, 390]);
   });

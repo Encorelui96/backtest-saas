@@ -14,6 +14,12 @@ function monthName(month: string) {
   return new Date(`${month}-01T12:00:00Z`).toLocaleDateString(formatLocale(), { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
+/** "+1,2", "-0,8", "0,0": one decimal, and no sign on what rounds to zero. */
+function signed(x: number) {
+  const v = Math.round(x * 10) / 10 || 0;
+  return `${v > 0 ? "+" : ""}${num(v, 1)}`;
+}
+
 function dayName(day: string) {
   return new Date(`${day}T12:00:00Z`).toLocaleDateString(formatLocale(), { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" });
 }
@@ -121,7 +127,7 @@ export function JournalCalendar({
                     <span className={`absolute top-1 left-1.5 text-[10px] sm:text-[11px] ${d.day === today ? "font-semibold text-accent" : "text-muted"}`}>{d.date}</span>
                     {d.trades.length > 0 && (
                       <>
-                        <span className="num mt-2 text-[11px] font-semibold text-fg sm:text-sm">{`${d.r > 0 ? "+" : ""}${num(d.r, 1)}`}</span>
+                        <span className="num mt-2 text-[11px] font-semibold text-fg sm:text-sm">{signed(d.r)}</span>
                         <span className="text-[10px] text-muted">
                           {d.trades.length}
                           <span className="hidden sm:inline"> {tl(d.trades.length > 1 ? "trades" : "trade")}</span>
@@ -137,7 +143,7 @@ export function JournalCalendar({
               >
                 {week.trades > 0 ? (
                   <>
-                    <span className={`num text-[11px] font-semibold sm:text-sm ${tone(week.r)}`}>{`${week.r > 0 ? "+" : ""}${num(week.r, 1)}`}</span>
+                    <span className={`num text-[11px] font-semibold sm:text-sm ${tone(week.r)}`}>{signed(week.r)}</span>
                     <span className="text-[10px] text-muted">
                       {week.trades}
                       <span className="hidden sm:inline"> {tl(week.trades > 1 ? "trades" : "trade")}</span>

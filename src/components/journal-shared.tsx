@@ -10,8 +10,15 @@ export interface JournalData {
   accounts: JournalAccount[];
   setups: JournalSetup[];
   trades: JournalTrade[];
-  /** What the plan allows: how many accounts, and the full dashboard or only its basic figures. */
-  plan: { id: PlanId; label: string; accounts: number; dashboard: boolean };
+  /** What the plan allows: how many accounts, the full dashboard or only its basic figures, and the screenshots read this month. */
+  plan: { id: PlanId; label: string; accounts: number; dashboard: boolean; captures: CaptureQuota };
+}
+
+/** Screenshots read this month; limit null: none. */
+export interface CaptureQuota {
+  used: number;
+  limit: number | null;
+  resetsAt: string;
 }
 
 /** Sent on the window each time the journal page loads its data, with the open trades as detail: the Journal tab's badge. */

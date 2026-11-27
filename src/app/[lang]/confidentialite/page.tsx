@@ -44,8 +44,8 @@ function French() {
             tes configurations et les trades que tu y notes, avec les liens de capture que tu donnes).
           </li>
           <li>
-            <strong>Ton utilisation</strong> : le nombre de backtests et de traductions par l&apos;IA, pour appliquer les limites de ton offre, et ce que chaque traduction a
-            consommé.
+            <strong>Ton utilisation</strong> : le nombre de backtests, de traductions par l&apos;IA et de captures lues pour le journal, pour appliquer les limites de ton
+            offre, et ce que chacune a consommé.
           </li>
           <li>
             <strong>Tes réponses</strong>, si tu en donnes : la question de satisfaction, les offres qui t&apos;intéressent dans la page Tarifs et les paires que tu demandes.
@@ -84,9 +84,10 @@ function French() {
             <strong>Resend</strong> envoie les e-mails du service : il reçoit ton adresse et le contenu du message, comme les résultats clés d&apos;un test terminé.
           </li>
           <li>
-            <strong>Anthropic</strong> (l&apos;IA Claude) reçoit le texte de stratégie que tu demandes de traduire, sans ton e-mail ni ton nom. D&apos;après ses conditions
-            commerciales, Anthropic n&apos;utilise pas les données reçues par son API pour entraîner ses modèles. N&apos;écris pas d&apos;informations personnelles dans tes
-            descriptions.
+            <strong>Anthropic</strong> (l&apos;IA Claude) reçoit le texte de stratégie que tu demandes de traduire, et les captures d&apos;écran que tu donnes au journal
+            pour remplir un trade, sans ton e-mail ni ton nom. Nous ne gardons pas ces captures : seuls les chiffres que tu enregistres restent dans ton journal.
+            D&apos;après ses conditions commerciales, Anthropic n&apos;utilise pas les données reçues par son API pour entraîner ses modèles. N&apos;écris pas
+            d&apos;informations personnelles dans tes descriptions, et masque ton numéro de compte sur une capture si tu préfères.
           </li>
           <li>
             <strong>Binance</strong> : le bandeau des cours et la page Live se connectent directement depuis ton navigateur aux flux de cours publics de Binance, qui voit
@@ -163,7 +164,8 @@ function English() {
             your setups and the trades you write down in it, with the capture links you give).
           </li>
           <li>
-            <strong>Your usage</strong>: the number of backtests and AI translations, to apply the limits of your plan, and what each translation consumed.
+            <strong>Your usage</strong>: the number of backtests, AI translations and screenshots read for the journal, to apply the limits of your plan, and what
+            each one consumed.
           </li>
           <li>
             <strong>Your answers</strong>, if you give any: the satisfaction question, the plans you&apos;re interested in on the Pricing page and the pairs you request.
@@ -197,8 +199,10 @@ function English() {
             <strong>Resend</strong> sends the service&apos;s emails: it receives your address and the content of the message, such as the key results of a finished test.
           </li>
           <li>
-            <strong>Anthropic</strong> (the Claude AI) receives the strategy text you ask to translate, without your email or your name. Under its commercial terms,
-            Anthropic doesn&apos;t use data received through its API to train its models. Don&apos;t write personal information in your descriptions.
+            <strong>Anthropic</strong> (the Claude AI) receives the strategy text you ask to translate, and the screenshots you give the journal to fill in a trade,
+            without your email or your name. We don&apos;t keep those screenshots: only the figures you save stay in your journal. Under its commercial terms, Anthropic
+            doesn&apos;t use data received through its API to train its models. Don&apos;t write personal information in your descriptions, and hide your account number
+            on a screenshot if you prefer.
           </li>
           <li>
             <strong>Binance</strong>: the price ticker and the Live page connect straight from your browser to Binance&apos;s public price feeds, which then see your IP

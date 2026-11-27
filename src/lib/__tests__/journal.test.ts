@@ -167,6 +167,10 @@ describe("the account's plan", () => {
     expect(planChecks(trade, plan, [])).toEqual([]);
   });
 
+  it("flags a trade taken without a stop", () => {
+    expect(planChecks({ ...trade, noStop: true }, plan, [])).toEqual(["no-stop"]);
+  });
+
   it("flags a missing setup, a too big risk, a closed day and the hours", () => {
     expect(planChecks({ ...trade, setupId: null }, plan, [])).toEqual(["no-setup"]);
     expect(planChecks({ ...trade, riskPct: 1.05 }, plan, [])).toEqual([]);
@@ -212,6 +216,8 @@ describe("error register", () => {
     expect(suggestedErrors(["risk", "hours"], NO_ANSWERS)).toEqual(["E4", "E7"]);
     expect(suggestedErrors([], { setup: false, entry: true, exit: false })).toEqual(["E1", "E5", "E6"]);
     expect(suggestedErrors(["daily-loss"], NO_ANSWERS)).toEqual(["E8"]);
+    // A trade without a stop points to E3, "stop moved or removed".
+    expect(suggestedErrors(["no-stop"], NO_ANSWERS)).toEqual(["E3"]);
   });
 
   it("proposes the cost it can work out", () => {

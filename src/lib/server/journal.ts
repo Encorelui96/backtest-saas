@@ -122,6 +122,9 @@ export const TradeInput = z.object({
   plannedEntry: price.nullable(),
   announcement: text(200),
   captureUrl: link,
+  // Taken without a stop: the form then sends the stop of the planned risk.
+  noStop: z.boolean().default(false),
+  ticket: z.string().trim().max(40).nullable().default(null),
   close: CloseInput.nullable(),
   planAnswers: z.object({ setup: z.boolean().nullable(), entry: z.boolean().nullable(), exit: z.boolean().nullable() }),
   errors: z
@@ -220,6 +223,8 @@ interface TradeRow {
   planned_entry: number | null;
   announcement: string | null;
   capture_url: string | null;
+  no_stop: boolean;
+  ticket: string | null;
   closed_at: Date | null;
   exit_price: number | null;
   exit_reason: string | null;
@@ -255,6 +260,8 @@ const trade = (r: TradeRow): JournalTrade => ({
   plannedEntry: r.planned_entry,
   announcement: r.announcement,
   captureUrl: r.capture_url,
+  noStop: r.no_stop,
+  ticket: r.ticket,
   close:
     r.closed_at && r.exit_price !== null
       ? {
@@ -422,7 +429,7 @@ async function evaluate(userId: string, t: TradeInput, id: string | null): Promi
   ]);
   const capital = a.capital + (sum?.pnl ?? 0);
   const others = near.map(trade).map((o) => ({ openedAt: o.openedAt, closedAt: o.close?.closedAt ?? null, r: o.close ? resultR(o, o.close) : null }));
-  const checks = planChecks({ openedAt: t.openedAt, setupId: t.setupId, riskPct: riskPercent(riskAmount(t), capital) }, account(a), others);
+  const checks = planChecks({ openedAt: t.openedAt, setupId: t.setupId, riskPct: riskPercent(riskAmount(t), capital), noStop: t.noStop }, account(a), others);
   return { checks, planFollowed: planStatus(checks, t.planAnswers) };
 }
 
@@ -444,6 +451,8 @@ const COLUMNS = [
   "planned_entry",
   "announcement",
   "capture_url",
+  "no_stop",
+  "ticket",
   "closed_at",
   "exit_price",
   "exit_reason",
@@ -478,6 +487,8 @@ function values(t: TradeInput, plan: { checks: PlanCheck[]; planFollowed: boolea
     t.plannedEntry,
     t.announcement,
     t.captureUrl,
+    t.noStop,
+    t.ticket || null,
     c ? new Date(c.closedAt) : null,
     c?.exit ?? null,
     c?.exitReason ?? null,

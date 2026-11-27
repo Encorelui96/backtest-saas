@@ -40,6 +40,8 @@ export interface Plan {
    * keeps the trades, the plan checks, the error register, the basic figures and the calendar.
    */
   journalDashboard: boolean;
+  /** Screenshots of a platform the AI reads into journal trades, per month; null: no monthly limit. Counted apart from the strategy translations. */
+  journalCaptures: number | null;
 }
 
 export const PLANS: Record<PlanId, Plan> = {
@@ -60,6 +62,7 @@ export const PLANS: Record<PlanId, Plan> = {
     alerts: 0,
     journalAccounts: 1,
     journalDashboard: false,
+    journalCaptures: 5,
   },
   trader: {
     id: "trader",
@@ -78,6 +81,7 @@ export const PLANS: Record<PlanId, Plan> = {
     alerts: 3,
     journalAccounts: 20,
     journalDashboard: true,
+    journalCaptures: 100,
   },
   pro: {
     id: "pro",
@@ -97,6 +101,7 @@ export const PLANS: Record<PlanId, Plan> = {
     alerts: 20,
     journalAccounts: 20,
     journalDashboard: true,
+    journalCaptures: null,
   },
 };
 

@@ -138,6 +138,7 @@ export function JournalTrades({
                       <span className="font-medium">{t.market}</span>
                       <SideBadge side={t.side} />
                       <span className="text-xs text-muted">{setupName(t)}</span>
+                      {t.noStop && <span className="rounded border border-warn/40 px-1 text-[11px] text-warn">{tl("sans stop")}</span>}
                     </span>
                     <span className="num text-xs text-muted">
                       {date(t.openedAt)} · {tl("entrée {0}, stop {1}", [price(t.entry), price(t.stop)])} · 1R = {amount(riskAmount(t), currency)}
@@ -172,6 +173,7 @@ export function JournalTrades({
                         <SideBadge side={t.side} />
                         <span className="text-xs text-muted">{setupName(t)}</span>
                         {t.quality && <span className="rounded border border-line px-1 text-[11px] text-muted">{t.quality}</span>}
+                        {t.noStop && <span className="rounded border border-warn/40 px-1 text-[11px] text-warn">{tl("sans stop")}</span>}
                       </span>
                       <span className="truncate text-xs text-muted">
                         {date(c.closedAt, false)} · {tl(EXIT_REASON_LABELS[c.exitReason])}

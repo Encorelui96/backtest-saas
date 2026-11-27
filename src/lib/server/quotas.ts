@@ -19,6 +19,13 @@ const AI_DAILY_CAP = Number(process.env.AI_DAILY_CAP) > 0 ? Number(process.env.A
 /** AI translations a day for one account: a single account can't use up the whole site's daily cap. */
 const AI_USER_DAILY_CAP = Number(process.env.AI_USER_DAILY_CAP) > 0 ? Number(process.env.AI_USER_DAILY_CAP) : 40;
 
+/** Journal screenshots read per minute, whatever the plan. */
+const CAPTURES_PER_MINUTE = 10;
+/** A day for one account, even on a plan without a monthly limit: a script can't run up the bill. */
+const CAPTURE_USER_DAILY_CAP = Number(process.env.CAPTURE_USER_DAILY_CAP) > 0 ? Number(process.env.CAPTURE_USER_DAILY_CAP) : 150;
+/** A day for the whole site. */
+const CAPTURE_DAILY_CAP = Number(process.env.CAPTURE_DAILY_CAP) > 0 ? Number(process.env.CAPTURE_DAILY_CAP) : 1500;
+
 export class QuotaError extends UserError {
   /** The recharge that would lift this limit, offered next to the message. */
   readonly recharge?: PackId;
@@ -192,6 +199,36 @@ export async function consumeAi(user: SessionUser): Promise<string> {
     if (Number(today.n) >= AI_DAILY_CAP) throw new QuotaError("Les traductions par l'IA sont très demandées aujourd'hui : réessaie demain, ou utilise le constructeur manuel.");
     const [row] = await run<{ id: string }>("INSERT INTO usage_events (user_id, kind) VALUES ($1, 'ai') RETURNING id", [user.id]);
     if (useCredit) await spendCredit(run, user.id, "ai", `ai:${row.id}`);
+    return row.id;
+  });
+}
+
+/** Journal screenshots read this month, and the plan's monthly limit (null: none). */
+export async function captureUsage(user: SessionUser, run: Runner = query): Promise<{ used: number; limit: number | null; resetsAt: string }> {
+  const plan = await planOf(user);
+  const since = monthStart();
+  const [row] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'journal-capture' AND created_at >= $2", [user.id, since]);
+  const next = new Date(since);
+  next.setUTCMonth(next.getUTCMonth() + 1);
+  return { used: Number(row.n), limit: plan.journalCaptures, resetsAt: next.toISOString() };
+}
+
+/** Checks the screenshot quotas and records the use. Returns the event's id, to attach the tokens once the AI has read it. */
+export async function consumeJournalCapture(user: SessionUser): Promise<string> {
+  return withUserLock(user, async (run) => {
+    const plan = await planOf(user);
+    const u = await captureUsage(user, run);
+    if (u.limit !== null && u.used >= u.limit) {
+      throw new QuotaError("Tu as utilisé tes {0} captures du journal ce mois-ci (offre {1:t}). Elles reviennent le {2:date} ; la saisie à la main reste ouverte.", [u.limit, plan.label, u.resetsAt]);
+    }
+    const [recent] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'journal-capture' AND created_at > now() - interval '1 minute'", [user.id]);
+    if (Number(recent.n) >= CAPTURES_PER_MINUTE) throw new QuotaError("Trop de captures d'affilée : attends une minute.");
+    const [mine] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE user_id = $1 AND kind = 'journal-capture' AND created_at > now() - interval '1 day'", [user.id]);
+    if (Number(mine.n) >= CAPTURE_USER_DAILY_CAP) throw new QuotaError("Tu as atteint la limite de {0} captures sur 24 heures : réessaie demain, ou note le trade à la main.", [CAPTURE_USER_DAILY_CAP]);
+    await run("SELECT pg_advisory_xact_lock(hashtext('journal-capture:daily'))", []);
+    const [today] = await run<{ n: string }>("SELECT count(*) AS n FROM usage_events WHERE kind = 'journal-capture' AND created_at > now() - interval '1 day'", []);
+    if (Number(today.n) >= CAPTURE_DAILY_CAP) throw new QuotaError("La lecture des captures est très demandée aujourd'hui : réessaie demain, ou note le trade à la main.");
+    const [row] = await run<{ id: string }>("INSERT INTO usage_events (user_id, kind) VALUES ($1, 'journal-capture') RETURNING id", [user.id]);
     return row.id;
   });
 }

@@ -260,3 +260,8 @@ ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS checks jsonb NOT NULL DEFAUL
 ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS plan_answers jsonb NOT NULL DEFAULT '{}';
 -- [{"code": "E5", "costR": -0.8}]: the error register (codes E1 to E8).
 ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS errors jsonb NOT NULL DEFAULT '[]';
+
+-- Trading journal, simplified entry: a trade taken without a stop (its stop is then put at the planned risk, so 1R stays the
+-- risk the plan allows), and the broker's ticket of a trade read from a screenshot, to spot the same trade imported twice.
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS no_stop boolean NOT NULL DEFAULT false;
+ALTER TABLE journal_trades ADD COLUMN IF NOT EXISTS ticket text;

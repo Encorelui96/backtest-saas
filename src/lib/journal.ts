@@ -252,6 +252,10 @@ export interface JournalTrade {
   plannedEntry: number | null;
   announcement: string | null;
   captureUrl: string | null;
+  /** Taken without a stop: `stop` was then placed at the planned risk, so that 1R stays the risk the plan allows. */
+  noStop: boolean;
+  /** The broker's order or position number, when the trade came from a screenshot: it spots the same trade imported twice. */
+  ticket: string | null;
   close: TradeClose | null;
   /** The plan's rules this trade broke, checked when it was saved. */
   checks: PlanCheck[];
@@ -293,10 +297,11 @@ export interface AccountPlan {
 export const ALL_DAYS = 0b1111111;
 export const WEEK_DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"] as const;
 
-export const PLAN_CHECKS = ["no-setup", "risk", "day", "hours", "daily-loss", "max-trades"] as const;
+export const PLAN_CHECKS = ["no-setup", "no-stop", "risk", "day", "hours", "daily-loss", "max-trades"] as const;
 export type PlanCheck = (typeof PLAN_CHECKS)[number];
 export const PLAN_CHECK_LABELS: Record<PlanCheck, string> = {
   "no-setup": "Trade sans configuration du plan",
+  "no-stop": "Trade sans stop",
   risk: "Risque au-dessus du plan",
   day: "Jour non prévu par le plan",
   hours: "En dehors des horaires du plan",
@@ -363,12 +368,13 @@ export interface OtherTrade {
  * the losses already closed and the trades already opened before this one.
  */
 export function planChecks(
-  t: { openedAt: number; setupId: string | null; riskPct: number | null },
+  t: { openedAt: number; setupId: string | null; riskPct: number | null; noStop?: boolean },
   plan: AccountPlan,
   others: OtherTrade[],
 ): PlanCheck[] {
   const failed: PlanCheck[] = [];
   if (!t.setupId) failed.push("no-setup");
+  if (t.noStop) failed.push("no-stop");
   if (t.riskPct !== null && t.riskPct > plan.riskPct * 1.1) failed.push("risk");
   const at = localTime(t.openedAt, plan.timeZone);
   if (plan.tradingDays !== null && !(plan.tradingDays & (1 << at.weekday))) failed.push("day");
@@ -424,6 +430,7 @@ export function suggestedErrors(checks: PlanCheck[], a: PlanAnswers): ErrorCode[
   const s = new Set<ErrorCode>();
   if (checks.includes("no-setup") || checks.includes("max-trades") || a.setup === false) s.add("E1");
   if (a.entry === false) s.add("E2");
+  if (checks.includes("no-stop")) s.add("E3");
   if (checks.includes("risk")) s.add("E4");
   if (a.exit === false) {
     s.add("E5");
