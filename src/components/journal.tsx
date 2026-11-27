@@ -5,6 +5,8 @@ import { LanguageSwitch, Link, useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import type { JournalTrade } from "@/lib/journal";
 import { LevelToggle } from "./learn";
+import { ThemeToggle } from "./theme-toggle";
+import { ImportDialog } from "./journal-import";
 import { Loading } from "./loading";
 import { Alert, Button } from "./ui";
 import { FirstAccount, JournalAccounts } from "./journal-accounts";
@@ -118,6 +120,7 @@ export function JournalFrame({
           </span>
           <span className="ml-auto flex shrink-0 items-center gap-2">
             <LevelToggle />
+            <ThemeToggle className="-mx-1" />
             <span className="hidden sm:block">
               <LanguageSwitch />
             </span>
@@ -244,6 +247,7 @@ export function Journal() {
   // When the section was opened: the calendar starts on that month.
   const [openedAt, setOpenedAt] = useState(0);
   const [form, setForm] = useState<{ trade: JournalTrade | null; mode: TradeFormMode; now: number } | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const load = useCallback(
     () =>
@@ -304,6 +308,7 @@ export function Journal() {
           filter={filter}
           onFilter={chooseFilter}
           onNew={newTrade}
+          onImport={() => setImporting(true)}
           onClose={(trade) => setForm({ trade, mode: "close", now: Date.now() })}
           onEdit={(trade) => setForm({ trade, mode: "edit", now: Date.now() })}
         />
@@ -323,6 +328,17 @@ export function Journal() {
       {section === "setups" && <JournalSetups data={data} onChanged={load} />}
       {section === "accounts" && <JournalAccounts data={data} onChanged={load} />}
 
+      {importing && (
+        <ImportDialog
+          data={data}
+          accountId={target}
+          onDone={() => {
+            setImporting(false);
+            load();
+          }}
+          onCancel={() => setImporting(false)}
+        />
+      )}
       {form && (
         <TradeForm
           data={data}

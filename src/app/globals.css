@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 :root {
+  color-scheme: dark;
   --bg: #0b0e14;
   --panel: #121722;
   --panel-2: #182030;
@@ -11,6 +12,25 @@
   --up: #22c55e;
   --down: #ef4444;
   --warn: #f59e0b;
+  /* Chart grid lines: fainter than the borders. */
+  --grid: #1b2333;
+}
+
+/* Light theme: chosen with the button in the top bar, or following the device (lib/theme.ts).
+   Same roles as the dark palette; green, red and orange a shade darker to stay readable on white. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6fa;
+  --panel: #ffffff;
+  --panel-2: #eef1f6;
+  --border: #d5dce6;
+  --fg: #111827;
+  --muted: #5d6879;
+  --accent: #2563eb;
+  --up: #15803d;
+  --down: #dc2626;
+  --warn: #b45309;
+  --grid: #e8ecf2;
 }
 
 @theme inline {

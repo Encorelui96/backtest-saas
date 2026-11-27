@@ -3,6 +3,8 @@ import { Link } from "@/lib/client/i18n";
 import { GLOSSARY_CATEGORIES, glossaryIn } from "@/lib/learn/glossary";
 import { pageLang } from "@/lib/i18n/page";
 import { LevelToggle } from "@/components/learn";
+import { LearnSearch, type LearnItem } from "@/components/learn-search";
+import { FAQ_CONTENT } from "@/lib/learn/faq";
 import { Card } from "@/components/ui";
 
 export async function generateMetadata({ params }: PageProps<"/[lang]/apprendre">): Promise<Metadata> {
@@ -52,6 +54,14 @@ const MISTAKES: { title: string; text: string }[] = [
 export default async function LearnPage({ params }: PageProps<"/[lang]/apprendre">) {
   const { lang, t } = await pageLang(params);
   const entries = glossaryIn(lang);
+  const categories = new Map<string, string>(GLOSSARY_CATEGORIES.map((c): [string, string] => [c.id, t(c.label)]));
+  // What the search box looks through, in the page's language.
+  const searchable: LearnItem[] = [
+    ...entries.map((e) => ({ kind: "term" as const, id: e.id, title: e.term, text: e.short, more: e.long, example: e.example, category: categories.get(e.category) })),
+    ...STEPS.map((s, i) => ({ kind: "step" as const, id: `step-${i}`, title: `${i + 1}. ${t(s.title)}`, text: t(s.text) })),
+    ...MISTAKES.map((m, i) => ({ kind: "mistake" as const, id: `mistake-${i}`, title: t(m.title), text: t(m.text) })),
+    ...FAQ_CONTENT[lang].faq.map((f, i) => ({ kind: "faq" as const, id: `faq-${i}`, title: f.q, text: f.a })),
+  ];
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-5 pb-24 md:pb-0">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -65,6 +75,7 @@ export default async function LearnPage({ params }: PageProps<"/[lang]/apprendre
         </div>
       </div>
 
+      <LearnSearch items={searchable}>
       <Card title={t("Ton premier backtest en 6 étapes")}>
         <ol className="flex flex-col gap-3">
           {STEPS.map((s, i) => (
@@ -119,6 +130,7 @@ export default async function LearnPage({ params }: PageProps<"/[lang]/apprendre
           </dl>
         </Card>
       ))}
+      </LearnSearch>
     </div>
   );
 }

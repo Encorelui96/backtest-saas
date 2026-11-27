@@ -7,6 +7,7 @@ import { api } from "@/lib/client/api";
 import { signedInHint } from "@/lib/signed-in-hint";
 import { JOURNAL_CHANGED } from "./journal-shared";
 import { LevelToggle } from "./learn";
+import { ThemeToggle } from "./theme-toggle";
 
 /** `bar`: where the link shows. The phone's tab bar has room for six, so Journal takes the place of Tarifs there. */
 const LINKS: { href: string; label: string; short: string; icon: string; bar: "both" | "top" }[] = [
@@ -72,6 +73,7 @@ export function Nav() {
             <Link href="/tarifs" className={`web-only ${path.startsWith("/tarifs") ? "text-fg" : "text-muted hover:text-fg"}`}>
               {t("Tarifs")}
             </Link>
+            <ThemeToggle className="-mx-1" />
             <LanguageSwitch />
             {!path.startsWith("/connexion") && (
               <Link href="/connexion" className="rounded-md bg-accent px-3 py-1.5 font-medium text-white">
@@ -99,6 +101,7 @@ export function Nav() {
           <span className="ml-auto flex items-center gap-3">
             {/* Only where the level changes the page: the dashboard, the editor and the results. The journal has its own bar. */}
             {(path === "/" || path.startsWith("/strategies") || path.startsWith("/backtests")) && <LevelToggle />}
+            <ThemeToggle className="-mx-1.5" />
             <LanguageSwitch />
           </span>
         </nav>

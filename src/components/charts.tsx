@@ -19,20 +19,43 @@ import {
 } from "lightweight-charts";
 import type { CandleRow } from "@/lib/types";
 import { useIsMobile } from "@/lib/client/use-mobile";
+import { THEME_CHANGED } from "@/lib/client/theme";
 
 const OVERLAY_COLORS = ["#f59e0b", "#a855f7", "#06b6d4", "#ec4899", "#84cc16", "#f97316"];
 
 const sec = (t: number) => Math.floor(t / 1000) as UTCTimestamp;
 
+/** The axis, grid and border colours of the theme showing (globals.css); candles and lines keep theirs. */
+function themeLook() {
+  const css = getComputedStyle(document.documentElement);
+  const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback;
+  const border = v("--border", "#243044");
+  const grid = v("--grid", "#1b2333");
+  return {
+    layout: { textColor: v("--muted", "#8a97ab") },
+    grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+    rightPriceScale: { borderColor: border },
+    timeScale: { borderColor: border },
+  };
+}
+
+/** Repaints the chart's axes when the page switches between light and dark; returns the way to stop. */
+function followTheme(c: IChartApi) {
+  const repaint = () => c.applyOptions(themeLook());
+  window.addEventListener(THEME_CHANGED, repaint);
+  return () => window.removeEventListener(THEME_CHANGED, repaint);
+}
+
 function baseChart(el: HTMLElement, height: number): IChartApi {
+  const look = themeLook();
   return createChart(el, {
     height,
     autoSize: true,
-    layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: "#8a97ab", fontSize: 11 },
-    grid: { vertLines: { color: "#1b2333" }, horzLines: { color: "#1b2333" } },
-    rightPriceScale: { borderColor: "#243044" },
+    layout: { background: { type: ColorType.Solid, color: "transparent" }, textColor: look.layout.textColor, fontSize: 11 },
+    grid: look.grid,
+    rightPriceScale: look.rightPriceScale,
     timeScale: {
-      borderColor: "#243044",
+      borderColor: look.timeScale.borderColor,
       timeVisible: true,
       tickMarkFormatter: (time: Time, type: TickMarkType) => {
         const d = new Date((time as number) * 1000);
@@ -108,6 +131,7 @@ export function PriceChart({
   useEffect(() => {
     if (!el.current) return;
     const c = baseChart(el.current, height);
+    const stopTheme = followTheme(c);
     chart.current = c;
     series.current = c.addSeries(CandlestickSeries, {
       upColor: "#22c55e",
@@ -117,6 +141,7 @@ export function PriceChart({
       wickDownColor: "#ef4444",
     });
     return () => {
+      stopTheme();
       c.remove();
       chart.current = null;
       series.current = null;
@@ -165,6 +190,7 @@ export function EquityChart({ points, height: desktopHeight = 260 }: { points: {
   useEffect(() => {
     if (!el.current) return;
     const c = baseChart(el.current, height);
+    const stopTheme = followTheme(c);
     // The whole history must fit the width, however many points it has.
     c.timeScale().applyOptions({ minBarSpacing: 0.001 });
     const s = c.addSeries(AreaSeries, {
@@ -187,6 +213,7 @@ export function EquityChart({ points, height: desktopHeight = 260 }: { points: {
     const frame = requestAnimationFrame(() => c.timeScale().fitContent());
     return () => {
       cancelAnimationFrame(frame);
+      stopTheme();
       c.remove();
     };
   }, [points, height]);
