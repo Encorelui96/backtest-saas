@@ -1465,9 +1465,9 @@ export const EN: Record<string, string> = {
   "Rapide": "Fast",
   "Lente": "Slow",
   "Lissage %K": "%K smoothing",
-  "Structure de marché (Pro)": "Market structure (Pro)",
+  "Structure de marché (Avancé)": "Market structure (Advanced)",
   "ICT : order blocks": "ICT: order blocks",
-  "Divergences et plus (Pro)": "Divergences and more (Pro)",
+  "Divergences et plus (Avancé)": "Divergences and more (Advanced)",
   "{0} est réservé aux offres Avancé et Pro : le backtest sera refusé tant que la règle l'utilise.": "{0} is reserved to the Advanced and Pro plans: the backtest will be refused as long as a rule uses it.",
   "Voir l'offre Avancé →": "See the Advanced plan →",
   "L'indicateur {0:t} est réservé aux offres Avancé et Pro. Passe à l'offre Avancé pour tester cette stratégie.": "The {0:t} indicator is reserved to the Advanced and Pro plans. Upgrade to Advanced to test this strategy.",
@@ -2052,4 +2052,5 @@ export const EN: Record<string, string> = {
   "{0} backtests en même temps": "{0} backtests at the same time",
   "Une offre Avancé, et plus dans chaque offre payante": "An Advanced plan, and more in every paid plan",
   "Entre Trader et Pro, l'offre Avancé (29 € par mois) ouvre les indicateurs avancés : structure de marché, FVG, Heikin Ashi, divergences. Les offres payantes gagnent aussi des backtests, des traductions par l'IA, des alertes et de la place dans le journal. Le détail est sur la page Tarifs.": "Between Trader and Pro, the Advanced plan (€29 a month) opens the advanced indicators: market structure, FVG, Heikin Ashi, divergences. The paid plans also get more backtests, AI translations, alerts and room in the journal. The details are on the Pricing page.",
+  "Heikin Ashi (Avancé)": "Heikin Ashi (Advanced)",
 };

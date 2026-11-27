@@ -54,11 +54,11 @@ const GROUPS: { label: string; items: IndicatorName[] }[] = [
   { label: "Temps", items: ["hour", "minute", "weekday"] },
   { label: "ICT : order blocks", items: ["order_block", "ob_bull_top", "ob_bull_bottom", "ob_bear_top", "ob_bear_bottom"] },
   {
-    label: "Structure de marché (Pro)",
+    label: "Structure de marché (Avancé)",
     items: ["swing_high", "swing_low", "bos", "structure", "fvg", "fvg_bull_top", "fvg_bull_bottom", "fvg_bear_top", "fvg_bear_bottom"],
   },
-  { label: "Heikin Ashi (Pro)", items: ["ha_open", "ha_high", "ha_low", "ha_close"] },
-  { label: "Divergences et plus (Pro)", items: ["rsi_divergence", "macd_divergence", "stoch_rsi_k", "stoch_rsi_d", "aroon_up", "aroon_down", "cmf"] },
+  { label: "Heikin Ashi (Avancé)", items: ["ha_open", "ha_high", "ha_low", "ha_close"] },
+  { label: "Divergences et plus (Avancé)", items: ["rsi_divergence", "macd_divergence", "stoch_rsi_k", "stoch_rsi_d", "aroon_up", "aroon_down", "cmf"] },
 ];
 
 /** Labels of the averaged prices; the plain ones show as they are. */
