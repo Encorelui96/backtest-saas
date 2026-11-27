@@ -60,12 +60,15 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
       </head>
       <body className="min-h-full flex flex-col font-sans">
         <LangProvider lang={lang}>
-          <Suspense fallback={<NavFallback />}>
-            <Nav />
-          </Suspense>
+          {/* "app-chrome": the site's bars and footer, which the trading journal hides (globals.css). */}
+          <div className="app-chrome contents">
+            <Suspense fallback={<NavFallback />}>
+              <Nav />
+            </Suspense>
+          </div>
           {/* Bottom padding keeps content clear of the phone tab bar. */}
           <main className="mx-auto w-full max-w-7xl flex-1 px-3 pt-4 sm:px-4 md:pt-6">{children}</main>
-          <footer className="mx-auto flex w-full max-w-7xl flex-col gap-2 px-3 pt-6 pb-28 text-[11px] leading-relaxed text-muted sm:px-4 md:pb-6">
+          <footer className="app-chrome mx-auto flex w-full max-w-7xl flex-col gap-2 px-3 pt-6 pb-28 text-[11px] leading-relaxed text-muted sm:px-4 md:pb-6">
             <nav className="flex flex-wrap gap-x-4 gap-y-1" aria-label={t("Liens du pied de page")}>
               {FOOTER_LINKS.map((l) => (
                 <Link key={l.href} href={localePath(lang, l.href)} className={l.web ? "web-only hover:text-fg" : "hover:text-fg"}>

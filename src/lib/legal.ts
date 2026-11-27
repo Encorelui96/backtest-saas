@@ -28,4 +28,4 @@ export const HOST = {
 };
 
 /** Date of the last change to the legal pages. */
-export const LEGAL_UPDATED = "7 novembre 2026";
+export const LEGAL_UPDATED = "27 novembre 2026";

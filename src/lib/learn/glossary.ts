@@ -23,6 +23,7 @@ export const GLOSSARY_CATEGORIES = [
   { id: "couts", label: "Coûts" },
   { id: "resultats", label: "Lire les résultats" },
   { id: "robustesse", label: "Robustesse" },
+  { id: "journal", label: "Journal de trading" },
 ] as const;
 export type GlossaryCategory = (typeof GLOSSARY_CATEGORIES)[number]["id"];
 
@@ -758,6 +759,59 @@ GLOSSARY.push(
     category: "risque",
     short: "L'heure à laquelle toute position encore ouverte est fermée, quoi qu'il arrive.",
   },
+
+  // Journal de trading
+  {
+    id: "journal",
+    term: "Journal de trading",
+    category: "journal",
+    short: "Le carnet où tu notes chaque trade réel : pourquoi tu es entré, où était ton stop, comment tu es sorti et ce que tu en retiens.",
+    long: "Il répond à deux questions qu'un backtest ne voit pas : est-ce que tu appliques vraiment ton plan, et est-ce que ce plan gagne en vrai comme en test. Noter à l'entrée puis à la sortie évite de réécrire l'histoire après coup.",
+  },
+  {
+    id: "configuration",
+    term: "Configuration (setup)",
+    category: "journal",
+    short: "Une situation de marché que tu sais reconnaître et que tu trades toujours de la même façon : conditions, déclencheur, stop et sortie.",
+    long: "Chaque trade se rattache à une configuration, ou passe « hors plan ». Le journal compte les résultats de chacune à part : celle qui perd se voit, et les trades hors plan aussi.",
+    example: "« Rebond sur la moyenne 20 en tendance haussière, en 1h, stop sous le dernier creux, objectif à 2R ».",
+  },
+  {
+    id: "qualite",
+    term: "Qualité du trade (A, B, C)",
+    category: "journal",
+    short: "Ta note de la situation avant d'entrer : A quand toutes les conditions sont nettes, B quand il en manque une petite, C quand tu forces un peu.",
+    long: "Avec quelques dizaines de trades, le journal montre si tes B et tes C rapportent autant que tes A. Souvent, couper les C améliore le résultat.",
+  },
+  {
+    id: "respect-du-plan",
+    term: "Respect du plan",
+    category: "journal",
+    short: "Le trade a-t-il suivi ton plan de bout en bout : la bonne configuration, l'entrée au déclencheur, le stop et la sortie prévus ?",
+    long: "Un trade perdant peut être un bon trade s'il respecte le plan, et un gagnant un mauvais s'il le trahit. Séparer les deux montre ce que coûtent tes écarts.",
+  },
+  {
+    id: "plan-du-compte",
+    term: "Plan du compte",
+    category: "journal",
+    short: "Les règles que tu te fixes pour un compte : risque par trade, perte max du jour, nombre de trades par jour, jours et horaires. Le journal les vérifie à chaque trade.",
+    long: "Un trade qui en enfreint une est classé hors plan, même s'il gagne. Ces règles protègent surtout des mauvais jours : après la perte max du jour, on s'arrête.",
+  },
+  {
+    id: "registre-des-erreurs",
+    term: "Registre des erreurs",
+    category: "journal",
+    short: "La liste fermée de tes erreurs (E1 à E8 : entrée hors plan, stop déplacé, sortie trop tôt…) et ce que chacune t'a coûté en R.",
+    long: "Le coût d'une erreur est le résultat réel moins ce qu'aurait donné le plan. Additionnés sur un mois, ces coûts montrent où tu perds le plus, et donc quoi corriger en premier.",
+    example: "4 entrées hors plan à −3R et 5 sorties trop tôt à −2,5R : le mois aurait donné 5,5R de plus en suivant le plan.",
+  },
+  {
+    id: "valeur-du-point",
+    term: "Valeur du point",
+    category: "journal",
+    short: "Ce que gagne ou perd une unité de ta taille quand le prix bouge de 1, dans la devise du compte. Elle convertit la distance au stop en montant (1R).",
+    example: "Un lot d'EURUSD vaut 100 000 : 0,0020 de distance × 0,5 lot × 100 000 = 100 $ de risque. Un lot d'or vaut 100 (onces). Sur le Nasdaq, ça dépend du contrat : 20 $ le point sur le future NQ, souvent 1 $ sur un CFD.",
+  },
 );
 
 /** "À quoi ça sert" for the "?" next to each field in beginner mode. */
@@ -768,6 +822,12 @@ export const USES: Record<string, string> = {
   sens: "Garde « Achat seulement » pour débuter : c'est le plus simple à comprendre et à trader.",
   fuseau: "Pour que « 9h » ou « la veille » veuillent dire la même chose que sur ta montre.",
   stop: "Limiter la perte de chaque trade. Sans stop, un seul mauvais trade peut effacer des mois de gains.",
+  configuration: "Rattacher le trade à une de tes configurations, pour voir laquelle gagne vraiment. « Hors plan » si aucune ne correspond.",
+  qualite: "Noter à chaud si la situation était parfaite (A) ou forcée (C), pour vérifier plus tard ce que valent tes trades moyens.",
+  "respect-du-plan": "Séparer la qualité de ta décision du résultat, qui dépend aussi du hasard.",
+  "plan-du-compte": "Faire vérifier tes règles par le journal à chaque trade, sans compter sur ta mémoire.",
+  "registre-des-erreurs": "Chiffrer tes erreurs pour corriger d'abord celle qui coûte le plus.",
+  "valeur-du-point": "Mesurer 1R en argent. Vérifie-la une fois avec ta plateforme : le risque affiché doit être le même.",
   objectif: "Encaisser le gain au lieu d'attendre qu'il disparaisse.",
   "stop-suiveur": "Laisser courir un trade gagnant tout en protégeant une partie du gain.",
   "point-mort": "Ne plus pouvoir perdre sur un trade qui est déjà bien parti.",

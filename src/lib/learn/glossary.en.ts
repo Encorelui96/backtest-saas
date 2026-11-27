@@ -507,10 +507,55 @@ export const GLOSSARY_EN: Record<string, Pick<GlossaryEntry, "term" | "short" | 
     term: "Close everything at",
     short: "The time at which any position still open is closed, whatever happens.",
   },
+
+  // Trading journal
+  journal: {
+    term: "Trading journal",
+    short: "The notebook where you write down every real trade: why you got in, where your stop was, how you got out and what you take from it.",
+    long: "It answers two questions a backtest can't see: do you really follow your plan, and does that plan win live as it did in the test. Writing at entry, then at exit, keeps you from rewriting history afterwards.",
+  },
+  configuration: {
+    term: "Setup",
+    short: "A market situation you can recognise and always trade the same way: conditions, trigger, stop and exit.",
+    long: "Each trade belongs to a setup, or goes “off plan”. The journal counts the results of each one apart: the setup that loses shows, and so do the off-plan trades.",
+    example: "“Bounce on the 20 moving average in an uptrend, on 1h, stop under the last low, target at 2R”.",
+  },
+  qualite: {
+    term: "Trade quality (A, B, C)",
+    short: "Your grade of the situation before getting in: A when every condition is clear, B when a small one is missing, C when you're forcing it a bit.",
+    long: "After a few dozen trades, the journal shows whether your Bs and Cs pay as well as your As. Cutting the Cs often improves the result.",
+  },
+  "respect-du-plan": {
+    term: "Following the plan",
+    short: "Did the trade follow your plan from start to finish: the right setup, the entry at the trigger, the planned stop and exit?",
+    long: "A losing trade can be a good trade if it follows the plan, and a winner a bad one if it breaks it. Telling them apart shows what your deviations cost.",
+  },
+  "plan-du-compte": {
+    term: "Account plan",
+    short: "The rules you set for an account: risk per trade, max daily loss, trades per day, days and hours. The journal checks them on every trade.",
+    long: "A trade that breaks one is filed off plan, even if it wins. These rules mostly protect you from bad days: after the max daily loss, you stop.",
+  },
+  "registre-des-erreurs": {
+    term: "Error register",
+    short: "The closed list of your mistakes (E1 to E8: off-plan entry, moved stop, early exit…) and what each one cost you in R.",
+    long: "An error's cost is the real result minus what the plan would have given. Added up over a month, these costs show where you lose the most, and so what to fix first.",
+    example: "4 off-plan entries at −3R and 5 early exits at −2.5R: following the plan, the month would have made 5.5R more.",
+  },
+  "valeur-du-point": {
+    term: "Point value",
+    short: "What one unit of your size gains or loses when the price moves by 1, in the account's currency. It turns the distance to the stop into an amount (1R).",
+    example: "A EURUSD lot is worth 100,000: 0.0020 of distance × 0.5 lot × 100,000 = $100 of risk. A gold lot is worth 100 (ounces). On the Nasdaq it depends on the contract: $20 a point on the NQ future, often $1 on a CFD.",
+  },
 };
 
 /** "What it's for", by entry id, for the English site. */
 export const USES_EN: Record<string, string> = {
+  configuration: "Tie the trade to one of your setups, to see which one really wins. “Off plan” when none fits.",
+  qualite: "Grade on the spot whether the situation was perfect (A) or forced (C), to check later what your average trades are worth.",
+  "respect-du-plan": "Tell the quality of your decision apart from the result, which also depends on luck.",
+  "plan-du-compte": "Let the journal check your rules on every trade, instead of relying on your memory.",
+  "registre-des-erreurs": "Put a number on your mistakes to fix the costliest one first.",
+  "valeur-du-point": "Measure 1R in money. Check it once against your platform: the risk shown should be the same.",
   symbole: "Choose the market to test on. The same settings can win on one and lose on another.",
   "unite-de-temps": "The longer it is, the fewer trades and the less fees weigh. 4h or 1d to start with.",
   style: "Label your strategy. It doesn't change the calculation, but helps the AI suggest suitable settings.",
