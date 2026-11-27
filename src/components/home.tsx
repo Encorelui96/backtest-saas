@@ -103,8 +103,8 @@ function Landing() {
       {/* Phones: the chart runs edge to edge; larger screens: a rounded panel. */}
       <section className="relative -mx-3 h-[500px] overflow-hidden border-y border-line bg-panel/40 sm:mx-0 sm:rounded-2xl sm:border">
         <CandleHero className="absolute inset-0" />
-        {/* Darkens the middle and the bottom so the text stays readable over the candles. */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(11,14,20,0.85)_0%,rgba(11,14,20,0.55)_45%,rgba(11,14,20,0)_75%)]" />
+        {/* Veils the middle and the bottom with the page colour so the text stays readable over the candles. */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,color-mix(in_srgb,var(--bg)_85%,transparent)_0%,color-mix(in_srgb,var(--bg)_55%,transparent)_45%,transparent_75%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent" />
         <div className="relative flex h-full flex-col items-center justify-center px-5 text-center">
           <h1 className="text-3xl font-semibold leading-tight drop-shadow sm:text-5xl">

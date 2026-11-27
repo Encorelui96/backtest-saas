@@ -18,6 +18,7 @@ export function JournalTrades({
   filter,
   onFilter,
   onNew,
+  onImport,
   onClose,
   onEdit,
 }: {
@@ -25,6 +26,7 @@ export function JournalTrades({
   filter: TradeFilter;
   onFilter: (f: TradeFilter) => void;
   onNew: () => void;
+  onImport: () => void;
   onClose: (t: JournalTrade) => void;
   onEdit: (t: JournalTrade) => void;
 }) {
@@ -59,7 +61,13 @@ export function JournalTrades({
           <p className="text-muted">
             {tl("Note ton prochain trade dès l'entrée : le marché, le sens, l'entrée, le stop et la taille suffisent. Tu le clôtureras à la sortie, en une minute.")}
           </p>
-          <Button onClick={onNew}>{tl("+ Nouveau trade")}</Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={onNew}>{tl("+ Nouveau trade")}</Button>
+            <Button variant="ghost" onClick={onImport}>
+              {tl("Importer un journal")}
+            </Button>
+          </div>
+          <p className="text-xs text-muted">{tl("Déjà un journal ailleurs ? Importe un fichier CSV ou Excel, l'historique de MetaTrader 4 ou 5, ou l'export de TradeZella, Tradervue ou Edgewonk.")}</p>
         </div>
       </Card>
     );
@@ -67,7 +75,14 @@ export function JournalTrades({
 
   return (
     <div className="flex flex-col gap-4">
-      <FilterBar data={data} filter={filter} onChange={onFilter} />
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="min-w-0 flex-1">
+          <FilterBar data={data} filter={filter} onChange={onFilter} />
+        </div>
+        <Button variant="ghost" onClick={onImport} className="shrink-0">
+          {tl("Importer")}
+        </Button>
+      </div>
       {!closed.length && !open.length && <p className="text-sm text-muted">{tl("Aucun trade ne correspond à ces filtres.")}</p>}
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">

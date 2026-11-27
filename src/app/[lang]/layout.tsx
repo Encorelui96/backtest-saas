@@ -6,6 +6,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Nav, NavFallback } from "@/components/nav";
 import { APP_MODE_SCRIPT } from "@/lib/app-mode";
 import { SIGNED_IN_SCRIPT } from "@/lib/signed-in-hint";
+import { THEME_SCRIPT } from "@/lib/theme";
 import { SITE_NAME, SITE_URL, SOCIAL_LINKS } from "@/lib/site";
 import { LANGS, hasLang, localePath, translator } from "@/lib/i18n";
 import { LangProvider } from "@/lib/client/i18n";
@@ -42,7 +43,11 @@ export async function generateMetadata({ params }: LayoutProps<"/[lang]">): Prom
 }
 
 export const viewport: Viewport = {
-  themeColor: "#121722",
+  // The bar colour of the phone's browser: the panel of each theme.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#121722" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -53,10 +58,10 @@ export default async function RootLayout({ children, params }: LayoutProps<"/[la
   if (!hasLang(lang)) notFound();
   const t = translator(lang);
   return (
-    // The app's script marks <html> before React takes over.
+    // The scripts mark <html> (phone app, signed in, theme) before React takes over.
     <html lang={lang} className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: APP_MODE_SCRIPT + ";" + SIGNED_IN_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: APP_MODE_SCRIPT + ";" + SIGNED_IN_SCRIPT + ";" + THEME_SCRIPT }} />
       </head>
       <body className="min-h-full flex flex-col font-sans">
         <LangProvider lang={lang}>

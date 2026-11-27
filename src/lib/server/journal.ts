@@ -25,6 +25,7 @@ import {
   type PlanAnswers,
   type PlanCheck,
 } from "../journal";
+import { importKey } from "../journal-import";
 import type { SessionUser } from "./auth";
 import { newId, query, queryOne } from "./db";
 import { UserError } from "./errors";
@@ -554,6 +555,48 @@ export async function createTrade(userId: string, input: TradeInput): Promise<Jo
     [newId(), userId, ...params],
   );
   return trade(r!);
+}
+
+/**
+ * Files a batch of trades read from an outside journal, in order, each with the plan's checks as
+ * they stand after the ones before. A trade already in the journal (same ticket on the account,
+ * else same market, minute and entry) is skipped, so a file imported twice adds nothing the second time.
+ */
+export async function importTrades(userId: string, inputs: TradeInput[]): Promise<{ added: number; skipped: number }> {
+  inputs.forEach((t, i) => {
+    const problem = openProblem(t) ?? (t.close ? closeProblem(t, t.close) : null);
+    if (problem) throw new UserError("Trade n° {0} du lot : {1:t}", [i + 1, problem]);
+  });
+  const n = await queryOne<{ n: string }>("SELECT count(*) AS n FROM journal_trades WHERE user_id = $1", [userId]);
+  if (Number(n?.n ?? 0) + inputs.length > MAX_TRADES) throw new UserError("Ton journal a atteint {0} trades : écris-nous pour aller plus loin.", [MAX_TRADES]);
+  const accountIds = [...new Set(inputs.map((t) => t.accountId))];
+  const times = inputs.map((t) => t.openedAt);
+  const existing = await query<{ market: string; opened_at: Date; entry: number; ticket: string | null }>(
+    `SELECT market, opened_at, entry, ticket FROM journal_trades
+     WHERE user_id = $1 AND account_id = ANY($2) AND (ticket IS NOT NULL OR (opened_at >= $3 AND opened_at <= $4))`,
+    [userId, accountIds, new Date(Math.min(...times) - 60_000), new Date(Math.max(...times) + 60_000)],
+  );
+  const seen = new Set(existing.map((r) => importKey({ market: r.market, openedAt: r.opened_at.getTime(), entry: Number(r.entry), ticket: r.ticket })));
+  // Same key without the ticket: a trade typed by hand, then found in the platform's report.
+  existing.forEach((r) => seen.add(importKey({ market: r.market, openedAt: r.opened_at.getTime(), entry: Number(r.entry), ticket: null })));
+  let added = 0;
+  let skipped = 0;
+  for (const t of inputs) {
+    const keys = [importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: t.ticket }), importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: null })];
+    if (keys.some((k) => seen.has(k))) {
+      skipped++;
+      continue;
+    }
+    const plan = await evaluate(userId, t, null);
+    await query(`INSERT INTO journal_trades (id, user_id, ${COLUMNS.join(", ")}) VALUES ($1, $2, ${COLUMNS.map((_, i) => `$${i + 3}`).join(", ")})`, [
+      newId(),
+      userId,
+      ...values(t, plan),
+    ]);
+    keys.forEach((k) => seen.add(k));
+    added++;
+  }
+  return { added, skipped };
 }
 
 /** Replaces the whole trade: the form sends everything, a closed trade can be reopened by sending close: null. */

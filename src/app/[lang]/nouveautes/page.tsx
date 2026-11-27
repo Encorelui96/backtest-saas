@@ -13,6 +13,18 @@ const CHANGES: { month: string; items: { title: string; text: string }[] }[] = [
     month: "Novembre 2026",
     items: [
       {
+        title: "Importe ton journal",
+        text: "Dans le journal, « Importer » lit un fichier CSV ou Excel de n'importe quel journal, l'historique de MetaTrader 4 ou 5, ou l'export de TradeZella, Tradervue et Edgewonk. Les colonnes sont trouvées toutes seules, le fichier reste dans ton navigateur, et un fichier importé deux fois n'ajoute rien.",
+      },
+      {
+        title: "Mode clair",
+        text: "Un bouton en haut de l'écran passe le site en clair ou en sombre. Par défaut, il suit le réglage de ton téléphone ou de ton ordinateur.",
+      },
+      {
+        title: "Chercher plus vite",
+        text: "Une recherche dans Apprendre (les mots, les premiers pas, les erreurs à éviter, les questions fréquentes) et dans le choix des indicateurs : tape « moyenne », « FVG » ou « bollinger ».",
+      },
+      {
         title: "Un journal de trading",
         text: "Note tes trades réels dans un espace à part, l'onglet Journal : résultat en R, respect de ton plan, registre des erreurs, calendrier et note du jour. Remplis un trade depuis une capture de MetaTrader ou cTrader, garde tes graphiques et fais-les analyser par l'IA si tu veux. Le tableau de bord complet (courbe des R, baisse max, analyses) vient avec les offres Trader et Pro.",
       },

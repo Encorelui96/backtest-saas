@@ -8,6 +8,7 @@ import { INTERVALS } from "@/lib/types";
 import { INDICATOR_TERMS } from "@/lib/learn/glossary";
 import { Help } from "./learn";
 import { NumberInput } from "./number-input";
+import { IndicatorPicker } from "./indicator-picker";
 
 /** A "?" that explains the indicator or comparison in beginner mode, nothing in expert mode. */
 function Why({ id }: { id: string | undefined }) {
@@ -76,17 +77,7 @@ function OperandEditor({ value, onChange }: { value: Operand; onChange: (o: Oper
   const setIndicator = (indicator: IndicatorName) => onChange({ ...operand(indicator, DEFAULT_PERIODS[indicator] ?? {}), offset: value.offset, timeframe: value.timeframe });
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <select value={value.indicator} onChange={(e) => setIndicator(e.target.value as IndicatorName)} className="max-w-48">
-        {GROUPS.map((g) => (
-          <optgroup key={g.label} label={tl(g.label)}>
-            {g.items.map((i) => (
-              <option key={i} value={i} disabled={locked && PRO_INDICATORS.has(i) && i !== value.indicator}>
-                {tl(INDICATOR_LABELS[i])}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
+      <IndicatorPicker value={value.indicator} groups={GROUPS} labels={INDICATOR_LABELS} isLocked={(i) => locked && PRO_INDICATORS.has(i)} onChange={setIndicator} />
       <Why id={INDICATOR_TERMS[value.indicator]} />
       {fields.map((f) => {
         if (f === "source")
