@@ -171,3 +171,76 @@ CREATE TABLE IF NOT EXISTS credit_ledger (
 );
 CREATE INDEX IF NOT EXISTS credits_by_user ON credit_ledger (user_id, kind);
 CREATE UNIQUE INDEX IF NOT EXISTS credits_one_refund ON credit_ledger (reason) WHERE reason LIKE 'refund:%';
+
+-- Trading journal: the trader's own accounts, setups and trades, typed in by hand.
+-- Prices and amounts are doubles: a journal needs no exact decimals, and pg returns them as numbers.
+CREATE TABLE IF NOT EXISTS journal_accounts (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  kind text NOT NULL DEFAULT 'real', -- real | demo | challenge | funded
+  currency text NOT NULL DEFAULT 'USD',
+  -- Capital at the start; the balance adds the closed trades.
+  capital double precision NOT NULL,
+  -- Planned risk per trade, % of the capital.
+  risk_pct double precision NOT NULL DEFAULT 1,
+  archived boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  -- Lets trades check that their account belongs to the same user.
+  UNIQUE (id, user_id)
+);
+CREATE INDEX IF NOT EXISTS journal_accounts_by_user ON journal_accounts (user_id);
+
+-- Setups (configurations): the trader's named entries, optionally tied to a strategy of the site.
+CREATE TABLE IF NOT EXISTS journal_setups (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  name text NOT NULL,
+  description text,
+  strategy_id text REFERENCES strategies(id) ON DELETE SET NULL,
+  archived boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (id, user_id)
+);
+CREATE INDEX IF NOT EXISTS journal_setups_by_user ON journal_setups (user_id);
+
+-- One line per trade: opened first, closed later (the close columns stay empty meanwhile).
+CREATE TABLE IF NOT EXISTS journal_trades (
+  id text PRIMARY KEY,
+  user_id text NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  account_id text NOT NULL,
+  setup_id text,
+  -- Taken outside any setup, on purpose or not: counted apart in the statistics.
+  off_plan boolean NOT NULL DEFAULT false,
+  market text NOT NULL,
+  side text NOT NULL, -- long | short
+  quality text, -- A | B | C
+  opened_at timestamptz NOT NULL,
+  entry double precision NOT NULL,
+  -- The initial stop: 1R is measured on it, even if the stop moved afterwards.
+  stop double precision NOT NULL,
+  size double precision NOT NULL,
+  -- What one unit of size gains for a move of 1 in the price, in the account's currency.
+  point_value double precision NOT NULL DEFAULT 1,
+  target double precision,
+  timeframe text,
+  context text,
+  planned_entry double precision,
+  announcement text,
+  capture_url text,
+  closed_at timestamptz,
+  exit_price double precision,
+  exit_reason text,
+  fees double precision NOT NULL DEFAULT 0,
+  plan_followed boolean,
+  comment text,
+  exit_capture_url text,
+  mae_r double precision,
+  mfe_r double precision,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (account_id, user_id) REFERENCES journal_accounts (id, user_id) ON DELETE CASCADE,
+  FOREIGN KEY (setup_id) REFERENCES journal_setups (id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS journal_trades_by_user ON journal_trades (user_id, opened_at DESC);
+CREATE INDEX IF NOT EXISTS journal_trades_open ON journal_trades (user_id) WHERE closed_at IS NULL;

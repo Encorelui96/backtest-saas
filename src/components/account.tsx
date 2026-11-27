@@ -201,7 +201,7 @@ function DataCard({ hasPassword }: { hasPassword: boolean }) {
     <Card title={tl("Mes données")}>
       <div className="flex flex-col gap-3 text-sm">
         <p className="text-muted">
-          {tl("Tu peux récupérer à tout moment une copie de ce que Backtest Lab garde sur toi : compte, stratégies, résultats des backtests, connexions. Le détail est dans la")}{" "}
+          {tl("Tu peux récupérer à tout moment une copie de ce que Backtest Lab garde sur toi : compte, stratégies, résultats des backtests, journal de trading, connexions. Le détail est dans la")}{" "}
           <Link href="/confidentialite" className="underline hover:text-fg">
             {tl("politique de confidentialité")}</Link>
           .

@@ -33,6 +33,8 @@ export interface Plan {
   /** Backtests running or waiting at the same time. */
   concurrentJobs: number;
   alerts: number;
+  /** Accounts in the trading journal: one to discover it, several to follow a real account, a demo and a challenge side by side. */
+  journalAccounts: number;
 }
 
 export const PLANS: Record<PlanId, Plan> = {
@@ -51,6 +53,7 @@ export const PLANS: Record<PlanId, Plan> = {
     proIndicators: false,
     concurrentJobs: 1,
     alerts: 0,
+    journalAccounts: 1,
   },
   trader: {
     id: "trader",
@@ -67,6 +70,7 @@ export const PLANS: Record<PlanId, Plan> = {
     proIndicators: false,
     concurrentJobs: 2,
     alerts: 3,
+    journalAccounts: 20,
   },
   pro: {
     id: "pro",
@@ -84,6 +88,7 @@ export const PLANS: Record<PlanId, Plan> = {
     proIndicators: true,
     concurrentJobs: 3,
     alerts: 20,
+    journalAccounts: 20,
   },
 };
 

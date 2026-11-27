@@ -23,8 +23,9 @@ function count(key: string, max: number, refusal: string) {
   if (++w.count > max) throw new QuotaError(refusal);
 }
 
-export function limitPerMinute(userId: string, route: string, max: number) {
-  count(`${route}:${userId}`, max, "Trop de demandes de cours d'affilée : attends une minute.");
+/** `refusal` is the French text shown when the limit is hit (also its translation key). */
+export function limitPerMinute(userId: string, route: string, max: number, refusal = "Trop de demandes de cours d'affilée : attends une minute.") {
+  count(`${route}:${userId}`, max, refusal);
 }
 
 /** The visitor's address: Render's proxies (Cloudflare) put it in these headers, the first one that is set wins. */
