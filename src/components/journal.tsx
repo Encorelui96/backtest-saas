@@ -10,10 +10,13 @@ import { Alert, Button } from "./ui";
 import { FirstAccount, JournalAccounts } from "./journal-accounts";
 import { JournalSetups } from "./journal-setups";
 import { JournalTrades } from "./journal-trades";
+import { JournalCalendar } from "./journal-calendar";
+import { JournalDashboard } from "./journal-dashboard";
 import { TradeForm, type TradeFormMode } from "./journal-trade-form";
 import { JOURNAL_CHANGED, type JournalData } from "./journal-shared";
+import { NO_FILTER, type TradeFilter } from "@/lib/journal-stats";
 
-type Section = "trades" | "setups" | "accounts";
+type Section = "trades" | "calendar" | "dashboard" | "setups" | "accounts";
 
 const SECTIONS: { id: Section; label: string; short: string; intro: string; icon: string }[] = [
   {
@@ -21,6 +24,20 @@ const SECTIONS: { id: Section; label: string; short: string; intro: string; icon
     label: "Trades",
     short: "Trades",
     intro: "Chaque trade réel, mesuré en R : ce que tu gagnes vraiment, et si tu suis ton plan.",
+    icon: "M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01",
+  },
+  {
+    id: "calendar",
+    label: "Calendrier",
+    short: "Calendrier",
+    intro: "Chaque jour en R : tes bonnes et tes mauvaises séances d'un coup d'œil.",
+    icon: "M4 6h16v14H4zM4 10h16M8 3v4M16 3v4",
+  },
+  {
+    id: "dashboard",
+    label: "Tableau de bord",
+    short: "Tableau",
+    intro: "Ta courbe en R, tes séries, et ce qui marche le mieux : configuration, marché, heure, jour, sens, qualité, plan.",
     icon: "M4 19h16M4 15l4-4 4 3 6-7",
   },
   {
@@ -70,8 +87,12 @@ export function JournalFrame({
   open?: number;
 }) {
   const tl = useT();
+  const [more, setMore] = useState(false);
   const current = SECTIONS.find((s) => s.id === section);
   const nav = current && onSection && onNew ? { current, onSection, onNew } : null;
+  const byId = (id: Section) => SECTIONS.find((s) => s.id === id)!;
+  // Five places on a phone: the three sections used every day, the new trade, and the rest behind "More".
+  const extra = [byId("setups"), byId("accounts")];
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 -mx-3 border-b border-line bg-panel/95 px-3 pt-[env(safe-area-inset-top)] backdrop-blur sm:-mx-4 sm:px-4">
@@ -128,14 +149,55 @@ export function JournalFrame({
         </div>
       </div>
 
+      {nav && more && (
+        <>
+          <button className="fixed inset-0 z-30 cursor-default md:hidden" aria-label={tl("Fermer")} onClick={() => setMore(false)} />
+          <div className="fixed right-2 bottom-[calc(4.5rem+env(safe-area-inset-bottom))] z-40 flex w-60 flex-col rounded-lg border border-line bg-panel p-1 shadow-xl md:hidden">
+            {extra.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => {
+                  setMore(false);
+                  nav.onSection(s.id);
+                }}
+                aria-current={section === s.id ? "page" : undefined}
+                className={`flex items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm ${section === s.id ? "bg-panel-2 text-accent" : "text-fg hover:bg-panel-2/60"}`}
+              >
+                <Icon d={s.icon} className="h-5 w-5" />
+                {tl(s.label)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
       {nav && (
         // On phones: the journal's own tab bar, with the new trade in the middle, within thumb reach.
         <nav className="fixed inset-x-0 bottom-0 z-30 flex items-end border-t border-line bg-panel pb-[env(safe-area-inset-bottom)] md:hidden" aria-label={tl("Journal de trading")}>
-          {[SECTIONS[0], SECTIONS[1], null, SECTIONS[2]].map((s) =>
-            s ? (
+          {[byId("trades"), byId("calendar"), null, byId("dashboard"), "more" as const].map((s) =>
+            s === null ? (
+              <span key="new" className="flex flex-1 justify-center pb-2">
+                <button onClick={nav.onNew} className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg" aria-label={tl("+ Nouveau trade")}>
+                  <Icon d="M12 5v14M5 12h14" className="h-7 w-7" />
+                </button>
+              </span>
+            ) : s === "more" ? (
+              <button
+                key="more"
+                onClick={() => setMore(!more)}
+                aria-expanded={more}
+                className={`flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${more || extra.some((x) => x.id === section) ? "text-accent" : "text-muted"}`}
+              >
+                <Icon d="M5 12h.01M12 12h.01M19 12h.01" className="h-6 w-6" />
+                {tl("Plus")}
+              </button>
+            ) : (
               <button
                 key={s.id}
-                onClick={() => nav.onSection(s.id)}
+                onClick={() => {
+                  setMore(false);
+                  nav.onSection(s.id);
+                }}
                 aria-current={section === s.id ? "page" : undefined}
                 className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${section === s.id ? "text-accent" : "text-muted"}`}
               >
@@ -143,14 +205,8 @@ export function JournalFrame({
                 {s.id === "trades" && open > 0 && (
                   <span className="absolute top-1 left-1/2 ml-1.5 rounded-full bg-accent px-1 text-[9px] font-semibold leading-3.5 text-white">{open}</span>
                 )}
-                {tl(s.short)}
+                <span className="max-w-full truncate px-0.5">{tl(s.short)}</span>
               </button>
-            ) : (
-              <span key="new" className="flex flex-1 justify-center pb-2">
-                <button onClick={nav.onNew} className="-mt-5 flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-lg" aria-label={tl("+ Nouveau trade")}>
-                  <Icon d="M12 5v14M5 12h14" className="h-7 w-7" />
-                </button>
-              </span>
             ),
           )}
         </nav>
@@ -170,12 +226,15 @@ function savedAccount() {
   }
 }
 
-/** The trading journal: trades, setups and accounts, and the trade form over them, in its own frame. */
+/** The trading journal: trades, calendar, dashboard, setups and accounts, and the trade form over them, in its own frame. */
 export function Journal() {
   const [data, setData] = useState<JournalData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [section, setSection] = useState<Section>("trades");
-  const [accountId, setAccountId] = useState("");
+  // One choice of account, period, setup and plan for the trades, the calendar and the dashboard.
+  const [filter, setFilter] = useState<TradeFilter>(NO_FILTER);
+  // When the section was opened: the calendar starts on that month.
+  const [openedAt, setOpenedAt] = useState(0);
   const [form, setForm] = useState<{ trade: JournalTrade | null; mode: TradeFormMode; now: number } | null>(null);
 
   const load = useCallback(
@@ -195,10 +254,10 @@ export function Journal() {
     load();
   }, [load]);
 
-  const chooseAccount = (id: string) => {
-    setAccountId(id);
+  const chooseFilter = (f: TradeFilter) => {
+    setFilter(f);
     try {
-      if (id) localStorage.setItem(ACCOUNT_KEY, id);
+      if (f.accountId) localStorage.setItem(ACCOUNT_KEY, f.accountId);
     } catch {
       // Private browsing: the choice only lasts for this page.
     }
@@ -214,7 +273,7 @@ export function Journal() {
 
   const active = data.accounts.filter((a) => !a.archived);
   // A new trade goes to the account shown, else the last one used, else the first open one.
-  const preferred = accountId || savedAccount();
+  const preferred = filter.accountId || savedAccount();
   const target = active.find((a) => a.id === preferred)?.id ?? active[0]?.id ?? data.accounts[0].id;
   const newTrade = () => setForm({ trade: null, mode: "open", now: Date.now() });
 
@@ -223,6 +282,7 @@ export function Journal() {
       section={section}
       onSection={(s) => {
         setSection(s);
+        setOpenedAt(Date.now());
         window.scrollTo({ top: 0 });
       }}
       onNew={newTrade}
@@ -233,13 +293,17 @@ export function Journal() {
       {section === "trades" && (
         <JournalTrades
           data={data}
-          accountId={accountId}
-          onAccount={chooseAccount}
+          filter={filter}
+          onFilter={chooseFilter}
           onNew={newTrade}
           onClose={(trade) => setForm({ trade, mode: "close", now: Date.now() })}
           onEdit={(trade) => setForm({ trade, mode: "edit", now: Date.now() })}
         />
       )}
+      {section === "calendar" && (
+        <JournalCalendar data={data} filter={filter} onFilter={chooseFilter} now={openedAt} onEdit={(trade) => setForm({ trade, mode: "edit", now: Date.now() })} />
+      )}
+      {section === "dashboard" && <JournalDashboard data={data} filter={filter} onFilter={chooseFilter} />}
       {section === "setups" && <JournalSetups data={data} onChanged={load} />}
       {section === "accounts" && <JournalAccounts data={data} onChanged={load} />}
 

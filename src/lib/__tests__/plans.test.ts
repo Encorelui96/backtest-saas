@@ -37,6 +37,11 @@ describe("free plan", () => {
     }
   });
 
+  it("opens the journal to all, with one account and no full dashboard on the free plan", () => {
+    expect([PLANS.free.journalAccounts, PLANS.free.journalDashboard]).toEqual([1, false]);
+    for (const p of [PLANS.trader, PLANS.pro]) expect([p.journalAccounts, p.journalDashboard]).toEqual([20, true]);
+  });
+
   it("keeps the prices", () => {
     expect([PLANS.trader.monthly, PLANS.trader.yearly, PLANS.pro.monthly, PLANS.pro.yearly]).toEqual([15, 150, 39, 390]);
   });

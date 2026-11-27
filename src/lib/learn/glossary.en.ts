@@ -541,6 +541,11 @@ export const GLOSSARY_EN: Record<string, Pick<GlossaryEntry, "term" | "short" | 
     long: "An error's cost is the real result minus what the plan would have given. Added up over a month, these costs show where you lose the most, and so what to fix first.",
     example: "4 off-plan entries at −3R and 5 early exits at −2.5R: following the plan, the month would have made 5.5R more.",
   },
+  "courbe-des-r": {
+    term: "R curve",
+    short: "Your results in R added up trade after trade. It depends neither on the size nor on the account: it shows your method as it is.",
+    long: "A curve that rises in regular steps beats one carried by two big trades. The red band marks the max drawdown: the worst run your method put you through.",
+  },
   "valeur-du-point": {
     term: "Point value",
     short: "What one unit of your size gains or loses when the price moves by 1, in the account's currency. It turns the distance to the stop into an amount (1R).",

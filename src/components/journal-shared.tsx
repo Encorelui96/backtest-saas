@@ -10,7 +10,8 @@ export interface JournalData {
   accounts: JournalAccount[];
   setups: JournalSetup[];
   trades: JournalTrade[];
-  plan: { id: PlanId; label: string; accounts: number };
+  /** What the plan allows: how many accounts, and the full dashboard or only its basic figures. */
+  plan: { id: PlanId; label: string; accounts: number; dashboard: boolean };
 }
 
 /** Sent on the window each time the journal page loads its data, with the open trades as detail: the Journal tab's badge. */

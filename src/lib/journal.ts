@@ -331,9 +331,16 @@ export function isTimeZone(tz: string): boolean {
   }
 }
 
+/** One formatter per time zone: building one costs far more than using it, and the calendar reads thousands of trades. */
+const FORMATS = new Map<string, Intl.DateTimeFormat>();
+
 /** The day (2026-11-27), weekday (0 = Monday) and minute of the day of a moment, in a time zone. */
 export function localTime(t: number, timeZone: string) {
-  const f = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23" });
+  let f = FORMATS.get(timeZone);
+  if (!f) {
+    f = new Intl.DateTimeFormat("en-GB", { timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", weekday: "short", hourCycle: "h23" });
+    FORMATS.set(timeZone, f);
+  }
   const p = Object.fromEntries(f.formatToParts(new Date(t)).map((x) => [x.type, x.value]));
   return {
     day: `${p.year}-${p.month}-${p.day}`,

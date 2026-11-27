@@ -35,6 +35,11 @@ export interface Plan {
   alerts: number;
   /** Accounts in the trading journal: one to discover it, several to follow a real account, a demo and a challenge side by side. */
   journalAccounts: number;
+  /**
+   * The journal's full dashboard: R curve, drawdown, streaks, analyses and cost of mistakes. Every plan
+   * keeps the trades, the plan checks, the error register, the basic figures and the calendar.
+   */
+  journalDashboard: boolean;
 }
 
 export const PLANS: Record<PlanId, Plan> = {
@@ -54,6 +59,7 @@ export const PLANS: Record<PlanId, Plan> = {
     concurrentJobs: 1,
     alerts: 0,
     journalAccounts: 1,
+    journalDashboard: false,
   },
   trader: {
     id: "trader",
@@ -71,6 +77,7 @@ export const PLANS: Record<PlanId, Plan> = {
     concurrentJobs: 2,
     alerts: 3,
     journalAccounts: 20,
+    journalDashboard: true,
   },
   pro: {
     id: "pro",
@@ -89,6 +96,7 @@ export const PLANS: Record<PlanId, Plan> = {
     concurrentJobs: 3,
     alerts: 20,
     journalAccounts: 20,
+    journalDashboard: true,
   },
 };
 

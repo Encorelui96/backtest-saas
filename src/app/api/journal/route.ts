@@ -10,6 +10,6 @@ export async function GET(req: Request) {
   return handle(async () => {
     const user = await requireUser(req.headers);
     const [plan, journal] = await Promise.all([planOf(user), loadJournal(user.id)]);
-    return Response.json({ ...journal, plan: { id: plan.id, label: plan.label, accounts: plan.journalAccounts } });
+    return Response.json({ ...journal, plan: { id: plan.id, label: plan.label, accounts: plan.journalAccounts, dashboard: plan.journalDashboard } });
   });
 }
