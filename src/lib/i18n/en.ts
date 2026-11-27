@@ -2046,4 +2046,5 @@ export const EN: Record<string, string> = {
   "Chercher plus vite": "Find things faster",
   "Une recherche dans Apprendre (les mots, les premiers pas, les erreurs à éviter, les questions fréquentes) et dans le choix des indicateurs : tape « moyenne », « FVG » ou « bollinger ».": "Search in Learn (words, first steps, mistakes to avoid, common questions) and in the indicator picker: type “moving average”, “FVG” or “bollinger”.",
   "en cours": "open",
+  "1 trade prêt à importer": "1 trade ready to import",
 };
