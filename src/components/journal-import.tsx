@@ -79,6 +79,9 @@ export function ImportDialog({ data, accountId, onDone, onCancel }: { data: Jour
     data.trades.filter((t) => t.close && t.accountId === account.id).map((t) => closedResult(t, account.currency)!.amount),
   );
   const plannedRisk = (capital * account.riskPct) / 100;
+  // Plain values for the memos below (the React compiler can't follow fields of an object found in a list).
+  const timeZone = account.timeZone;
+  const accountKey = account.id;
 
   const read = async (file: File) => {
     setError(null);
@@ -108,20 +111,20 @@ export function ImportDialog({ data, accountId, onDone, onCancel }: { data: Jour
   const drafts = useMemo(
     () =>
       loaded && REQUIRED_FIELDS.every((f) => columns[f] !== undefined)
-        ? draftsFrom(loaded.header, loaded.rows, columns, { timeZone: account.timeZone, dateOrder, offsetHours: offset, pointValue }, loaded.headerRow + 2)
+        ? draftsFrom(loaded.header, loaded.rows, columns, { timeZone, dateOrder, offsetHours: offset, pointValue }, loaded.headerRow + 2)
         : [],
-    [loaded, columns, account.timeZone, dateOrder, offset, pointValue],
+    [loaded, columns, timeZone, dateOrder, offset, pointValue],
   );
 
   const known = useMemo(() => {
     const keys = new Set<string>();
     for (const t of data.trades) {
-      if (t.accountId !== account.id) continue;
+      if (t.accountId !== accountKey) continue;
       keys.add(importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: t.ticket }));
       keys.add(importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: null }));
     }
     return keys;
-  }, [data.trades, account.id]);
+  }, [data.trades, accountKey]);
 
   const checked = useMemo<Checked[]>(() => {
     const inFile = new Set<string>();
