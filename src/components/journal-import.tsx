@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useT } from "@/lib/client/i18n";
 import { api } from "@/lib/client/api";
 import { date, price, r, tone } from "@/lib/client/format";
@@ -79,9 +79,6 @@ export function ImportDialog({ data, accountId, onDone, onCancel }: { data: Jour
     data.trades.filter((t) => t.close && t.accountId === account.id).map((t) => closedResult(t, account.currency)!.amount),
   );
   const plannedRisk = (capital * account.riskPct) / 100;
-  // Plain values for the memos below (the React compiler can't follow fields of an object found in a list).
-  const timeZone = account.timeZone;
-  const accountKey = account.id;
 
   const read = async (file: File) => {
     setError(null);
@@ -108,51 +105,42 @@ export function ImportDialog({ data, accountId, onDone, onCancel }: { data: Jour
   };
 
   const missing = REQUIRED_FIELDS.filter((f) => columns[f] === undefined);
-  const drafts = useMemo(
-    () =>
-      loaded && REQUIRED_FIELDS.every((f) => columns[f] !== undefined)
-        ? draftsFrom(loaded.header, loaded.rows, columns, { timeZone, dateOrder, offsetHours: offset, pointValue }, loaded.headerRow + 2)
-        : [],
-    [loaded, columns, timeZone, dateOrder, offset, pointValue],
-  );
+  // No manual memo here: the React compiler keeps these between renders on its own.
+  const drafts =
+    loaded && !missing.length ? draftsFrom(loaded.header, loaded.rows, columns, { timeZone: account.timeZone, dateOrder, offsetHours: offset, pointValue }, loaded.headerRow + 2) : [];
 
-  const known = useMemo(() => {
-    const keys = new Set<string>();
-    for (const t of data.trades) {
-      if (t.accountId !== accountKey) continue;
-      keys.add(importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: t.ticket }));
-      keys.add(importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: null }));
-    }
-    return keys;
-  }, [data.trades, accountKey]);
+  const known = new Set<string>();
+  for (const t of data.trades) {
+    if (t.accountId !== account.id) continue;
+    known.add(importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: t.ticket }));
+    known.add(importKey({ market: t.market, openedAt: t.openedAt, entry: t.entry, ticket: null }));
+  }
 
-  const checked = useMemo<Checked[]>(() => {
-    const inFile = new Set<string>();
-    return drafts.map((d): Checked => {
-      const problems = [...d.problems];
-      const stop = d.stop ?? (d.side ? plannedStop(d.side, d.entry, d.size, d.pointValue, plannedRisk) : null);
-      let rr: number | null = null;
-      let amt: number | null = null;
-      if (!problems.length) {
-        if (stop === null) problems.push("risque du plan manquant pour un trade sans stop");
-        else {
-          const t = { side: d.side!, entry: d.entry!, stop, size: d.size!, pointValue: d.pointValue!, openedAt: d.openedAt!, target: d.target };
-          // No exit: a trade still open, filed open.
-          const c = d.exit === null ? null : { exit: d.exit, closedAt: d.closedAt ?? d.openedAt!, fees: d.fees };
-          const problem = openProblem(t) ?? (c ? closeProblem(t, c) : null);
-          if (problem) problems.push(problem);
-          else if (c) {
-            rr = resultR(t, c);
-            amt = resultAmount(t, c);
-          }
+  const inFile = new Set<string>();
+  const checked = drafts.map((d): Checked => {
+    const problems = [...d.problems];
+    const stop = d.stop ?? (d.side ? plannedStop(d.side, d.entry, d.size, d.pointValue, plannedRisk) : null);
+    let rr: number | null = null;
+    let amt: number | null = null;
+    if (!problems.length) {
+      if (stop === null) problems.push("risque du plan manquant pour un trade sans stop");
+      else {
+        const t = { side: d.side!, entry: d.entry!, stop, size: d.size!, pointValue: d.pointValue!, openedAt: d.openedAt!, target: d.target };
+        // No exit: a trade still open, filed open.
+        const c = d.exit === null ? null : { exit: d.exit, closedAt: d.closedAt ?? d.openedAt!, fees: d.fees };
+        const problem = openProblem(t) ?? (c ? closeProblem(t, c) : null);
+        if (problem) problems.push(problem);
+        else if (c) {
+          rr = resultR(t, c);
+          amt = resultAmount(t, c);
         }
       }
-      const keys = [importKey({ ...d, market: d.market, ticket: d.ticket }), importKey({ ...d, ticket: null })];
-      const dup = keys.some((k) => known.has(k) || inFile.has(k));
-      keys.forEach((k) => inFile.add(k));
-      return { draft: d, stop, problems, r: rr, amount: amt, status: problems.length ? "problem" : dup ? "known" : "ok" };
-    });
-  }, [drafts, plannedRisk, known]);
+    }
+    const keys = [importKey({ ...d, market: d.market, ticket: d.ticket }), importKey({ ...d, ticket: null })];
+    const dup = keys.some((k) => known.has(k) || inFile.has(k));
+    keys.forEach((k) => inFile.add(k));
+    return { draft: d, stop, problems, r: rr, amount: amt, status: problems.length ? "problem" : dup ? "known" : "ok" };
+  });
 
   const ready = checked.filter((c) => c.status === "ok");
   const knownCount = checked.filter((c) => c.status === "known").length;
