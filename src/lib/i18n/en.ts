@@ -2120,7 +2120,6 @@ export const EN: Record<string, string> = {
   "{0} / mois": "{0} / month",
   "{0} backtests en même temps, {1} alertes Telegram": "{0} backtests at the same time, {1} Telegram alerts",
   "{0} backtests et {1} traductions par l'IA par mois": "{0} backtests and {1} AI translations a month",
-  "{0} derniers mois": "last {0} months",
   "{0} lectures par l'IA": "{0} AI readings",
   "{0} par an, 2 mois offerts": "{0} a year, 2 months free",
   "Pourquoi payer si l'offre gratuite existe ?": "Why pay when there's a free plan?",

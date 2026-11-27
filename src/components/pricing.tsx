@@ -12,6 +12,7 @@ import { Alert } from "./ui";
 import { num } from "@/lib/client/format";
 
 const INTERVAL_LABELS: Record<string, string> = { "1m": "1 minute", "15m": "15 minutes", "1h": "1 heure" };
+const SHORT_INTERVALS: Record<string, string> = { "1m": "1 min", "15m": "15 min", "1h": "1 h" };
 const ORDER = Object.values(PLANS);
 
 /** "399 €", "569,99 $": a price as the firm gives it, in the language of the page. */
@@ -65,8 +66,8 @@ function rows(): { label: string; values: (string | boolean)[] }[] {
   return [
     { label: tr("Backtests par mois"), values: each((p) => num(p.backtestsPerMonth, 0)) },
     { label: tr("Traductions par l'IA par mois"), values: each((p) => String(p.aiPerMonth)) },
-    { label: tr("Unité de temps minimale"), values: each((p) => tr(INTERVAL_LABELS[p.minInterval] ?? p.minInterval)) },
-    { label: tr("Historique"), values: each((p) => (p.historyDays === null ? tr("tout") : tr("{0} derniers mois", [historyMonths(p) ?? ""]))) },
+    { label: tr("Unité de temps minimale"), values: each((p) => SHORT_INTERVALS[p.minInterval] ?? p.minInterval) },
+    { label: tr("Historique"), values: each((p) => (p.historyDays === null ? tr("tout") : tr("{0} mois", [historyMonths(p) ?? ""]))) },
     { label: tr("Backtests en même temps"), values: each((p) => String(p.concurrentJobs)) },
     { label: tr("Robustesse détaillée"), values: each((p) => p.advanced) },
     { label: tr("Comparatif des prop firms"), values: each((p) => p.advanced) },
@@ -217,16 +218,16 @@ export function Pricing() {
       <section className="rounded-xl border border-line bg-panel p-4 sm:p-5">
         <h2 className="text-lg font-semibold">{tl("Comparer les offres en détail")}</h2>
         <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[560px] text-sm">
+          <table className="w-full text-xs sm:text-sm">
             <thead>
               <tr className="border-b border-line text-left">
-                <th className="sticky left-0 bg-panel py-2 pr-3 font-medium text-muted" scope="col">
+                <th className="w-[34%] py-2 pr-2 font-medium text-muted" scope="col">
                   <span className="sr-only">{tl("Offre")}</span>
                 </th>
                 {ORDER.map((p) => (
-                  <th key={p.id} scope="col" className={`px-2 py-2 text-center font-semibold ${p.id === "trader" ? "text-accent" : ""}`}>
+                  <th key={p.id} scope="col" className={`px-1 py-2 text-center font-semibold sm:px-2 ${p.id === "trader" ? "text-accent" : ""}`}>
                     {tl(p.label)}
-                    <span className="num block text-xs font-normal text-muted">{p.monthly === 0 ? tl("Gratuit") : tl("{0} / mois", [euros(billing === "year" ? p.yearly / 12 : p.monthly)])}</span>
+                    <span className="num block text-[10px] font-normal text-muted sm:text-xs">{p.monthly === 0 ? tl("Gratuit") : tl("{0} / mois", [euros(billing === "year" ? p.yearly / 12 : p.monthly)])}</span>
                   </th>
                 ))}
               </tr>
@@ -234,11 +235,11 @@ export function Pricing() {
             <tbody>
               {rows().map((r) => (
                 <tr key={r.label} className="border-b border-line/60 last:border-0">
-                  <th scope="row" className="sticky left-0 bg-panel py-2 pr-3 text-left font-normal text-muted">
+                  <th scope="row" className="py-2 pr-2 text-left font-normal text-muted">
                     {r.label}
                   </th>
                   {r.values.map((v, k) => (
-                    <td key={ORDER[k].id} className="num px-2 py-2 text-center">
+                    <td key={ORDER[k].id} className="num px-1 py-2 text-center sm:px-2">
                       {v === true ? <span className="text-up" aria-label={tl("oui")}>✓</span> : v === false ? <span className="text-muted" aria-label={tl("non")}>—</span> : v}
                     </td>
                   ))}
