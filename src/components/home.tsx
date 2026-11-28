@@ -149,9 +149,10 @@ function Landing() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,color-mix(in_srgb,var(--bg)_85%,transparent)_0%,color-mix(in_srgb,var(--bg)_55%,transparent)_45%,transparent_75%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent" />
         <div className="relative flex h-full flex-col items-center justify-center px-5 text-center">
-          <h1 className="text-balance text-3xl font-semibold leading-tight drop-shadow sm:text-5xl">
-            {tl("Teste ta stratégie")}<br />
-            <span className="text-accent">{tl("avant d'y mettre un euro")}</span>
+          <h1 className="text-3xl font-semibold leading-tight drop-shadow sm:text-5xl">
+            {tl("Teste ta stratégie")}
+            {/* Balanced so phones never leave "euro" alone on the last line. */}
+            <span className="block text-balance text-accent">{tl("avant d'y mettre un euro")}</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-fg/80 sm:text-base">
             {tl("Écris tes règles en français. Backtest Lab les rejoue sur des années de cours, crypto, forex, or ou Nasdaq, frais compris, et te dit si le résultat tient la route.")}</p>
