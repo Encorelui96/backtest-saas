@@ -5,7 +5,7 @@ import { Link, useT } from "@/lib/client/i18n";
 import { PLANS, euros } from "@/lib/plans";
 import { date, num, pct } from "@/lib/client/format";
 import { PROP_FIRMS_CHECKED } from "@/lib/prop-firms";
-import { SHOWCASE as S } from "@/lib/showcase";
+import { PERIOD_TRAP as T, SHOWCASE as S } from "@/lib/showcase";
 import { api } from "@/lib/client/api";
 import { authClient } from "@/lib/client/auth-client";
 import { setSignedInHint } from "@/lib/signed-in-hint";
@@ -13,11 +13,22 @@ import { CandleHero } from "./candle-hero";
 import { Dashboard } from "./dashboard";
 
 const POINTS = [
-  { title: "Challenge prop firm", text: "Tes trades rejoués avec les règles de FTMO, FundedNext et The5ers : chances de réussite, essais et frais à prévoir, comparés au simple hasard." },
   { title: "Un test honnête", text: "Frais, spread, glissement et gaps compris, sans regarder le futur, de la minute au journalier." },
   { title: "Robustesse en 4 contrôles", text: "Hasard ou vrai avantage ? Tenue dans le temps, réglages voisins, frais doublés." },
   { title: "Décris ta stratégie en français", text: "L'IA la traduit en règles précises, liste ses choix et te pose des questions quand c'est flou." },
+  { title: "Ton journal de trading", text: "Note tes trades en R, importe ton historique MT4 ou MT5 et vois ce que te coûtent tes erreurs." },
+  { title: "Suivi en direct", text: "Suis tes stratégies sur le marché du moment et reçois une alerte Telegram quand elles donnent un signal." },
+  { title: "Pensé pour débuter", text: "Mode Débutant, chaque chiffre expliqué et des leçons pour apprendre les bases du backtest." },
 ];
+
+const STEPS = [
+  { title: "Décris ta stratégie", text: "En français, ou en partant d'un modèle prêt à l'emploi." },
+  { title: "Lance le test", text: "Sur des années de cours, frais compris, en quelques secondes." },
+  { title: "Lis le verdict", text: "Rendement, baisse max, robustesse et chances en challenge, expliqués simplement." },
+];
+
+/** The everyday button: sign up, then straight to a new strategy. */
+const SIGNUP = `/connexion?mode=signup&next=${encodeURIComponent("/strategies/new")}`;
 
 /** The main button: sign up, build a strategy, and land on the challenge tab of its report. */
 const CHALLENGE_SIGNUP = `/connexion?mode=signup&next=${encodeURIComponent("/strategies/new?goal=prop")}`;
@@ -48,8 +59,8 @@ function Showcase() {
     { label: tl("Chances sur {0}", [S.challenge.firm]), value: pct(S.challenge.passPercent, 0, false), hint: tl("≈ {0} essais, {1} de frais", [num(S.challenge.attempts, 1), euros(S.challenge.feesEuros)]) },
   ];
   return (
-    <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
-      <h2 className="text-lg font-semibold">{tl("Un exemple réel, sans filtre")}</h2>
+    <div className="mt-4 rounded-lg border border-line p-4">
+      <h3 className="font-semibold">{tl("Un exemple réel, sans filtre")}</h3>
       {/* The page is prerendered: browsers can write dates and numbers slightly differently from the server. */}
       <p className="mt-1 text-sm text-muted" suppressHydrationWarning>
         {tl(S.strategy)} · {S.market} · {S.interval} · {date(S.from, false)} → {date(S.to, false)}
@@ -70,9 +81,39 @@ function Showcase() {
       <p className="mt-3 text-sm">{tl("Gagnante sur 5 ans, et pourtant un challenge resterait un pari coûteux. Mieux vaut le savoir avant de payer.")}</p>
       <p className="mt-2 text-[11px] text-muted">
         {tl("Résultats simulés sur des données passées, frais compris, à 1 % de risque par trade : ils ne promettent aucun gain futur. Seule stratégie sur {0} à passer nos critères, ce qui peut tenir en partie au hasard : les mêmes règles perdent sur d'autres marchés. Règles et prix du challenge relevés le {1}.", [S.tested, tl(PROP_FIRMS_CHECKED)])}</p>
-      <div className="mt-2">
-        <ExampleLink />
+    </div>
+  );
+}
+
+/** One strategy, the same rules and costs: a win over 2 years, a heavy loss over 6. Why tests need many years. */
+function PeriodTrap() {
+  const tl = useT();
+  const sides = [
+    { label: tl("Sur 2 ans"), r: T.short, tone: "text-up border-up/40 bg-up/10" },
+    { label: tl("Sur 6 ans"), r: T.long, tone: "text-down border-down/40 bg-down/10" },
+  ];
+  return (
+    <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
+      <h2 className="text-lg font-semibold">{tl("Pourquoi tester sur des années")}</h2>
+      <p className="mt-1 text-sm text-muted">
+        {tl("Même stratégie, mêmes règles, mêmes frais : {0}, {1}, {2}. Seule la date de départ change.", [tl(T.strategy), T.market, T.interval])}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {sides.map((s) => (
+          <div key={s.label} className={`rounded-md border px-3 py-3 ${s.tone}`}>
+            <div className="text-xs text-muted">{s.label}</div>
+            <div className="num text-2xl font-semibold sm:text-3xl" suppressHydrationWarning>
+              {pct(s.r.returnPercent)}
+            </div>
+            <div className="text-xs text-muted" suppressHydrationWarning>
+              {tl("{0} trades, baisse max {1}", [num(s.r.trades, 0), pct(-s.r.maxDrawdownPercent)])}
+            </div>
+          </div>
+        ))}
       </div>
+      <p className="mt-3 text-sm">
+        {tl("Sur les 2 dernières années, elle gagne. Sur 6 ans, elle perd plus de la moitié du capital : {0} années sur 6 dans le rouge. Backtest Lab te le montre avant que ton argent le découvre.", [T.losingYears])}</p>
+      <p className="mt-2 text-[11px] text-muted" suppressHydrationWarning>
+        {tl("Résultats simulés sur des données passées arrêtées au {2} (depuis le {0} et depuis le {1}), frais, spread et glissement compris, à 1 % de risque par trade : ils ne promettent aucun gain futur.", [date(T.short.from, false), date(T.long.from, false), date(T.long.to, false)])}</p>
     </section>
   );
 }
@@ -98,6 +139,7 @@ export function Home() {
 
 function Landing() {
   const tl = useT();
+  const free = tl("{0} backtests par mois offerts, sans carte bancaire.", [PLANS.free.backtestsPerMonth]);
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 pb-6 sm:gap-10 sm:pb-12">
       {/* Phones: the chart runs edge to edge; larger screens: a rounded panel. */}
@@ -108,45 +150,78 @@ function Landing() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent" />
         <div className="relative flex h-full flex-col items-center justify-center px-5 text-center">
           <h1 className="text-3xl font-semibold leading-tight drop-shadow sm:text-5xl">
-            {tl("Avant de payer ton challenge,")}<br />
-            <span className="text-accent">{tl("estime tes chances sur l'historique")}</span>
+            {tl("Teste ta stratégie")}
+            {/* Balanced so phones never leave "euro" alone on the last line. */}
+            <span className="block text-balance text-accent">{tl("avant d'y mettre un euro")}</span>
           </h1>
           <p className="mx-auto mt-4 max-w-xl text-sm text-fg/80 sm:text-base">
-            {tl("Rejoue ta stratégie avec les règles de FTMO, FundedNext et The5ers sur des années de cours : chances de réussite, essais et frais à prévoir.")}</p>
+            {tl("Écris tes règles en français. Backtest Lab les rejoue sur des années de cours, crypto, forex, or ou Nasdaq, frais compris, et te dit si le résultat tient la route.")}</p>
           <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <Link href={CHALLENGE_SIGNUP} className="rounded-md bg-accent px-5 py-2.5 font-medium text-white shadow-lg shadow-accent/30 hover:brightness-110">
-              {tl("Estimer mes chances")}</Link>
+            <Link href={SIGNUP} className="rounded-md bg-accent px-5 py-2.5 font-medium text-white shadow-lg shadow-accent/30 hover:brightness-110">
+              {tl("Commencer gratuitement")}</Link>
             <Link href="/apprendre" className="rounded-md border border-line bg-panel/70 px-5 py-2.5 font-medium text-fg backdrop-blur hover:border-accent">
               {tl("Apprendre les bases")}</Link>
           </div>
-          <p className="mt-3 text-xs text-muted">{tl("{0} backtests par mois offerts, sans carte bancaire.", [PLANS.free.backtestsPerMonth])}</p>
-          <p className="mt-1 text-[11px] text-muted">{tl("Une estimation sur le passé, pas une garantie de réussite. Aucun lien avec ces prop firms.")}</p>
+          <p className="mt-3 rounded bg-bg/70 px-2 py-0.5 text-xs text-muted">{free}</p>
+          <div className="mt-2">
+            <ExampleLink />
+          </div>
         </div>
       </section>
-      <Showcase />
-      <section className="rounded-lg border border-line bg-panel p-4 text-center sm:p-5">
-        <h2 className="font-semibold">{tl("Tu ne vises pas de prop firm ?")}</h2>
-        <p className="mx-auto mt-1 max-w-2xl text-sm text-muted">
-          {tl("Scalp, day trading ou swing, sur les cryptos, le forex, l'or et le Nasdaq : écris tes règles en français, Backtest Lab les teste sur des années de cours et te dit si le résultat tient la route.")}</p>
-        <Link href="/connexion?mode=signup" className="mt-2 inline-block text-sm text-accent hover:underline">
-          {tl("Tester ma stratégie →")}</Link>
+
+      <section>
+        <h2 className="text-center text-lg font-semibold">{tl("Comment ça marche")}</h2>
+        <ol className="mt-3 grid gap-3 sm:grid-cols-3">
+          {STEPS.map((s, i) => (
+            <li key={s.title} className="rounded-lg border border-line bg-panel p-4">
+              <span className="num flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">{i + 1}</span>
+              <h3 className="mt-2 font-semibold">{tl(s.title)}</h3>
+              <p className="mt-1 text-sm text-muted">{tl(s.text)}</p>
+            </li>
+          ))}
+        </ol>
       </section>
-      <div className="grid gap-3 sm:grid-cols-2">
-        {POINTS.map((p) => (
-          <div key={p.title} className="rounded-lg border border-line bg-panel p-4">
-            <h2 className="font-semibold">{tl(p.title)}</h2>
-            <p className="mt-1 text-sm text-muted">{tl(p.text)}</p>
-          </div>
-        ))}
-      </div>
-      <p className="web-only text-center text-sm text-muted">
-        {tl("Des questions ?")}{" "}
-        <Link href="/questions" className="text-accent hover:underline">
-          {tl("Ce que fait Backtest Lab, pour qui, à quel prix")}</Link>{" "}
-        ·{" "}
-        <Link href="/tarifs" className="text-accent hover:underline">
-          {tl("Tarifs")}</Link>
-      </p>
+
+      <PeriodTrap />
+
+      <section className="rounded-lg border border-line bg-panel p-4 sm:p-5">
+        <h2 className="text-lg font-semibold">{tl("Tu prépares un challenge prop firm ?")}</h2>
+        <p className="mt-1 text-sm text-muted">
+          {tl("Rejoue ta stratégie avec les règles de FTMO, FundedNext et The5ers sur des années de cours : chances de réussite, essais et frais à prévoir, comparés au simple hasard.")}</p>
+        <Showcase />
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+          <Link href={CHALLENGE_SIGNUP} className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white hover:brightness-110">
+            {tl("Estimer mes chances")}</Link>
+          <span className="text-[11px] text-muted">{tl("Une estimation sur le passé, pas une garantie de réussite. Aucun lien avec ces prop firms.")}</span>
+        </div>
+      </section>
+
+      <section>
+        <h2 className="text-center text-lg font-semibold">{tl("Tout ce qu'il faut pour tester sérieusement")}</h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {POINTS.map((p) => (
+            <div key={p.title} className="rounded-lg border border-line bg-panel p-4">
+              <h3 className="font-semibold">{tl(p.title)}</h3>
+              <p className="mt-1 text-sm text-muted">{tl(p.text)}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-accent/40 bg-accent/10 p-6 text-center">
+        <h2 className="text-xl font-semibold">{tl("Prêt à tester ta première stratégie ?")}</h2>
+        <p className="mt-1 text-sm text-muted">{free}</p>
+        <Link href={SIGNUP} className="mt-4 inline-block rounded-md bg-accent px-6 py-2.5 font-medium text-white shadow-lg shadow-accent/30 hover:brightness-110">
+          {tl("Commencer gratuitement")}</Link>
+        <p className="web-only mt-4 text-sm text-muted">
+          {tl("Des questions ?")}{" "}
+          <Link href="/questions" className="text-accent hover:underline">
+            {tl("Ce que fait Backtest Lab, pour qui, à quel prix")}</Link>{" "}
+          ·{" "}
+          <Link href="/tarifs" className="text-accent hover:underline">
+            {tl("Tarifs")}</Link>
+        </p>
+      </section>
     </div>
   );
 }

@@ -14,7 +14,7 @@ const jsonLd = (lang: Lang, t: T) => ({
   operatingSystem: "Web",
   inLanguage: lang,
   description: t(
-    "Outil de backtest en ligne pour préparer un challenge prop firm : décris ta stratégie de trading en français, teste-la sur des années de cours (cryptos, forex, or, Nasdaq 100) avec frais et glissement, puis estime tes chances sur l'historique et vérifie sa robustesse.",
+    "Outil de backtest en ligne : décris ta stratégie de trading en français, teste-la sur des années de cours (cryptos, forex, or, Nasdaq 100) avec frais et glissement, vérifie sa robustesse, estime tes chances en challenge prop firm et tiens ton journal de trading.",
   ),
   offers: Object.values(PLANS).map((p) => ({ "@type": "Offer", name: t(p.label), price: p.monthly, priceCurrency: "EUR" })),
 });

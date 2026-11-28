@@ -13,4 +13,4 @@ export const SOCIAL_LINKS = [
   { href: "https://www.tiktok.com/@backtestlab7", label: "TikTok" },
 ];
 
-export const SITE_TAGLINE = "Avant de payer ton challenge, estime tes chances sur l'historique";
+export const SITE_TAGLINE = "Teste ta stratégie avant d'y mettre un euro";
