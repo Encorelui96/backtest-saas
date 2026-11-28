@@ -113,7 +113,7 @@ function PeriodTrap() {
       <p className="mt-3 text-sm">
         {tl("Sur les 2 dernières années, elle gagne. Sur 6 ans, elle perd plus de la moitié du capital : {0} années sur 6 dans le rouge. Backtest Lab te le montre avant que ton argent le découvre.", [T.losingYears])}</p>
       <p className="mt-2 text-[11px] text-muted" suppressHydrationWarning>
-        {tl("Résultats simulés sur des données passées, du {0} et du {1} au {2}, frais, spread et glissement compris, à 1 % de risque par trade : ils ne promettent aucun gain futur.", [date(T.short.from, false), date(T.long.from, false), date(T.long.to, false)])}</p>
+        {tl("Résultats simulés sur des données passées arrêtées au {2} (depuis le {0} et depuis le {1}), frais, spread et glissement compris, à 1 % de risque par trade : ils ne promettent aucun gain futur.", [date(T.short.from, false), date(T.long.from, false), date(T.long.to, false)])}</p>
     </section>
   );
 }
@@ -149,7 +149,7 @@ function Landing() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,color-mix(in_srgb,var(--bg)_85%,transparent)_0%,color-mix(in_srgb,var(--bg)_55%,transparent)_45%,transparent_75%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent" />
         <div className="relative flex h-full flex-col items-center justify-center px-5 text-center">
-          <h1 className="text-3xl font-semibold leading-tight drop-shadow sm:text-5xl">
+          <h1 className="text-balance text-3xl font-semibold leading-tight drop-shadow sm:text-5xl">
             {tl("Teste ta stratégie")}<br />
             <span className="text-accent">{tl("avant d'y mettre un euro")}</span>
           </h1>
@@ -161,7 +161,7 @@ function Landing() {
             <Link href="/apprendre" className="rounded-md border border-line bg-panel/70 px-5 py-2.5 font-medium text-fg backdrop-blur hover:border-accent">
               {tl("Apprendre les bases")}</Link>
           </div>
-          <p className="mt-3 text-xs text-muted">{free}</p>
+          <p className="mt-3 rounded bg-bg/70 px-2 py-0.5 text-xs text-muted">{free}</p>
           <div className="mt-2">
             <ExampleLink />
           </div>

@@ -2071,7 +2071,7 @@ export const EN: Record<string, string> = {
   "Prêt à tester ta première stratégie ?": "Ready to test your first strategy?",
   "Rejoue ta stratégie avec les règles de FTMO, FundedNext et The5ers sur des années de cours : chances de réussite, essais et frais à prévoir, comparés au simple hasard.": "Replay your strategy with the rules of FTMO, FundedNext and The5ers over years of prices: chances of passing, attempts and fees to expect, compared with plain chance.",
   "Rendement, baisse max, robustesse et chances en challenge, expliqués simplement.": "Return, max drawdown, robustness and challenge chances, explained simply.",
-  "Résultats simulés sur des données passées, du {0} et du {1} au {2}, frais, spread et glissement compris, à 1 % de risque par trade : ils ne promettent aucun gain futur.": "Simulated results on past data, from {0} and from {1} to {2}, fees, spread and slippage included, at 1% risk per trade: they promise no future gain.",
+  "Résultats simulés sur des données passées arrêtées au {2} (depuis le {0} et depuis le {1}), frais, spread et glissement compris, à 1 % de risque par trade : ils ne promettent aucun gain futur.": "Simulated results on past data up to {2} (since {0} and since {1}), fees, spread and slippage included, at 1% risk per trade: they promise no future gain.",
   "Suis tes stratégies sur le marché du moment et reçois une alerte Telegram quand elles donnent un signal.": "Follow your strategies on the live market and get a Telegram alert when they give a signal.",
   "Suivi en direct": "Live tracking",
   "Sur 2 ans": "Over 2 years",
