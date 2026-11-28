@@ -22,3 +22,18 @@ export const SHOWCASE = {
   challenge: { firm: "FTMO", passPercent: 12, attempts: 8.6, feesEuros: 3784 },
   tested: 23,
 };
+
+/**
+ * The home page's warning about short tests: one strategy, the same rules and costs, two start dates.
+ * Figures copied from reports 755e400f0e044ec8 (2 years) and 68b4e32ff55a4fb0 (6 years) on 27 November 2026:
+ * gold 15 min, sells only, 0.0035 % fees per side, 0.01 % spread, 0.005 % slippage, 1 % risk per trade.
+ */
+export const PERIOD_TRAP = {
+  strategy: "Cassure du range asiatique sur l'or",
+  market: "XAUUSD",
+  interval: "15 min",
+  short: { from: Date.UTC(2024, 10, 27), to: Date.UTC(2026, 10, 27), returnPercent: 20.5, trades: 250, maxDrawdownPercent: 17.6 },
+  long: { from: Date.UTC(2020, 10, 18), to: Date.UTC(2026, 10, 27), returnPercent: -59.6, trades: 926, maxDrawdownPercent: 69.2 },
+  /** Calendar years 2021 to 2026 that lost money, out of 6. */
+  losingYears: 4,
+};
