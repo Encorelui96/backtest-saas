@@ -27,6 +27,10 @@ const FAQ: { q: string; a: string }[] = [
     a: "Les unités 1 et 5 minutes, tout l'historique au lieu des 12 derniers mois, le détail des contrôles de robustesse (Monte Carlo, réglages voisins), le comparatif côte à côte des prop firms, le suivi Live de tes stratégies, les alertes Telegram, le journal complet et des indicateurs en plus (Heikin Ashi, Stoch RSI, Aroon, CMF). Les offres Avancé et Pro ajoutent la structure de marché, les FVG, les divergences et plus de tests chaque mois. Le verdict reste lisible avec l'offre gratuite.",
   },
   {
+    q: "Pourquoi payer si l'offre gratuite existe ?",
+    a: "L'offre gratuite suffit pour découvrir et tester tes premières idées, en 15 minutes et plus, sur les 12 derniers mois. Une offre payante sert quand tu testes sérieusement : les unités de 1 et 5 minutes, tout l'historique (une stratégie peut gagner sur 2 ans et perdre sur 6), le détail de la robustesse, le comparatif des prop firms, le suivi Live, les alertes et le journal complet.",
+  },
+  {
     q: "Qu'est-ce qu'un backtest compte ?",
     a: "Chaque test lancé et terminé compte pour un. Un test qui échoue ne compte pas. Rouvrir un rapport déjà calculé est gratuit et illimité.",
   },
